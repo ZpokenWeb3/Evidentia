@@ -41,7 +41,23 @@ contract NFTStakingAndBorrowingTest is Test {
         owner = address(1);
         vm.prank(owner);
         nftStaking.stakeNFT(address(bondNFT), 1, 10);
-        // assertEq(1, 1);
+
+        NFTStakingAndBorrowing.TotalStats memory totalStats = nftStaking.getTotalStats();
+
+        assertEq(totalStats.staked, 10500_000000);
+
+        NFTStakingAndBorrowing.UserStats memory userStats = nftStaking.getUserStats(owner);
+
+        assertEq(userStats.staked, 10500_000000);
+        assertEq(userStats.available, 937_4999999);
+
+        NFTStakingAndBorrowing.Stake[] memory userStakes = nftStaking.getUserStakes(owner);
+        assertEq(userStakes.length, 1);
+        assertEq(userStakes[0].nftContract, address(bondNFT));
+        assertEq(userStakes[0].tokenId, 1);
+        assertEq(userStakes[0].amount, 10);
+        assertEq(userStakes[0].timestamp, 1);
+        assertEq(userStakes[0].value, 10500_000000);
     }
 
 }

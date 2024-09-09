@@ -71,6 +71,18 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         whitelistedNFTs[nftContract] = status;
     }
 
+    function getUserStakes(address user) public view returns (Stake[] memory) {
+        return userStakes[user];
+    }
+
+    function getUserStats(address user) public view returns (UserStats memory) {
+        return userStats[user];
+    }
+
+    function getTotalStats() public view returns (TotalStats memory) {
+        return totalStats;
+    }
+
     function stakeNFT(address nftContract, uint256 tokenId, uint256 amount) external {
         if (!whitelistedNFTs[nftContract]) revert NFTNotWhitelisted();
         if (IBondNFT(nftContract).balanceOf(msg.sender, tokenId) < amount) revert InsufficientNFTBalance();
@@ -162,7 +174,4 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         // delete loans[msg.sender];
     }
 
-    function getUserStakes(address user) public view returns (Stake[] memory) {
-        return userStakes[user];
-    }
 }
