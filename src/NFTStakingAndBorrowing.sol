@@ -58,10 +58,10 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
     error NFTNotWhitelisted();
     error InsufficientNFTBalance();
     error InvalidStakeIndex();
-    error OutstandingLoanExists();
     error BorrowAmountExceedsLimit();
     error NoOutstandingLoan();
     error InsufficientBalanceToRepay();
+    error OutstandingLoanExists();
 
     constructor(address _stableToken) ERC1155Holder() Ownable(msg.sender) {
         stableToken = IMintableERC20(_stableToken);
@@ -97,10 +97,6 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         totalStats.staked += totalValue;
 
         userStats[msg.sender].staked += totalValue;
-        // if (userStats[msg.sender].debt != 0) {
-        //     userStats[msg.sender].debt = calculateDebt(userStats[msg.sender].debt, userStats[msg.sender].debtUpdateTimestamp, block.timestamp);
-        //     userStats[msg.sender].debtUpdateTimestamp = block.timestamp;
-        // }
         userStats[msg.sender].available += calculateMaxBorrow(totalValue, block.timestamp, metadata.expirationTimestamp);
 
         stableToken.mint(address(this), totalValue);
@@ -146,15 +142,27 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
     }
 
     function borrow(uint256 amount) external {
-        // uint256 maxBorrow = getMaxBorrow(msg.sender);
-        // if (amount > maxBorrow) revert BorrowAmountExceedsLimit();
-        // if (loans[msg.sender].amount != 0) revert OutstandingLoanExists();
+        
+        if (userStats[msg.sender].debt != 0) {
+            userStats[msg.sender].debt = calculateDebt(userStats[msg.sender].debt, userStats[msg.sender].debtUpdateTimestamp, block.timestamp);
+        }
+        userStats[msg.sender].available = calculateDebt(userStats[msg.sender].available, userStats[msg.sender].debtUpdateTimestamp, block.timestamp);
+        userStats[msg.sender].debtUpdateTimestamp = block.timestamp;
 
-        // loans[msg.sender] = Loan(amount, block.timestamp);
-        // stableToken.mint(msg.sender, amount);
-        // totalBorrowed += amount;
+        if (amount > userStats[msg.sender].available) revert BorrowAmountExceedsLimit();
 
-        // emit Borrowed(msg.sender, amount);
+        if (totalStats.debt != 0) {
+            totalStats.debt = calculateDebt(totalStats.debt, totalStats.debtUpdateTimestamp, block.timestamp);
+            totalStats.debtUpdateTimestamp = block.timestamp;
+        }
+
+        userStats[msg.sender].debt += amount;
+        userStats[msg.sender].available -= amount;
+        totalStats.borrowed += amount;
+
+        stableToken.transfer(msg.sender, amount);
+
+        emit Borrowed(msg.sender, amount);
     }
 
     function repay() external {
