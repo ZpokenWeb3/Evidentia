@@ -1,6 +1,9 @@
 # Compiler files
 cache/
 out/
+node_modules/
+lib/
+.DS_Store
 
 # Ignores development broadcast logs
 !/broadcast

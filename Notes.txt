@@ -1,0 +1,4 @@
+1. ERC20 StableNondsCoins MINTER - nft staking contract
+2. decimals 6
+3. BondNFT - every bond series has id is uint256 (iterative id or hash?)
+4. BondNFT Metadata onchain - should be created manually
