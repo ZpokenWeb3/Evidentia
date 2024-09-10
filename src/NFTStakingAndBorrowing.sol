@@ -13,13 +13,6 @@ interface IMintableERC20 is IERC20 {
 }
 
 contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
-    struct Stake {
-        address nftContract;
-        uint256 tokenId;
-        uint256 amount;
-        uint256 timestamp;
-        uint256 value;
-    }
 
     struct TotalStats {
         uint256 staked;
@@ -39,13 +32,12 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
     TotalStats public totalStats;
 
     mapping(address => bool) public whitelistedNFTs;
-    mapping(address => Stake[]) public userStakes;
     mapping(address => UserStats) public userStats;
 
     uint256 internal constant YEAR_IN_SECONDS = 31536000; // 365 days
-    uint256 internal constant DECIMALS_MULTIPLIER = 1e18;
+    uint256 internal constant UNIT = 1e18;
     uint256 internal constant BIPS = 1e4;
-    uint256 public constant PROTOCOL_YIELD = 1200 * DECIMALS_MULTIPLIER / BIPS;
+    uint256 public constant PROTOCOL_YIELD = 1200 * UNIT / BIPS;
 
     IMintableERC20 public stableToken;
 
@@ -57,7 +49,6 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
     // Custom errors
     error NFTNotWhitelisted();
     error InsufficientNFTBalance();
-    error InvalidStakeIndex();
     error BorrowAmountExceedsLimit();
     error NoOutstandingLoan();
     error InsufficientBalanceToRepay();
@@ -69,10 +60,6 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
 
     function whitelistNFT(address nftContract, bool status) external onlyOwner {
         whitelistedNFTs[nftContract] = status;
-    }
-
-    function getUserStakes(address user) public view returns (Stake[] memory) {
-        return userStakes[user];
     }
 
     function getUserStats(address user) public view returns (UserStats memory) {
@@ -93,7 +80,6 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
 
         uint256 totalValue = (metadata.value + metadata.couponValue) * amount;
 
-        userStakes[msg.sender].push(Stake(nftContract, tokenId, amount, block.timestamp, totalValue));
         totalStats.staked += totalValue;
 
         userStats[msg.sender].staked += totalValue;
@@ -108,7 +94,7 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         totalAmount = totalAmount * 1e12;
         UD60x18 timeDelta = ud(toTime) - ud(fromTime);
         UD60x18 maxBorrow = ud(totalAmount).log2() 
-            - (timeDelta/ud(YEAR_IN_SECONDS)) * (ud(DECIMALS_MULTIPLIER) + ud(PROTOCOL_YIELD)).log2();
+            - (timeDelta/ud(YEAR_IN_SECONDS)) * (ud(UNIT) + ud(PROTOCOL_YIELD)).log2();
 
         return maxBorrow.exp2().intoUint256()/1e12;
     }
@@ -116,13 +102,13 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
     function calculateDebt(uint256 borrowedAmount, uint256 fromTime, uint256 toTime) internal pure returns (uint256) {
         borrowedAmount = borrowedAmount * 1e12;
         UD60x18 timeDelta = ud(toTime) - ud(fromTime);
-        UD60x18 debtLog2 = (timeDelta/ud(YEAR_IN_SECONDS)) * (ud(DECIMALS_MULTIPLIER) + ud(PROTOCOL_YIELD)).log2()
+        UD60x18 debtLog2 = (timeDelta/ud(YEAR_IN_SECONDS)) * (ud(UNIT) + ud(PROTOCOL_YIELD)).log2()
             + ud(borrowedAmount).log2();
         return debtLog2.exp2().intoUint256()/1e12;
     }
 
     function unstakeNFT(uint256 stakeIndex) external {
-        if (stakeIndex >= userStakes[msg.sender].length) revert InvalidStakeIndex();
+
         // if (loans[msg.sender].amount != 0) revert OutstandingLoanExists();
 
         // Stake storage stake = userStakes[msg.sender][stakeIndex];
@@ -136,9 +122,6 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
 
         // emit NFTUnstaked(msg.sender, stake.nftContract, stake.tokenId, stake.amount);
 
-        // // Remove the stake by swapping with the last element and then popping
-        // userStakes[msg.sender][stakeIndex] = userStakes[msg.sender][userStakes[msg.sender].length - 1];
-        // userStakes[msg.sender].pop();
     }
 
     function borrow(uint256 amount) external {

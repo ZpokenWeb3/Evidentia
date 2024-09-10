@@ -51,13 +51,6 @@ contract NFTStakingAndBorrowingTest is Test {
         assertEq(userStats.staked, 10500_000000);
         assertEq(userStats.available, 937_4999999);
 
-        NFTStakingAndBorrowing.Stake[] memory userStakes = nftStaking.getUserStakes(owner);
-        assertEq(userStakes.length, 1);
-        assertEq(userStakes[0].nftContract, address(bondNFT));
-        assertEq(userStakes[0].tokenId, 1);
-        assertEq(userStakes[0].amount, 10);
-        assertEq(userStakes[0].timestamp, 1);
-        assertEq(userStakes[0].value, 10500_000000);
     }
 
     function test_borrow() public {
