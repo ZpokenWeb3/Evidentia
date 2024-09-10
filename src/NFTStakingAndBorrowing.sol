@@ -33,6 +33,7 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
 
     mapping(address => bool) public whitelistedNFTs;
     mapping(address => UserStats) public userStats;
+    mapping(address => mapping(address => mapping(uint256 => uint256))) public userNFTs;
 
     uint256 internal constant YEAR_IN_SECONDS = 31536000; // 365 days
     uint256 internal constant UNIT = 1e18;
@@ -41,8 +42,8 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
 
     IMintableERC20 public stableToken;
 
-    event NFTStaked(address indexed user, address indexed nftContract, uint256 tokenId, uint256 amount);
-    event NFTUnstaked(address indexed user, address indexed nftContract, uint256 tokenId, uint256 amount);
+    event NFTStaked(address indexed user, address indexed nftAddress, uint256 tokenId, uint256 amount);
+    event NFTUnstaked(address indexed user, address indexed nftAddress, uint256 tokenId, uint256 amount);
     event Borrowed(address indexed user, uint256 amount);
     event Repaid(address indexed user, uint256 amount);
 
@@ -50,16 +51,15 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
     error NFTNotWhitelisted();
     error InsufficientNFTBalance();
     error BorrowAmountExceedsLimit();
-    error NoOutstandingLoan();
     error InsufficientBalanceToRepay();
-    error OutstandingLoanExists();
+    error NotEnoughCollateral();
 
     constructor(address _stableToken) ERC1155Holder() Ownable(msg.sender) {
         stableToken = IMintableERC20(_stableToken);
     }
 
-    function whitelistNFT(address nftContract, bool status) external onlyOwner {
-        whitelistedNFTs[nftContract] = status;
+    function whitelistNFT(address nftAddress, bool status) external onlyOwner {
+        whitelistedNFTs[nftAddress] = status;
     }
 
     function getUserStats(address user) public view returns (UserStats memory) {
@@ -70,13 +70,14 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         return totalStats;
     }
 
-    function stakeNFT(address nftContract, uint256 tokenId, uint256 amount) external {
-        if (!whitelistedNFTs[nftContract]) revert NFTNotWhitelisted();
-        if (IBondNFT(nftContract).balanceOf(msg.sender, tokenId) < amount) revert InsufficientNFTBalance();
+    function stakeNFT(address nftAddress, uint256 tokenId, uint256 amount) external {
+        if (!whitelistedNFTs[nftAddress]) revert NFTNotWhitelisted();
+        if (IBondNFT(nftAddress).balanceOf(msg.sender, tokenId) < amount) revert InsufficientNFTBalance();
 
-        IBondNFT(nftContract).safeTransferFrom(msg.sender, address(this), tokenId, amount, "");
+        IBondNFT(nftAddress).safeTransferFrom(msg.sender, address(this), tokenId, amount, "");
+        userNFTs[msg.sender][nftAddress][tokenId] = amount;
 
-        IBondNFT.Metadata memory metadata = IBondNFT(nftContract).getMetaData(tokenId);
+        IBondNFT.Metadata memory metadata = IBondNFT(nftAddress).getMetaData(tokenId);
 
         uint256 totalValue = (metadata.value + metadata.couponValue) * amount;
 
@@ -87,7 +88,7 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
 
         stableToken.mint(address(this), totalValue);
 
-        emit NFTStaked(msg.sender, nftContract, tokenId, amount);
+        emit NFTStaked(msg.sender, nftAddress, tokenId, amount);
     }
 
     function calculateMaxBorrow(uint256 totalAmount, uint256 fromTime, uint256 toTime) internal pure returns (uint256) {
@@ -116,11 +117,11 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         // uint256 reward = calculateReward(msg.sender, stakeIndex);
         // stableToken.mint(msg.sender, reward);
 
-        // IBondNFT(stake.nftContract).safeTransferFrom(address(this), msg.sender, stake.tokenId, stake.amount, "");
+        // IBondNFT(stake.nftAddress).safeTransferFrom(address(this), msg.sender, stake.tokenId, stake.amount, "");
 
         // stableToken.burn(msg.sender, stake.value + reward);
 
-        // emit NFTUnstaked(msg.sender, stake.nftContract, stake.tokenId, stake.amount);
+        // emit NFTUnstaked(msg.sender, stake.nftAddress, stake.tokenId, stake.amount);
 
     }
 
