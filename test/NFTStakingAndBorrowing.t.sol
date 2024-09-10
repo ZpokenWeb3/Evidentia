@@ -50,7 +50,6 @@ contract NFTStakingAndBorrowingTest is Test {
 
         assertEq(userStats.staked, 9975_000000);
         assertEq(nftStaking.userAvailableToBorrow(owner), 8906_250032);
-
     }
 
     function test_borrow() public {
@@ -83,7 +82,5 @@ contract NFTStakingAndBorrowingTest is Test {
         assertEq(userStats.debtUpdateTimestamp, 2592001);
         assertEq(totalStats.debt, 504_679103);
         assertEq(userStats.debt, 504_679101);
-        
     }
-
 }

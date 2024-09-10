@@ -34,13 +34,8 @@ contract BondNFTTest is Test {
             ISIN: "US1234567890"
         });
         bondNFT.setMetaData(1, metadata);
-        (
-            uint256 value, 
-            uint256 couponValue, 
-            uint256 issueTimestamp, 
-            uint256 expirationTimestamp, 
-            string memory ISIN
-        ) = bondNFT.metadata(1);
+        (uint256 value, uint256 couponValue, uint256 issueTimestamp, uint256 expirationTimestamp, string memory ISIN) =
+            bondNFT.metadata(1);
         assertEq(value, metadata.value);
         assertEq(couponValue, metadata.couponValue);
         assertEq(issueTimestamp, metadata.issueTimestamp);

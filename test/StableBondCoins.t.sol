@@ -26,7 +26,6 @@ contract StableBondCoinsTest is Test {
 
         assertEq(stableBondCoins.hasRole(DEFAULT_ADMIN_ROLE, defaultAdmin), true);
         assertEq(stableBondCoins.hasRole(MINTER_ROLE, minter), true);
-
     }
 
     function testMint() public {

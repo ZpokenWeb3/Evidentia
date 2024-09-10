@@ -7,7 +7,6 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ERC1155Supply} from "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
 
 contract BondNFT is ERC1155, Ownable, ERC1155Supply {
-
     struct Metadata {
         uint256 value;
         uint256 couponValue;
@@ -15,13 +14,10 @@ contract BondNFT is ERC1155, Ownable, ERC1155Supply {
         uint256 expirationTimestamp;
         string ISIN;
     }
-    
+
     mapping(uint256 => Metadata) public metadata;
 
-    constructor(address initialOwner, string memory _uri )
-        ERC1155(_uri)
-        Ownable(initialOwner)
-    {}
+    constructor(address initialOwner, string memory _uri) ERC1155(_uri) Ownable(initialOwner) {}
 
     function setURI(string memory newuri) public onlyOwner {
         _setURI(newuri);
@@ -35,17 +31,11 @@ contract BondNFT is ERC1155, Ownable, ERC1155Supply {
         return metadata[id];
     }
 
-    function mint(address account, uint256 id, uint256 amount, bytes memory data)
-        public
-        onlyOwner
-    {
+    function mint(address account, uint256 id, uint256 amount, bytes memory data) public onlyOwner {
         _mint(account, id, amount, data);
     }
 
-    function burn(address account, uint256 id, uint256 amount)
-        public
-        onlyOwner 
-    {
+    function burn(address account, uint256 id, uint256 amount) public onlyOwner {
         _burn(account, id, amount);
     }
 
