@@ -44,12 +44,12 @@ contract NFTStakingAndBorrowingTest is Test {
 
         NFTStakingAndBorrowing.TotalStats memory totalStats = nftStaking.getTotalStats();
 
-        assertEq(totalStats.staked, 10500_000000);
+        assertEq(totalStats.staked, 9975_000000);
 
         NFTStakingAndBorrowing.UserStats memory userStats = nftStaking.getUserStats(owner);
 
-        assertEq(userStats.staked, 10500_000000);
-        assertEq(nftStaking.userAvailableToBorrow(owner), 9375_000032);
+        assertEq(userStats.staked, 9975_000000);
+        assertEq(nftStaking.userAvailableToBorrow(owner), 8906_250032);
 
     }
 
@@ -60,8 +60,8 @@ contract NFTStakingAndBorrowingTest is Test {
         nftStaking.stakeNFT(address(bondNFT), 1, 10);
         NFTStakingAndBorrowing.UserStats memory userStats = nftStaking.getUserStats(owner);
 
-        assertEq(userStats.staked, 10500_000000);
-        assertEq(nftStaking.userAvailableToBorrow(owner), 9375_000032);
+        assertEq(userStats.staked, 9975_000000);
+        assertEq(nftStaking.userAvailableToBorrow(owner), 8906_250032);
 
         nftStaking.borrow(500_000000);
         vm.stopPrank();
@@ -69,7 +69,7 @@ contract NFTStakingAndBorrowingTest is Test {
         userStats = nftStaking.getUserStats(owner);
 
         assertEq(userStats.borrowed, 500_000000);
-        assertEq(nftStaking.userAvailableToBorrow(owner), 8875_000032);
+        assertEq(nftStaking.userAvailableToBorrow(owner), 8406_250032);
 
         NFTStakingAndBorrowing.TotalStats memory totalStats = nftStaking.getTotalStats();
         assertEq(totalStats.borrowed, 500_000000);
@@ -79,7 +79,7 @@ contract NFTStakingAndBorrowingTest is Test {
 
         userStats = nftStaking.getUserStats(owner);
         totalStats = nftStaking.getTotalStats();
-        assertEq(nftStaking.userAvailableToBorrow(owner), 8958_054085);
+        assertEq(nftStaking.userAvailableToBorrow(owner), 8484_917428);
         assertEq(userStats.debtUpdateTimestamp, 2592001);
         assertEq(totalStats.debt, 504_679103);
         assertEq(userStats.debt, 504_679101);

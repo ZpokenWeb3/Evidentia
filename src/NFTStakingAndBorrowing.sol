@@ -104,7 +104,7 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
 
         IBondNFT.Metadata memory metadata = IBondNFT(nftAddress).getMetaData(tokenId);
 
-        uint256 totalValue = (metadata.value + metadata.couponValue) * amount;
+        uint256 totalValue = (metadata.value + metadata.couponValue) * amount * (UNIT - SAFETY_FEE) / UNIT;
 
         totalStats.staked += totalValue;
 
@@ -138,7 +138,7 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         if (userNFTs[msg.sender][nftAddress][tokenId] < amount) revert InsufficientNFTBalance();
 
         IBondNFT.Metadata memory metadata = IBondNFT(nftAddress).getMetaData(tokenId);
-        uint256 totalValue = (metadata.value + metadata.couponValue) * amount;
+        uint256 totalValue = (metadata.value + metadata.couponValue) * amount * (UNIT - SAFETY_FEE) / UNIT;
 
         updateUserDebtAndAvailable(msg.sender);
 
