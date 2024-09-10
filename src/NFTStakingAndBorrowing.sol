@@ -23,7 +23,7 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
 
     struct UserStats {
         uint256 staked;
-        uint256 available;
+        uint256 nominalAvailable;
         uint256 borrowed;
         uint256 debt;
         uint256 debtUpdateTimestamp;
@@ -84,7 +84,7 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         totalStats.staked += totalValue;
 
         userStats[msg.sender].staked += totalValue;
-        userStats[msg.sender].available += calculateMaxBorrow(totalValue, block.timestamp, metadata.expirationTimestamp);
+        userStats[msg.sender].nominalAvailable += calculateMaxBorrow(totalValue, block.timestamp, metadata.expirationTimestamp);
 
         stableToken.mint(address(this), totalValue);
 
@@ -108,32 +108,45 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         return debtLog2.exp2().intoUint256()/1e12;
     }
 
-    function unstakeNFT(uint256 stakeIndex) external {
+    function unstakeNFT(address nftAddress, uint256 tokenId, uint256 amount) external {
+        if (!whitelistedNFTs[nftAddress]) revert NFTNotWhitelisted();
+        if (userNFTs[msg.sender][nftAddress][tokenId] < amount) revert InsufficientNFTBalance();
 
-        // if (loans[msg.sender].amount != 0) revert OutstandingLoanExists();
+        IBondNFT.Metadata memory metadata = IBondNFT(nftAddress).getMetaData(tokenId);
+        uint256 totalValue = (metadata.value + metadata.couponValue) * amount;
 
-        // Stake storage stake = userStakes[msg.sender][stakeIndex];
+        updateUserDebtAndAvailable(msg.sender);
 
-        // uint256 reward = calculateReward(msg.sender, stakeIndex);
-        // stableToken.mint(msg.sender, reward);
+        // TODO check if user has enough collateral
+        if (calculateMaxBorrow(totalValue, block.timestamp, metadata.expirationTimestamp) > userStats[msg.sender].nominalAvailable - userStats[msg.sender].debt) 
+            revert NotEnoughCollateral();
 
-        // IBondNFT(stake.nftAddress).safeTransferFrom(address(this), msg.sender, stake.tokenId, stake.amount, "");
+        userStats[msg.sender].staked -= totalValue;
+        userStats[msg.sender].nominalAvailable -= calculateMaxBorrow(totalValue, block.timestamp, metadata.expirationTimestamp);
 
-        // stableToken.burn(msg.sender, stake.value + reward);
+        IBondNFT(nftAddress).safeTransferFrom(address(this), msg.sender, tokenId, amount, "");
 
-        // emit NFTUnstaked(msg.sender, stake.nftAddress, stake.tokenId, stake.amount);
+        stableToken.burn(address(this), totalValue);
 
+        emit NFTUnstaked(msg.sender, nftAddress, tokenId, amount);
+
+    }
+
+    function userAvailableToBorrow(address userAddress) public view returns (uint256) {
+        uint256 nominalAvailable = calculateDebt(userStats[userAddress].nominalAvailable, userStats[userAddress].debtUpdateTimestamp, block.timestamp);
+        if (userStats[userAddress].debt == 0) 
+            return nominalAvailable;
+        else {
+            uint256 debt = calculateDebt(userStats[userAddress].debt, userStats[userAddress].debtUpdateTimestamp, block.timestamp);
+            return nominalAvailable - debt;
+        }          
     }
 
     function borrow(uint256 amount) external {
         
-        if (userStats[msg.sender].debt != 0) {
-            userStats[msg.sender].debt = calculateDebt(userStats[msg.sender].debt, userStats[msg.sender].debtUpdateTimestamp, block.timestamp);
-        }
-        userStats[msg.sender].available = calculateDebt(userStats[msg.sender].available, userStats[msg.sender].debtUpdateTimestamp, block.timestamp);
-        userStats[msg.sender].debtUpdateTimestamp = block.timestamp;
+        updateUserDebtAndAvailable(msg.sender);
 
-        if (amount > userStats[msg.sender].available) revert BorrowAmountExceedsLimit();
+        if (amount > userStats[msg.sender].nominalAvailable - userStats[msg.sender].debt) revert BorrowAmountExceedsLimit();
 
         if (totalStats.debt != 0) {
             totalStats.debt = calculateDebt(totalStats.debt, totalStats.debtUpdateTimestamp, block.timestamp);
@@ -141,12 +154,20 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         }
 
         userStats[msg.sender].debt += amount;
-        userStats[msg.sender].available -= amount;
+        userStats[msg.sender].borrowed += amount;
         totalStats.borrowed += amount;
 
         stableToken.transfer(msg.sender, amount);
 
         emit Borrowed(msg.sender, amount);
+    }
+
+    function updateUserDebtAndAvailable(address userAddress) internal {
+        if (userStats[userAddress].debt != 0) {
+            userStats[userAddress].debt = calculateDebt(userStats[userAddress].debt, userStats[userAddress].debtUpdateTimestamp, block.timestamp);
+        }
+        userStats[userAddress].nominalAvailable = calculateDebt(userStats[userAddress].nominalAvailable, userStats[userAddress].debtUpdateTimestamp, block.timestamp);
+        userStats[userAddress].debtUpdateTimestamp = block.timestamp;
     }
 
     function repay() external {

@@ -49,7 +49,7 @@ contract NFTStakingAndBorrowingTest is Test {
         NFTStakingAndBorrowing.UserStats memory userStats = nftStaking.getUserStats(owner);
 
         assertEq(userStats.staked, 10500_000000);
-        assertEq(userStats.available, 937_4999999);
+        assertEq(nftStaking.userAvailableToBorrow(owner), 9375_000032);
 
     }
 
@@ -61,7 +61,7 @@ contract NFTStakingAndBorrowingTest is Test {
         NFTStakingAndBorrowing.UserStats memory userStats = nftStaking.getUserStats(owner);
 
         assertEq(userStats.staked, 10500_000000);
-        assertEq(userStats.available, 9374_999999);
+        assertEq(nftStaking.userAvailableToBorrow(owner), 9375_000032);
 
         nftStaking.borrow(500_000000);
         vm.stopPrank();
@@ -69,7 +69,7 @@ contract NFTStakingAndBorrowingTest is Test {
         userStats = nftStaking.getUserStats(owner);
 
         assertEq(userStats.debt, 500_000000);
-        assertEq(userStats.available, 8875_000032);
+        assertEq(nftStaking.userAvailableToBorrow(owner), 8875_000032);
 
         NFTStakingAndBorrowing.TotalStats memory totalStats = nftStaking.getTotalStats();
         assertEq(totalStats.borrowed, 500_000000);
