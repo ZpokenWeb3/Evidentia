@@ -64,6 +64,9 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
     }
 
     function getUserStats(address userAddress) public view returns (UserStats memory) {
+        if (userStats[userAddress].debtUpdateTimestamp == block.timestamp) {
+            return userStats[userAddress];
+        }
         uint256 updatedDebt = 0;
         if (userStats[userAddress].debt != 0) {
             updatedDebt =
@@ -82,7 +85,14 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         return updatedUserStats;
     }
 
+    // function getUserStats(address userAddress) public view returns (UserStats memory) {
+    //     return userStats[userAddress];
+    // }
+
     function getTotalStats() public view returns (TotalStats memory) {
+        if (totalStats.debtUpdateTimestamp == block.timestamp) {
+            return totalStats;
+        }
         uint256 updatedDebt = 0;
         if (totalStats.debt != 0) {
             updatedDebt = calculateDebt(totalStats.debt, totalStats.debtUpdateTimestamp, block.timestamp);
@@ -109,6 +119,7 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         userStats[msg.sender].staked += totalValue;
         userStats[msg.sender].nominalAvailable +=
             calculateMaxBorrow(totalValue, block.timestamp, metadata.expirationTimestamp);
+        userStats[msg.sender].debtUpdateTimestamp = block.timestamp;
 
         stableToken.mint(address(this), totalValue);
 
@@ -116,23 +127,23 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
     }
 
     function calculateMaxBorrow(uint256 totalAmount, uint256 fromTime, uint256 toTime)
-        internal
+        public
         view
         returns (uint256)
     {
         totalAmount = totalAmount * 1e12;
-        UD60x18 timeDelta = ud(toTime) - ud(fromTime);
-        UD60x18 maxBorrow =
-            ud(totalAmount).log2() - (timeDelta / ud(YEAR_IN_SECONDS)) * (ud(UNIT) + ud(PROTOCOL_YIELD)).log2();
+        UD60x18 timeDelta = ud(toTime - fromTime);
+        UD60x18 maxBorrowLog2 =
+            ud(totalAmount).log2() - (timeDelta / ud(YEAR_IN_SECONDS)) * (ud(UNIT+PROTOCOL_YIELD)).log2();
 
-        return maxBorrow.exp2().intoUint256() / 1e12;
+        return maxBorrowLog2.exp2().intoUint256() / 1e12;
     }
 
     function calculateDebt(uint256 borrowedAmount, uint256 fromTime, uint256 toTime) internal view returns (uint256) {
         borrowedAmount = borrowedAmount * 1e12;
-        UD60x18 timeDelta = ud(toTime) - ud(fromTime);
+        UD60x18 timeDelta = ud(toTime - fromTime);
         UD60x18 debtLog2 =
-            (timeDelta / ud(YEAR_IN_SECONDS)) * (ud(UNIT) + ud(PROTOCOL_YIELD)).log2() + ud(borrowedAmount).log2();
+            (timeDelta / ud(YEAR_IN_SECONDS)) * (ud(UNIT+PROTOCOL_YIELD)).log2() + ud(borrowedAmount).log2();
         return debtLog2.exp2().intoUint256() / 1e12;
     }
 
@@ -144,6 +155,7 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         uint256 totalValue = (metadata.value + metadata.couponValue) * amount * (UNIT - SAFETY_FEE) / UNIT;
 
         updateUserDebtAndAvailable(msg.sender);
+        updateTotalDebt();
 
         // TODO check if user has enough collateral
         if (
@@ -158,6 +170,7 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         userStats[msg.sender].staked -= totalValue;
         userStats[msg.sender].nominalAvailable -=
             calculateMaxBorrow(totalValue, block.timestamp, metadata.expirationTimestamp);
+        totalStats.staked -= totalValue;
 
         IBondNFT(nftAddress).safeTransferFrom(address(this), msg.sender, tokenId, amount, "");
 
@@ -167,6 +180,9 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
     }
 
     function userAvailableToBorrow(address userAddress) public view returns (uint256) {
+
+        if (userStats[userAddress].nominalAvailable == 0) return 0;
+
         uint256 nominalAvailable = calculateDebt(
             userStats[userAddress].nominalAvailable, userStats[userAddress].debtUpdateTimestamp, block.timestamp
         );
@@ -182,6 +198,10 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
     function borrow(uint256 amount) external {
         updateUserDebtAndAvailable(msg.sender);
         updateTotalDebt();
+
+        if (amount == 0 ) {
+            amount = userStats[msg.sender].nominalAvailable - userStats[msg.sender].debt;
+        }
 
         if (amount > userStats[msg.sender].nominalAvailable - userStats[msg.sender].debt) {
             revert BorrowAmountExceedsLimit();
@@ -202,17 +222,19 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
             userStats[userAddress].debt =
                 calculateDebt(userStats[userAddress].debt, userStats[userAddress].debtUpdateTimestamp, block.timestamp);
         }
-        userStats[userAddress].nominalAvailable = calculateDebt(
-            userStats[userAddress].nominalAvailable, userStats[userAddress].debtUpdateTimestamp, block.timestamp
-        );
+        if (userStats[userAddress].nominalAvailable != 0) {
+            userStats[userAddress].nominalAvailable = calculateDebt(
+                userStats[userAddress].nominalAvailable, userStats[userAddress].debtUpdateTimestamp, block.timestamp
+            );
+        }
         userStats[userAddress].debtUpdateTimestamp = block.timestamp;
     }
 
     function updateTotalDebt() internal {
         if (totalStats.debt != 0) {
             totalStats.debt = calculateDebt(totalStats.debt, totalStats.debtUpdateTimestamp, block.timestamp);
-            totalStats.debtUpdateTimestamp = block.timestamp;
         }
+        totalStats.debtUpdateTimestamp = block.timestamp;
     }
 
     function repay(uint256 amount) external {
