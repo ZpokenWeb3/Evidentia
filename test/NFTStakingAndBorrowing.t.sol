@@ -25,8 +25,8 @@ contract NFTStakingAndBorrowingTest is Test {
         BondNFT.Metadata memory metadata = BondNFT.Metadata({
             value: 1000_000000,
             couponValue: 50_000000,
-            issueTimestamp: block.timestamp,
-            expirationTimestamp: block.timestamp + 365 days,
+            issueTimestamp: 1,
+            expirationTimestamp: 1 + 31536000,
             ISIN: "US1234567890"
         });
 
@@ -49,7 +49,7 @@ contract NFTStakingAndBorrowingTest is Test {
         NFTStakingAndBorrowing.UserStats memory userStats = nftStaking.getUserStats(owner);
 
         assertEq(userStats.staked, 9975_000000);
-        assertEq(nftStaking.userAvailableToBorrow(owner), 8906_250032);
+        assertEq(nftStaking.userAvailableToBorrow(owner), 8906_249999);
     }
 
     function test_borrow() public {
@@ -60,7 +60,7 @@ contract NFTStakingAndBorrowingTest is Test {
         NFTStakingAndBorrowing.UserStats memory userStats = nftStaking.getUserStats(owner);
 
         assertEq(userStats.staked, 9975_000000);
-        assertEq(nftStaking.userAvailableToBorrow(owner), 8906_250032);
+        assertEq(nftStaking.userAvailableToBorrow(owner), 8906_249999);
 
         nftStaking.borrow(500_000000);
         vm.stopPrank();
@@ -68,7 +68,7 @@ contract NFTStakingAndBorrowingTest is Test {
         userStats = nftStaking.getUserStats(owner);
 
         assertEq(userStats.borrowed, 500_000000);
-        assertEq(nftStaking.userAvailableToBorrow(owner), 8406_250032);
+        assertEq(nftStaking.userAvailableToBorrow(owner), 8406_249999);
 
         NFTStakingAndBorrowing.TotalStats memory totalStats = nftStaking.getTotalStats();
         assertEq(totalStats.borrowed, 500_000000);
@@ -78,9 +78,102 @@ contract NFTStakingAndBorrowingTest is Test {
 
         userStats = nftStaking.getUserStats(owner);
         totalStats = nftStaking.getTotalStats();
-        assertEq(nftStaking.userAvailableToBorrow(owner), 8484_917428);
+        assertEq(nftStaking.userAvailableToBorrow(owner), 8484_917394);
         assertEq(userStats.debtUpdateTimestamp, 2592001);
-        assertEq(totalStats.debt, 504_679103);
+        assertEq(totalStats.debt, 504_679101);
         assertEq(userStats.debt, 504_679101);
+    }
+
+    function test_staking_over_time() public {
+        owner = address(1);
+        address client1 = address(2);
+        address client2 = address(3);
+
+        vm.startPrank(owner);
+        BondNFT.Metadata memory metadata = BondNFT.Metadata({
+            value: 1000_000000,
+            couponValue: 50_000000,
+            issueTimestamp: 1,
+            expirationTimestamp: 1 + 31536000,
+            ISIN: "US1234567890"
+        });
+        bondNFT.setMetaData(2, metadata);
+        bondNFT.mint(client1, 2, 10, "");
+        bondNFT.setMetaData(3, metadata);
+        bondNFT.mint(client2, 3, 10, "");
+        vm.stopPrank();
+
+        vm.prank(client1);
+        bondNFT.setApprovalForAll(address(nftStaking), true);
+        vm.prank(client2);
+        bondNFT.setApprovalForAll(address(nftStaking), true);
+
+        vm.warp(30 days);
+        vm.roll(3);
+        // Client1 makes some staking
+        vm.prank(client1);
+        nftStaking.stakeNFT(address(bondNFT), 2, 1);
+
+        NFTStakingAndBorrowing.UserStats memory userStats = nftStaking.getUserStats(client1);
+        NFTStakingAndBorrowing.TotalStats memory totalStats = nftStaking.getTotalStats();
+
+        assertEq(userStats.staked, 997_500000);
+        assertEq(totalStats.staked, 997_500000);
+        assertEq(totalStats.debt, 0);
+        assertEq(userStats.debtUpdateTimestamp, 30 days);
+        assertEq(userStats.nominalAvailable, 898_959646);
+        userStats = nftStaking.getUserStats(client1);
+
+        // Client1 borrows everything available
+        vm.prank(client1);
+        nftStaking.borrow(0);
+
+        userStats = nftStaking.getUserStats(client1);
+        assertEq(userStats.nominalAvailable, 898_959645);
+        assertEq(userStats.borrowed, 898_959645);
+        assertEq(userStats.debt, 898_959645);
+        assertEq(nftStaking.userAvailableToBorrow(client1), 0);
+
+        vm.warp(90 days);
+        vm.roll(4);
+
+        // Client2 makes some staking
+        vm.prank(client2);
+        nftStaking.stakeNFT(address(bondNFT), 3, 1);
+
+        userStats = nftStaking.getUserStats(client1);
+        assertEq(userStats.debt, 915_863666);
+        assertEq(userStats.debtUpdateTimestamp, 90 days);
+
+        userStats = nftStaking.getUserStats(client2);
+        totalStats = nftStaking.getTotalStats();
+
+        assertEq(userStats.staked, 997_500000);
+        assertEq(totalStats.staked, 2 * 997_500000);
+        assertEq(totalStats.debt, 915_863666);
+        assertEq(userStats.debtUpdateTimestamp, 90 days);
+        assertEq(totalStats.debtUpdateTimestamp, 90 days);
+        assertEq(userStats.nominalAvailable, 915_863667);
+        assertEq(nftStaking.userAvailableToBorrow(client2), 915_863666);
+        assertEq(nftStaking.userAvailableToBorrow(client1), 0);
+
+        // Client2 borrows everything available
+        vm.prank(client2);
+        nftStaking.borrow(0);
+
+        vm.warp(120 days);
+        vm.roll(5);
+
+        NFTStakingAndBorrowing.UserStats memory userStats1 = nftStaking.getUserStats(client1);
+        NFTStakingAndBorrowing.UserStats memory userStats2 = nftStaking.getUserStats(client2);
+        totalStats = nftStaking.getTotalStats();
+
+        assertEq(userStats1.debt, 924_434504);
+        assertEq(userStats2.debt, 924_434504);
+        assertEq(totalStats.debt, 2 * 924_434504);
+        assertEq(totalStats.borrowed, 915_863666 + 898_959645);
+        assertEq(userStats1.debtUpdateTimestamp, 120 days);
+        assertEq(userStats2.debtUpdateTimestamp, 120 days);
+
     }
 }
