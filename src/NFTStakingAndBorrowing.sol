@@ -47,7 +47,9 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
     event NFTUnstaked(address indexed user, address indexed nftAddress, uint256 tokenId, uint256 amount);
     event Borrowed(address indexed user, uint256 amount);
     event Repaid(address indexed user, uint256 amount);
-    event Liquidated(address indexed user, address liquidator, address indexed nftAddress, uint256 tokenId, uint256 amount);
+    event Liquidated(
+        address indexed user, address liquidator, address indexed nftAddress, uint256 tokenId, uint256 amount
+    );
 
     // Custom errors
     error NFTNotWhitelisted();
@@ -128,15 +130,11 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         emit NFTStaked(msg.sender, nftAddress, tokenId, amount);
     }
 
-    function calculateMaxBorrow(uint256 totalAmount, uint256 fromTime, uint256 toTime)
-        public
-        view
-        returns (uint256)
-    {
+    function calculateMaxBorrow(uint256 totalAmount, uint256 fromTime, uint256 toTime) public view returns (uint256) {
         totalAmount = totalAmount * 1e12;
         UD60x18 timeDelta = ud(toTime - fromTime);
         UD60x18 maxBorrowLog2 =
-            ud(totalAmount).log2() - (timeDelta / ud(YEAR_IN_SECONDS)) * (ud(UNIT+PROTOCOL_YIELD)).log2();
+            ud(totalAmount).log2() - (timeDelta / ud(YEAR_IN_SECONDS)) * (ud(UNIT + PROTOCOL_YIELD)).log2();
 
         return maxBorrowLog2.exp2().intoUint256() / 1e12;
     }
@@ -145,7 +143,7 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         borrowedAmount = borrowedAmount * 1e12;
         UD60x18 timeDelta = ud(toTime - fromTime);
         UD60x18 debtLog2 =
-            (timeDelta / ud(YEAR_IN_SECONDS)) * (ud(UNIT+PROTOCOL_YIELD)).log2() + ud(borrowedAmount).log2();
+            (timeDelta / ud(YEAR_IN_SECONDS)) * (ud(UNIT + PROTOCOL_YIELD)).log2() + ud(borrowedAmount).log2();
         return debtLog2.exp2().intoUint256() / 1e12;
     }
 
@@ -183,7 +181,6 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
     }
 
     function userAvailableToBorrow(address userAddress) public view returns (uint256) {
-
         if (userStats[userAddress].nominalAvailable == 0) return 0;
 
         uint256 nominalAvailable = calculateDebt(
@@ -202,7 +199,7 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         updateUserDebtAndAvailable(msg.sender);
         updateTotalDebt();
 
-        if (amount == 0 ) {
+        if (amount == 0) {
             amount = userStats[msg.sender].nominalAvailable - userStats[msg.sender].debt;
         }
 
@@ -221,7 +218,6 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
     }
 
     function updateUserDebtAndAvailable(address userAddress) internal {
-
         if (userStats[userAddress].debtUpdateTimestamp == block.timestamp) return;
 
         if (userStats[userAddress].debt != 0) {
@@ -237,7 +233,6 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
     }
 
     function updateTotalDebt() internal {
-
         if (totalStats.debtUpdateTimestamp == block.timestamp) return;
 
         if (totalStats.debt != 0) {
@@ -301,16 +296,16 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         // Case 3: Position has debt less than position value - part of NFTs goes to the liquidator
         //         Liquidator pays full the debt
         if (userStats[positionOwner].debt < positionValue) {
-            
-            uint256 amountToLiquidate = amount * userStats[positionOwner].debt / positionValue 
+            uint256 amountToLiquidate = amount * userStats[positionOwner].debt / positionValue
                 + (amount * userStats[positionOwner].debt % positionValue == 0 ? 0 : 1);
-            uint256 liquidationPayment = (metadata.value + metadata.couponValue) * amountToLiquidate * (UNIT - SAFETY_FEE) / UNIT;
+            uint256 liquidationPayment =
+                (metadata.value + metadata.couponValue) * amountToLiquidate * (UNIT - SAFETY_FEE) / UNIT;
             stableToken.transferFrom(msg.sender, address(this), liquidationPayment);
             stableToken.transfer(positionOwner, liquidationPayment - userStats[positionOwner].debt);
 
             IBondNFT(nftAddress).safeTransferFrom(address(this), msg.sender, tokenId, amountToLiquidate, "");
             IBondNFT(nftAddress).safeTransferFrom(address(this), positionOwner, tokenId, amount - amountToLiquidate, "");
-            
+
             userStats[positionOwner].debt = 0;
             totalStats.debt -= userStats[positionOwner].debt;
 

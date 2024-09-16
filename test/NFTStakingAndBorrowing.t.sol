@@ -232,14 +232,14 @@ contract NFTStakingAndBorrowingTest is Test {
         // Client1 borrows less than a half of available
         vm.startPrank(client1);
         nftStaking.stakeNFT(address(bondNFT), 2, 10);
-        console.log("Minted Stables:  ",stableBondCoins.balanceOf(address(nftStaking)));
+        console.log("Minted Stables:  ", stableBondCoins.balanceOf(address(nftStaking)));
         uint256 borrow_amount = nftStaking.userAvailableToBorrow(client1) / 2;
         nftStaking.borrow(borrow_amount);
         vm.stopPrank();
 
         assertEq(stableBondCoins.balanceOf(client1), borrow_amount);
         console.log("Client1 borrowed:", borrow_amount);
-        console.log("Stables left:    ",stableBondCoins.balanceOf(address(nftStaking)));
+        console.log("Stables left:    ", stableBondCoins.balanceOf(address(nftStaking)));
         assertEq(stableBondCoins.balanceOf(address(nftStaking)), 9975_000000 - borrow_amount);
         assert(nftStaking.userAvailableToBorrow(client1) - borrow_amount < 10);
 
