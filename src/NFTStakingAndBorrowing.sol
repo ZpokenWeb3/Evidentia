@@ -12,6 +12,12 @@ interface IMintableERC20 is IERC20 {
     function burn(address from, uint256 amount) external;
 }
 
+/**
+ * @title NFTStakingAndBorrowing
+ * @author [Dmytro Birikov]
+ * @notice This contract allows users to stake NFTs and borrow stable tokens against them.
+ * @dev This contract is designed to work with the BondNFT contract and the StableBondCoins contract with minter role.
+ */
 contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
     struct TotalStats {
         uint256 staked;
@@ -89,10 +95,6 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         return updatedUserStats;
     }
 
-    // function getUserStats(address userAddress) public view returns (UserStats memory) {
-    //     return userStats[userAddress];
-    // }
-
     function getTotalStats() public view returns (TotalStats memory) {
         if (totalStats.debtUpdateTimestamp == block.timestamp) {
             return totalStats;
@@ -107,6 +109,15 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         return updatedTotalStats;
     }
 
+    /**
+     * @notice Allows a user to stake an NFT in the contract.
+     * @dev This function transfers the NFT to the contract and updates the user's balance.
+     * @dev NFT are not locked in the contract.
+     * @dev Stable coins are preminted in the contract when the NFT is staked.
+     * @param nftAddress The address of the NFT contract.
+     * @param tokenId The ID of the NFT to stake.
+     * @param amount The amount of NFTs to stake.
+     */
     function stakeNFT(address nftAddress, uint256 tokenId, uint256 amount) external {
         if (!whitelistedNFTs[nftAddress]) revert NFTNotWhitelisted();
         if (IBondNFT(nftAddress).balanceOf(msg.sender, tokenId) < amount) revert InsufficientNFTBalance();
@@ -147,6 +158,14 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         return debtLog2.exp2().intoUint256() / 1e12;
     }
 
+    /**
+     * @notice Allows a user to unstake an NFT from the contract.
+     * @dev This function transfers the NFT back to the user and updates the user's balance.
+     * @dev User should have enough NFT balance left as a collateral.
+     * @param nftAddress The address of the NFT contract.
+     * @param tokenId The ID of the NFT to unstake.
+     * @param amount The amount of NFTs to unstake.
+     */
     function unstakeNFT(address nftAddress, uint256 tokenId, uint256 amount) external {
         if (!whitelistedNFTs[nftAddress]) revert NFTNotWhitelisted();
         // Only NFT owner can unstake anytime
@@ -158,7 +177,7 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         updateUserDebtAndAvailable(msg.sender);
         updateTotalDebt();
 
-        // check if user has enough collateral
+        // Check if user has enough collateral
         if (
             calculateMaxBorrow(totalUnstakeValue, block.timestamp, metadata.expirationTimestamp)
                 > userStats[msg.sender].nominalAvailable - userStats[msg.sender].debt
@@ -195,6 +214,12 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         }
     }
 
+    /**
+     * @notice Allows a user to borrow stable tokens against their staked NFTs.
+     * @dev This function checks if the user has sufficient NFT balance,
+     * @dev if the NFT is whitelisted, and if the user's debt is within the allowed limit.
+     * @param amount The amount of stable tokens to borrow. 0 means full available amount.
+     */
     function borrow(uint256 amount) external {
         updateUserDebtAndAvailable(msg.sender);
         updateTotalDebt();
@@ -241,6 +266,11 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         totalStats.debtUpdateTimestamp = block.timestamp;
     }
 
+    /**
+     * @notice Allows a user to repay their debt.
+     * @dev This function transfers the repayment amount from the user's wallet to the contract.
+     * @param amount The amount to repay. 0 for full debt.
+     */
     function repay(uint256 amount) external {
         updateUserDebtAndAvailable(msg.sender);
         updateTotalDebt();
@@ -259,6 +289,13 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         emit Repaid(msg.sender, amount);
     }
 
+    /**
+     * @notice Allows a liquidator to liquidate a user's NFT position.
+     * @dev This function checks if the NFT is whitelisted, if the user has sufficient NFT balance, and if current timestamp is within the liquidation time window.
+     * @param nftAddress The address of the NFT contract.
+     * @param tokenId The ID of the NFT to liquidate in the position.
+     * @param positionOwner The address of the user who owns the NFT position.
+     */
     function liquidate(address nftAddress, uint256 tokenId, address positionOwner) external {
         if (!whitelistedNFTs[nftAddress]) revert NFTNotWhitelisted();
         if (userNFTs[positionOwner][nftAddress][tokenId] == 0) revert InsufficientNFTBalance();
