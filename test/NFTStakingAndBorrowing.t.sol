@@ -43,6 +43,8 @@ contract NFTStakingAndBorrowingTest is Test {
         owner = address(1);
         vm.prank(owner);
         nftStaking.stakeNFT(address(bondNFT), 1, 10);
+        console.log(address(this));
+        assertEq(stableBondCoins.balanceOf(address(nftStaking)), 9975_000000);
 
         NFTStakingAndBorrowing.TotalStats memory totalStats = nftStaking.getTotalStats();
 
@@ -210,5 +212,68 @@ contract NFTStakingAndBorrowingTest is Test {
         userStats = nftStaking.getUserStats(client1);
         assertEq(userStats.staked, 6 * 9975_000000 / 10);
         assertLe(nftStaking.userAvailableToBorrow(client1), borrow_amount);
+    }
+
+    function test_liquidate_case_01() public {
+        owner = address(1);
+        address client1 = address(2);
+        address client2 = address(3);
+
+        vm.startPrank(owner);
+        bondNFT.mint(client1, 2, 10, "");
+        bondNFT.mint(client2, 3, 10, "");
+        vm.stopPrank();
+
+        vm.prank(client1);
+        bondNFT.setApprovalForAll(address(nftStaking), true);
+        vm.prank(client2);
+        bondNFT.setApprovalForAll(address(nftStaking), true);
+
+        // Client1 borrows less than a half of available
+        vm.startPrank(client1);
+        nftStaking.stakeNFT(address(bondNFT), 2, 10);
+        console.log("Minted Stables:  ",stableBondCoins.balanceOf(address(nftStaking)));
+        uint256 borrow_amount = nftStaking.userAvailableToBorrow(client1) / 2;
+        nftStaking.borrow(borrow_amount);
+        vm.stopPrank();
+
+        assertEq(stableBondCoins.balanceOf(client1), borrow_amount);
+        console.log("Client1 borrowed:", borrow_amount);
+        console.log("Stables left:    ",stableBondCoins.balanceOf(address(nftStaking)));
+        assertEq(stableBondCoins.balanceOf(address(nftStaking)), 9975_000000 - borrow_amount);
+        assert(nftStaking.userAvailableToBorrow(client1) - borrow_amount < 10);
+
+        // we go to the future, 40 days to expiration
+        vm.warp(365 days - 40 days);
+        vm.roll(2);
+        NFTStakingAndBorrowing.UserStats memory userStats = nftStaking.getUserStats(client1);
+        assertEq(userStats.borrowed, borrow_amount);
+        assertEq(userStats.debt, 4925_940379);
+
+        console.log("Client1 debt:    ", userStats.debt);
+        console.log("Client1 Stables: ", stableBondCoins.balanceOf(client1));
+
+        assertEq(bondNFT.balanceOf(client1, 2), 0);
+        assertEq(bondNFT.balanceOf(address(nftStaking), 2), 10);
+        assertEq(stableBondCoins.balanceOf(client2), 0);
+
+        // Client2 borrows to get stable coins and liquidate
+        vm.startPrank(client2);
+        nftStaking.stakeNFT(address(bondNFT), 3, 10);
+        nftStaking.borrow(0);
+        stableBondCoins.approve(address(nftStaking), UINT256_MAX);
+        console.log("Client2 Stables: ", stableBondCoins.balanceOf(client2));
+        nftStaking.liquidate(address(bondNFT), 2, client1);
+        vm.stopPrank();
+
+        console.log("Client1 Stables: ", stableBondCoins.balanceOf(client1));
+        console.log("Client2 Stables: ", stableBondCoins.balanceOf(client2));
+
+        assertEq(bondNFT.balanceOf(client1, 2), 5);
+        assertEq(bondNFT.balanceOf(client2, 2), 5);
+        assertEq(bondNFT.balanceOf(address(nftStaking), 2), 0);
+
+        assertEq(stableBondCoins.balanceOf(client1), 4514_684620);
+        assertEq(stableBondCoins.balanceOf(client2), 4864_380761);
     }
 }
