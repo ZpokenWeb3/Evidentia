@@ -47,6 +47,7 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
     event NFTUnstaked(address indexed user, address indexed nftAddress, uint256 tokenId, uint256 amount);
     event Borrowed(address indexed user, uint256 amount);
     event Repaid(address indexed user, uint256 amount);
+    event Liquidated(address indexed user, address liquidator, address indexed nftAddress, uint256 tokenId, uint256 amount);
 
     // Custom errors
     error NFTNotWhitelisted();
@@ -54,6 +55,7 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
     error BorrowAmountExceedsLimit(uint256);
     error InsufficientBalanceToRepay();
     error NotEnoughCollateral(uint256);
+    error TooEarlyToLiquidate();
 
     constructor(address _stableToken) ERC1155Holder() Ownable(msg.sender) {
         stableToken = IMintableERC20(_stableToken);
@@ -252,7 +254,7 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
 
         if (stableToken.balanceOf(msg.sender) < amount) revert InsufficientBalanceToRepay();
 
-        stableToken.transfer(msg.sender, amount);
+        stableToken.transferFrom(msg.sender, address(this), amount);
         userStats[msg.sender].debt -= amount;
         userStats[msg.sender].borrowed -= amount;
 
@@ -260,5 +262,61 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         totalStats.debt -= amount;
 
         emit Repaid(msg.sender, amount);
+    }
+
+    function liquidate(address nftAddress, uint256 tokenId, address positionOwner) external {
+        if (!whitelistedNFTs[nftAddress]) revert NFTNotWhitelisted();
+        if (userNFTs[positionOwner][nftAddress][tokenId] == 0) revert InsufficientNFTBalance();
+        IBondNFT.Metadata memory metadata = IBondNFT(nftAddress).getMetaData(tokenId);
+        if (block.timestamp < metadata.expirationTimestamp - LIQUIDATION_TIME_WINDOW) revert TooEarlyToLiquidate();
+
+        uint256 amount = userNFTs[positionOwner][nftAddress][tokenId];
+
+        uint256 positionValue = (metadata.value + metadata.couponValue) * amount * (UNIT - SAFETY_FEE) / UNIT;
+
+        updateUserDebtAndAvailable(positionOwner);
+        updateTotalDebt();
+
+        // Case 1: Position has no debt - all NFTs return to the position owner
+        //         Liquidator does not pay any debt only for transaction fee
+        if (userStats[positionOwner].debt == 0) {
+            IBondNFT(nftAddress).safeTransferFrom(address(this), positionOwner, tokenId, amount, "");
+            stableToken.burn(address(this), positionValue);
+            emit NFTUnstaked(positionOwner, nftAddress, tokenId, amount);
+            return;
+        }
+
+        // Case 2: Position has debt position value - all NFTs go to the liquidator
+        //         Liquidator pays part of the debt equivalently to NFTs total value
+        if (userStats[positionOwner].debt >= positionValue) {
+            stableToken.transferFrom(msg.sender, address(this), positionValue);
+            IBondNFT(nftAddress).safeTransferFrom(address(this), msg.sender, tokenId, amount, "");
+            userStats[positionOwner].debt -= positionValue;
+            totalStats.debt -= positionValue;
+            stableToken.burn(address(this), positionValue);
+            emit Liquidated(positionOwner, msg.sender, nftAddress, tokenId, amount);
+            return;
+        }
+
+        // Case 3: Position has debt less than position value - part of NFTs goes to the liquidator
+        //         Liquidator pays full the debt
+        if (userStats[positionOwner].debt < positionValue) {
+            
+            uint256 amountToLiquidate = amount * userStats[positionOwner].debt / positionValue 
+                + (amount * userStats[positionOwner].debt % positionValue == 0 ? 0 : 1);
+            uint256 liquidationPayment = (metadata.value + metadata.couponValue) * amountToLiquidate * (UNIT - SAFETY_FEE) / UNIT;
+            stableToken.transferFrom(msg.sender, address(this), liquidationPayment);
+            stableToken.transfer(positionOwner, liquidationPayment - userStats[positionOwner].debt);
+
+            IBondNFT(nftAddress).safeTransferFrom(address(this), msg.sender, tokenId, amountToLiquidate, "");
+            IBondNFT(nftAddress).safeTransferFrom(address(this), positionOwner, tokenId, amount - amountToLiquidate, "");
+            
+            userStats[positionOwner].debt = 0;
+            totalStats.debt -= userStats[positionOwner].debt;
+
+            stableToken.burn(address(this), positionValue);
+            emit Liquidated(positionOwner, msg.sender, nftAddress, tokenId, amount);
+            return;
+        }
     }
 }
