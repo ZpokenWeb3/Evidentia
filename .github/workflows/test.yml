@@ -31,11 +31,11 @@ jobs:
 
       - name: Install OpenZeppelin Contracts
         run: |
-          forge install OpenZeppelin/openzeppelin-contracts -f
+          forge install OpenZeppelin/openzeppelin-contracts --no-commit
 
       - name: Install PaulRBerg prb-math
         run: |
-          forge install PaulRBerg/prb-math@release-v4 -f
+          forge install PaulRBerg/prb-math@release-v4 --no-commit
 
       - name: Run Forge fmt
         run: |
