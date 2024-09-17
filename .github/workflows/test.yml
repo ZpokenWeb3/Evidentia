@@ -29,6 +29,14 @@ jobs:
         run: |
           forge --version
 
+      - name: Install OpenZeppelin Contracts
+        run: |
+          forge install OpenZeppelin/openzeppelin-contracts
+
+      - name: Install PaulRBerg prb-math
+        run: |
+          forge install PaulRBerg/prb-math@release-v4
+
       - name: Run Forge fmt
         run: |
           forge fmt --check
