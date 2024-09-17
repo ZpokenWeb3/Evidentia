@@ -339,6 +339,6 @@ contract NFTStakingAndBorrowingTest is Test {
         assertEq(bondNFT.balanceOf(address(nftStaking), 2), 0);
 
         assertEq(stableBondCoins.balanceOf(client1), 13359_374999);
-        assertEq(stableBondCoins.balanceOf(client2),  9851_880762);
+        assertEq(stableBondCoins.balanceOf(client2), 9851_880762);
     }
 }

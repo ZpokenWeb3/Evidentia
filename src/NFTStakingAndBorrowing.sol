@@ -328,13 +328,16 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
             userStats[positionOwner].debt -= maxPositionBorrow;
             totalStats.debt -= maxPositionBorrow;
         } else {
-        // Case 3: Position has debt less than max borrow at this point - part or all of NFTs goes to the liquidator
-        //         Liquidator pays (maxBorrow - debt) to the position owner
-        //         Liquidator pays full the debt
+            // Case 3: Position has debt less than max borrow at this point - part or all of NFTs goes to the liquidator
+            //         Liquidator pays (maxBorrow - debt) to the position owner
+            //         Liquidator pays full the debt
             uint256 amountToLiquidate = amount * userStats[positionOwner].debt / maxPositionBorrow
                 + (amount * userStats[positionOwner].debt % maxPositionBorrow == 0 ? 0 : 1);
-            uint256 liquidationPayment = 
-                calculateMaxBorrow((metadata.value + metadata.couponValue) * amountToLiquidate * (UNIT - SAFETY_FEE) / UNIT, block.timestamp, metadata.expirationTimestamp);
+            uint256 liquidationPayment = calculateMaxBorrow(
+                (metadata.value + metadata.couponValue) * amountToLiquidate * (UNIT - SAFETY_FEE) / UNIT,
+                block.timestamp,
+                metadata.expirationTimestamp
+            );
             stableToken.transferFrom(msg.sender, address(this), liquidationPayment);
             stableToken.transfer(positionOwner, liquidationPayment - userStats[positionOwner].debt);
 
@@ -348,6 +351,5 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         stableToken.burn(address(this), positionValue);
         emit Liquidated(positionOwner, msg.sender, nftAddress, tokenId, amount);
         return;
-
     }
 }
