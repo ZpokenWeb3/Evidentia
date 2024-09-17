@@ -273,7 +273,72 @@ contract NFTStakingAndBorrowingTest is Test {
         assertEq(bondNFT.balanceOf(client2, 2), 5);
         assertEq(bondNFT.balanceOf(address(nftStaking), 2), 0);
 
-        assertEq(stableBondCoins.balanceOf(client1), 4514_684620);
-        assertEq(stableBondCoins.balanceOf(client2), 4864_380761);
+        assertEq(stableBondCoins.balanceOf(client1), 4453_125000);
+        assertEq(stableBondCoins.balanceOf(client2), 4925_940381);
+    }
+
+    function test_liquidate_case_02() public {
+        owner = address(1);
+        address client1 = address(2);
+        address client2 = address(3);
+
+        vm.startPrank(owner);
+        bondNFT.mint(client1, 1, 5, "");
+        bondNFT.mint(client1, 2, 10, "");
+        bondNFT.mint(client2, 3, 20, "");
+        vm.stopPrank();
+
+        vm.prank(client1);
+        bondNFT.setApprovalForAll(address(nftStaking), true);
+        vm.prank(client2);
+        bondNFT.setApprovalForAll(address(nftStaking), true);
+
+        // Client1 borrows less than a half of available
+        vm.startPrank(client1);
+        nftStaking.stakeNFT(address(bondNFT), 1, 5);
+        nftStaking.stakeNFT(address(bondNFT), 2, 10);
+        console.log("Minted Stables:  ", stableBondCoins.balanceOf(address(nftStaking)));
+        uint256 borrow_amount = nftStaking.userAvailableToBorrow(client1);
+        nftStaking.borrow(borrow_amount);
+        vm.stopPrank();
+
+        assertEq(stableBondCoins.balanceOf(client1), borrow_amount);
+        console.log("Client1 borrowed:", borrow_amount);
+        console.log("Stables left:    ", stableBondCoins.balanceOf(address(nftStaking)));
+        assertEq(stableBondCoins.balanceOf(address(nftStaking)), 14962_500000 - borrow_amount);
+        assert(nftStaking.userAvailableToBorrow(client1) < 10);
+
+        // we go to the future, 40 days to expiration
+        vm.warp(365 days - 40 days);
+        vm.roll(2);
+        NFTStakingAndBorrowing.UserStats memory userStats = nftStaking.getUserStats(client1);
+        assertEq(userStats.borrowed, borrow_amount);
+        assertEq(userStats.debt, 14777_821141);
+
+        console.log("Client1 debt:    ", userStats.debt);
+        console.log("Client1 Stables: ", stableBondCoins.balanceOf(client1));
+
+        assertEq(bondNFT.balanceOf(client1, 2), 0);
+        assertEq(bondNFT.balanceOf(address(nftStaking), 2), 10);
+        assertEq(stableBondCoins.balanceOf(client2), 0);
+
+        // Client2 borrows to get stable coins and liquidate
+        vm.startPrank(client2);
+        nftStaking.stakeNFT(address(bondNFT), 3, 20);
+        nftStaking.borrow(0);
+        stableBondCoins.approve(address(nftStaking), UINT256_MAX);
+        console.log("Client2 Stables: ", stableBondCoins.balanceOf(client2));
+        nftStaking.liquidate(address(bondNFT), 2, client1);
+        vm.stopPrank();
+
+        console.log("Client1 Stables: ", stableBondCoins.balanceOf(client1));
+        console.log("Client2 Stables: ", stableBondCoins.balanceOf(client2));
+
+        assertEq(bondNFT.balanceOf(client1, 2), 0);
+        assertEq(bondNFT.balanceOf(client2, 2), 10);
+        assertEq(bondNFT.balanceOf(address(nftStaking), 2), 0);
+
+        assertEq(stableBondCoins.balanceOf(client1), 13359_374999);
+        assertEq(stableBondCoins.balanceOf(client2),  9851_880762);
     }
 }
