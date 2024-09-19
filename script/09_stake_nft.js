@@ -24,7 +24,7 @@ async function stakeNft() {
 
     console.log('Staking NFTs...');
     const amount = 10;
-    const tx = await contract.stakeNFT(bondNFT, tokenId, amount);
+    const tx = await contract.stakeNFT(bondNFT, tokenId, amount, {gasLimit: 500_000});
     console.log(`Transaction hash: ${tx.hash}`);
 
     const receipt = await tx.wait();
