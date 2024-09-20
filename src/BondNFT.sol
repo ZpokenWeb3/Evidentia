@@ -15,7 +15,21 @@ contract BondNFT is ERC1155, Ownable, ERC1155Supply {
         string ISIN;
     }
 
+    // Custom event
+    event MintAllowanceSet(address user, uint256 id, uint256 allowedAmount);
+
+    // Custom errors
+    error NftMintingNotAllowed();
+    error NftMintingLimitExceeded(uint256);
+    error NftInsufficientBalanceToBurn();
+
     mapping(uint256 => Metadata) public metadata;
+
+    // Mapping to store the allowed mints per user per token ID
+    mapping(address => mapping(uint256 => uint256)) public allowedMints;
+
+    // Mapping to track how many mints have been used per user per token ID
+    mapping(address => mapping(uint256 => uint256)) public mintedPerUser;
 
     constructor(address initialOwner, string memory _uri) ERC1155(_uri) Ownable(initialOwner) {}
 
@@ -23,7 +37,7 @@ contract BondNFT is ERC1155, Ownable, ERC1155Supply {
         _setURI(newuri);
     }
 
-    function setMetaData(uint256 id, Metadata memory _metadata) public onlyOwner {
+    function setMetaData(uint256 id, Metadata memory _metadata) external onlyOwner {
         metadata[id] = _metadata;
     }
 
@@ -31,27 +45,63 @@ contract BondNFT is ERC1155, Ownable, ERC1155Supply {
         return metadata[id];
     }
 
-    function mint(address account, uint256 id, uint256 amount, bytes memory data) public onlyOwner {
-        _mint(account, id, amount, data);
+    // Function to set allowed mints for a user per token ID
+    function setAllowedMints(address user, uint256 id, uint256 allowedAmount) external onlyOwner {
+        allowedMints[user][id] = allowedAmount;
+        emit MintAllowanceSet(user, id, allowedAmount);
     }
 
-    function burn(address account, uint256 id, uint256 amount) public onlyOwner {
-        _burn(account, id, amount);
+    // Function to mint tokens, ensuring the user has remaining allowed mints
+    function mint(uint256 id, uint256 amount, bytes memory data) public {
+        if (allowedMints[msg.sender][id] == 0) revert NftMintingNotAllowed();
+        if (mintedPerUser[msg.sender][id] + amount > allowedMints[msg.sender][id]) {
+            revert NftMintingLimitExceeded(allowedMints[msg.sender][id] - mintedPerUser[msg.sender][id]);
+        }
+
+        // Track the number of minted tokens per user for the given ID
+        mintedPerUser[msg.sender][id] += amount;
+
+        _mint(msg.sender, id, amount, data);
     }
 
-    function mintBatch(address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data)
-        public
-        onlyOwner
-    {
-        _mintBatch(to, ids, amounts, data);
+    // Function to mint multiple tokens in batch, checking allowed mints for each token ID
+    function mintBatch(uint256[] memory ids, uint256[] memory amounts, bytes memory data) public {
+        for (uint256 i = 0; i < ids.length; i++) {
+            uint256 id = ids[i];
+            uint256 amount = amounts[i];
+
+            // Ensure the user is allowed to mint the specified amount for each token ID
+            if (allowedMints[msg.sender][id] == 0) revert NftMintingNotAllowed();
+            if (mintedPerUser[msg.sender][id] + amount > allowedMints[msg.sender][id]) {
+                revert NftMintingLimitExceeded(allowedMints[msg.sender][id] - mintedPerUser[msg.sender][id]);
+            }
+
+            // Update minted count for the user per token ID
+            mintedPerUser[msg.sender][id] += amount;
+        }
+
+        // Proceed with the batch mint after all checks
+        _mintBatch(msg.sender, ids, amounts, data);
+    }
+
+    // Function to burn tokens, ensuring only the token owner can burn
+    function burn(uint256 id, uint256 amount) public {
+        if (balanceOf(msg.sender, id) < amount) revert NftInsufficientBalanceToBurn();
+
+        // Burn the tokens
+        _burn(msg.sender, id, amount);
     }
 
     // The following functions are overrides required by Solidity.
-
     function _update(address from, address to, uint256[] memory ids, uint256[] memory values)
         internal
         override(ERC1155, ERC1155Supply)
     {
         super._update(from, to, ids, values);
+    }
+
+    // View function to get how many mints are remaining for a user per token ID
+    function remainingMints(address user, uint256 id) external view returns (uint256) {
+        return allowedMints[user][id] - mintedPerUser[user][id];
     }
 }

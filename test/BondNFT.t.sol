@@ -13,6 +13,7 @@ contract BondNFTTest is Test {
         owner = address(this);
         account1 = address(1);
         bondNFT = new BondNFT(owner, "https://example.com/{id}.json");
+        bondNFT.setAllowedMints(account1, 1, 10);
     }
 
     function testInitialOwner() public {
@@ -46,32 +47,41 @@ contract BondNFTTest is Test {
     function testMint() public {
         uint256 id = 1;
         uint256 amount = 10;
-        bondNFT.mint(account1, id, amount, "");
+        vm.prank(account1);
+        bondNFT.mint(id, amount, "");
         assertEq(bondNFT.balanceOf(account1, id), amount);
     }
 
     function testBurn() public {
         uint256 id = 1;
         uint256 amount = 10;
-        bondNFT.mint(account1, id, amount, "");
-        bondNFT.burn(account1, id, amount);
+        vm.prank(account1);
+        bondNFT.mint(id, amount, "");
+        vm.prank(account1);
+        bondNFT.burn(id, amount);
         assertEq(bondNFT.balanceOf(account1, id), 0);
     }
 
-    function testFailMintNotOwner() public {
-        uint256 id = 1;
-        uint256 amount = 10;
-        vm.prank(account1);
-        bondNFT.mint(account1, id, amount, "");
-        assertEq(bondNFT.balanceOf(account1, id), 0);
+    // Test minting with no allowed mints
+    function testMintNotAllowed() public {
+        vm.prank(owner);
+        vm.expectRevert();
+        bondNFT.mint(1, 10, "");
     }
 
-    function testFailBurnNotOwner() public {
-        uint256 id = 1;
-        uint256 amount = 10;
-        bondNFT.mint(account1, id, amount, "");
+    // Test minting with exceeded allowed mints
+    function testMintLimitExceeded() public {
+        bondNFT.setAllowedMints(account1, 1, 5);
         vm.prank(account1);
-        bondNFT.burn(account1, id, amount);
-        assertEq(bondNFT.balanceOf(account1, id), amount);
+        bondNFT.mint(1, 5, "");
+        vm.expectRevert();
+        bondNFT.mint(1, 1, "");
+    }
+
+    // Test burning with insufficient balance
+    function testBurnInsufficientBalance() public {
+        vm.prank(account1);
+        vm.expectRevert();
+        bondNFT.burn(1, 100);
     }
 }

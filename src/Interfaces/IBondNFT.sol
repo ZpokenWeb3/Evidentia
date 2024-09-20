@@ -18,11 +18,13 @@ interface IBondNFT is IERC1155 {
 
     function setMetaData(uint256 id, Metadata memory _metadata) external;
 
-    function mint(address account, uint256 id, uint256 amount, bytes memory data) external;
+    function setAllowedMints(address user, uint256 id, uint256 allowedAmount) external;
 
-    function burn(address account, uint256 id, uint256 amount) external;
+    function mint(uint256 id, uint256 amount, bytes memory data) external;
 
-    function mintBatch(address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data) external;
+    function burn(uint256 id, uint256 amount) external;
+
+    function mintBatch(uint256[] memory ids, uint256[] memory amounts, bytes memory data) external;
 
     function totalSupply(uint256 id) external view returns (uint256);
     function exists(uint256 id) external view returns (bool);

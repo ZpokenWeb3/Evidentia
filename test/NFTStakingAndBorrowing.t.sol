@@ -33,7 +33,10 @@ contract NFTStakingAndBorrowingTest is Test {
         bondNFT.setMetaData(1, metadata);
         bondNFT.setMetaData(2, metadata);
         bondNFT.setMetaData(3, metadata);
-        bondNFT.mint(owner, 1, 10, "");
+        bondNFT.setAllowedMints(owner, 1, 10);
+        bondNFT.setAllowedMints(owner, 2, 10);
+        bondNFT.setAllowedMints(owner, 3, 10);
+        bondNFT.mint(1, 10, "");
         bondNFT.setApprovalForAll(address(nftStaking), true);
         nftStaking.whitelistNFT(address(bondNFT), true);
         vm.stopPrank();
@@ -94,9 +97,14 @@ contract NFTStakingAndBorrowingTest is Test {
         address client2 = address(3);
 
         vm.startPrank(owner);
-        bondNFT.mint(client1, 2, 10, "");
-        bondNFT.mint(client2, 3, 10, "");
+        bondNFT.setAllowedMints(client1, 2, 10);
+        bondNFT.setAllowedMints(client2, 3, 10);
         vm.stopPrank();
+
+        vm.prank(client1);
+        bondNFT.mint(2, 10, "");
+        vm.prank(client2);
+        bondNFT.mint(3, 10, "");
 
         vm.prank(client1);
         bondNFT.setApprovalForAll(address(nftStaking), true);
@@ -177,9 +185,14 @@ contract NFTStakingAndBorrowingTest is Test {
         address client2 = address(3);
 
         vm.startPrank(owner);
-        bondNFT.mint(client1, 2, 10, "");
-        bondNFT.mint(client2, 3, 10, "");
+        bondNFT.setAllowedMints(client1, 2, 10);
+        bondNFT.setAllowedMints(client2, 3, 10);
         vm.stopPrank();
+
+        vm.prank(client1);
+        bondNFT.mint(2, 10, "");
+        vm.prank(client2);
+        bondNFT.mint(3, 10, "");
 
         vm.prank(client1);
         bondNFT.setApprovalForAll(address(nftStaking), true);
@@ -220,9 +233,14 @@ contract NFTStakingAndBorrowingTest is Test {
         address client2 = address(3);
 
         vm.startPrank(owner);
-        bondNFT.mint(client1, 2, 10, "");
-        bondNFT.mint(client2, 3, 10, "");
+        bondNFT.setAllowedMints(client1, 2, 10);
+        bondNFT.setAllowedMints(client2, 3, 10);
         vm.stopPrank();
+
+        vm.prank(client1);
+        bondNFT.mint(2, 10, "");
+        vm.prank(client2);
+        bondNFT.mint(3, 10, "");
 
         vm.prank(client1);
         bondNFT.setApprovalForAll(address(nftStaking), true);
@@ -283,10 +301,17 @@ contract NFTStakingAndBorrowingTest is Test {
         address client2 = address(3);
 
         vm.startPrank(owner);
-        bondNFT.mint(client1, 1, 5, "");
-        bondNFT.mint(client1, 2, 10, "");
-        bondNFT.mint(client2, 3, 20, "");
+        bondNFT.setAllowedMints(client1, 1, 5);
+        bondNFT.setAllowedMints(client1, 2, 10);
+        bondNFT.setAllowedMints(client2, 3, 20);
         vm.stopPrank();
+
+        vm.prank(client1);
+        bondNFT.mint(1, 5, "");
+        vm.prank(client1);
+        bondNFT.mint(2, 10, "");
+        vm.prank(client2);
+        bondNFT.mint(3, 20, "");
 
         vm.prank(client1);
         bondNFT.setApprovalForAll(address(nftStaking), true);
