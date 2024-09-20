@@ -19,23 +19,11 @@ async function mintNft() {
 
     const timestamp = provider.getBlock("latest").timestamp;
 
-    metadata = {
-        value: 1000_000000,
-        couponValue: 50_000000,
-        issueTimestamp: 1704067200, // 2024-01-01
-        expirationTimestamp: 1704067200 + 31536000,
-        ISIN: "US1234567890"
-    };
-
-    const stringHash = ethers.keccak256(ethers.toUtf8Bytes(metadata.ISIN));
-    const tokenId = BigInt(stringHash).toString();
-
-    console.log("Metadata:", metadata);
-    console.log("TokenId: ", tokenId);
+    const tokenId = "68364407216462399799028636857268510032958042329620656293310648714915379830340";
 
     console.log('Minting tokens...');
-    const mintToAddress = "0x7Df601525A53AbaD47C69E78ae151b6F96c59097";
-    const mintAmount = 10 
+    const mintToAddress = "0xC85906530Df2D4227f713CFCDD08085309A4f821";
+    const mintAmount = 10;
     const tx = await contract.mint(mintToAddress, tokenId, mintAmount, ethers.toUtf8Bytes(""));
     console.log(`Transaction hash: ${tx.hash}`);
 

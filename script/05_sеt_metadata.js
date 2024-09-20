@@ -21,10 +21,10 @@ async function setMetadata() {
 
     metadata = {
         value: 1000_000000,
-        couponValue: 50_000000,
-        issueTimestamp: 1704067200, // 2024-01-01
-        expirationTimestamp: 1704067200 + 31536000,
-        ISIN: "US1234567890"
+        couponValue: 88_000000,
+        issueTimestamp: 1707688800, // 13.02.2024
+        expirationTimestamp: 1769551200, // 28.01.2026
+        ISIN: "UA4000230262"
     };
 
     const stringHash = ethers.keccak256(ethers.toUtf8Bytes(metadata.ISIN));
