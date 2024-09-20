@@ -69,9 +69,17 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         stableToken = IMintableERC20(_stableToken);
     }
 
+    /*//////////////////////////////////////////////////////////////
+                            ADMIN FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
+
     function whitelistNFT(address nftAddress, bool status) external onlyOwner {
         whitelistedNFTs[nftAddress] = status;
     }
+
+    /*//////////////////////////////////////////////////////////////
+                            VIEW FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
 
     function getUserStats(address userAddress) public view returns (UserStats memory) {
         if (userStats[userAddress].debtUpdateTimestamp == block.timestamp) {
@@ -109,6 +117,42 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         return updatedTotalStats;
     }
 
+    function calculateMaxBorrow(uint256 totalAmount, uint256 fromTime, uint256 toTime) public view returns (uint256) {
+        totalAmount = totalAmount * 1e12;
+        UD60x18 timeDelta = ud(toTime - fromTime);
+        UD60x18 maxBorrowLog2 =
+            ud(totalAmount).log2() - (timeDelta / ud(YEAR_IN_SECONDS)) * (ud(UNIT + PROTOCOL_YIELD)).log2();
+
+        return maxBorrowLog2.exp2().intoUint256() / 1e12;
+    }
+
+    function calculateDebt(uint256 borrowedAmount, uint256 fromTime, uint256 toTime) internal view returns (uint256) {
+        borrowedAmount = borrowedAmount * 1e12;
+        UD60x18 timeDelta = ud(toTime - fromTime);
+        UD60x18 debtLog2 =
+            (timeDelta / ud(YEAR_IN_SECONDS)) * (ud(UNIT + PROTOCOL_YIELD)).log2() + ud(borrowedAmount).log2();
+        return debtLog2.exp2().intoUint256() / 1e12;
+    }
+
+    function userAvailableToBorrow(address userAddress) public view returns (uint256) {
+        if (userStats[userAddress].nominalAvailable == 0) return 0;
+
+        uint256 nominalAvailable = calculateDebt(
+            userStats[userAddress].nominalAvailable, userStats[userAddress].debtUpdateTimestamp, block.timestamp
+        );
+        if (userStats[userAddress].debt == 0) {
+            return nominalAvailable;
+        } else {
+            uint256 debt =
+                calculateDebt(userStats[userAddress].debt, userStats[userAddress].debtUpdateTimestamp, block.timestamp);
+            return nominalAvailable - debt;
+        }
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                            MAIN FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
+
     /**
      * @notice Allows a user to stake an NFT in the contract.
      * @dev This function transfers the NFT to the contract and updates the user's balance.
@@ -139,23 +183,6 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         stableToken.mint(address(this), totalValue);
 
         emit NFTStaked(msg.sender, nftAddress, tokenId, amount);
-    }
-
-    function calculateMaxBorrow(uint256 totalAmount, uint256 fromTime, uint256 toTime) public view returns (uint256) {
-        totalAmount = totalAmount * 1e12;
-        UD60x18 timeDelta = ud(toTime - fromTime);
-        UD60x18 maxBorrowLog2 =
-            ud(totalAmount).log2() - (timeDelta / ud(YEAR_IN_SECONDS)) * (ud(UNIT + PROTOCOL_YIELD)).log2();
-
-        return maxBorrowLog2.exp2().intoUint256() / 1e12;
-    }
-
-    function calculateDebt(uint256 borrowedAmount, uint256 fromTime, uint256 toTime) internal view returns (uint256) {
-        borrowedAmount = borrowedAmount * 1e12;
-        UD60x18 timeDelta = ud(toTime - fromTime);
-        UD60x18 debtLog2 =
-            (timeDelta / ud(YEAR_IN_SECONDS)) * (ud(UNIT + PROTOCOL_YIELD)).log2() + ud(borrowedAmount).log2();
-        return debtLog2.exp2().intoUint256() / 1e12;
     }
 
     /**
@@ -197,21 +224,6 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         stableToken.burn(address(this), totalUnstakeValue);
 
         emit NFTUnstaked(msg.sender, nftAddress, tokenId, amount);
-    }
-
-    function userAvailableToBorrow(address userAddress) public view returns (uint256) {
-        if (userStats[userAddress].nominalAvailable == 0) return 0;
-
-        uint256 nominalAvailable = calculateDebt(
-            userStats[userAddress].nominalAvailable, userStats[userAddress].debtUpdateTimestamp, block.timestamp
-        );
-        if (userStats[userAddress].debt == 0) {
-            return nominalAvailable;
-        } else {
-            uint256 debt =
-                calculateDebt(userStats[userAddress].debt, userStats[userAddress].debtUpdateTimestamp, block.timestamp);
-            return nominalAvailable - debt;
-        }
     }
 
     /**
