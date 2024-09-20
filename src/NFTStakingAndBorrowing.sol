@@ -77,6 +77,18 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         whitelistedNFTs[nftAddress] = status;
     }
 
+    function setProtocolYield(uint256 _protocolYieldInBips) external onlyOwner {
+        PROTOCOL_YIELD = _protocolYieldInBips * UNIT / BIPS;
+    }
+
+    function setSafetyFee(uint256 _safetyFeeInBips) external onlyOwner {
+        SAFETY_FEE = _safetyFeeInBips * UNIT / BIPS;
+    }
+
+    function setLiquidationTimeWindow(uint256 _timeWindowInSeconds) external onlyOwner {
+        LIQUIDATION_TIME_WINDOW = _timeWindowInSeconds;
+    }
+
     /*//////////////////////////////////////////////////////////////
                             VIEW FUNCTIONS
     //////////////////////////////////////////////////////////////*/
