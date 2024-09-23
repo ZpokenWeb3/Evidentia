@@ -161,6 +161,11 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         }
     }
 
+    function getRewardAmount() external view returns (uint256) {
+        uint256 currentDebt = calculateDebt(totalStats.debt, totalStats.debtUpdateTimestamp, block.timestamp);
+        return currentDebt - totalStats.borrowed;
+    }
+
     /*//////////////////////////////////////////////////////////////
                             MAIN FUNCTIONS
     //////////////////////////////////////////////////////////////*/
