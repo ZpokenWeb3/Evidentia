@@ -1,0 +1,1 @@
+forge script --chain sepolia script/02_DeployNft.s.sol:DeployNft --rpc-url $SEPOLIA_RPC_URL --broadcast --verify -vvvv
