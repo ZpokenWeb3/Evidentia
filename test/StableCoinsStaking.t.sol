@@ -4,14 +4,14 @@ pragma solidity >=0.8.20;
 import {Test, console} from "forge-std/Test.sol";
 import {NFTStakingAndBorrowing} from "../src/NFTStakingAndBorrowing.sol";
 import {StableBondCoins} from "../src/StableBondCoins.sol";
-import {StakingContract} from "../src/StableCoinsStaking.sol";
+import {StableCoinsStaking} from "../src/StableCoinsStaking.sol";
 import {BondNFT} from "../src/BondNFT.sol";
 
 contract StakingStablesTest is Test {
     NFTStakingAndBorrowing public nftStaking;
     BondNFT public bondNFT;
     StableBondCoins public stableBondCoins;
-    StakingContract public stakingStables;
+    StableCoinsStaking public stakingStables;
     address public owner;
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
@@ -42,7 +42,7 @@ contract StakingStablesTest is Test {
         bondNFT.setApprovalForAll(address(nftStaking), true);
         nftStaking.whitelistNFT(address(bondNFT), true);
 
-        stakingStables = new StakingContract(address(stableBondCoins), address(nftStaking));
+        stakingStables = new StableCoinsStaking(address(stableBondCoins), address(nftStaking));
         vm.stopPrank();
     }
 

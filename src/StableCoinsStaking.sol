@@ -12,7 +12,7 @@ interface IExternalRewardContract {
     function getRewardAmount() external view returns (uint256);
 }
 
-contract StakingContract {
+contract StableCoinsStaking {
     IERC20 public stakingToken;
     IExternalRewardContract public externalRewardContract;
 
