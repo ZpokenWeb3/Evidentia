@@ -46,6 +46,8 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
     uint256 public PROTOCOL_YIELD = 1200 * UNIT / BIPS;
     uint256 public SAFETY_FEE = 500 * UNIT / BIPS;
     uint256 public LIQUIDATION_TIME_WINDOW = 45 * 24 * 60 * 60; // 45 days
+    uint256 public RewardsTransfered;
+    address public STABLES_STAKING_ADDRESS;
 
     IMintableERC20 public stableToken;
 
@@ -69,6 +71,11 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         stableToken = IMintableERC20(_stableToken);
     }
 
+    modifier onlyStablesStaking() {
+        require(msg.sender == STABLES_STAKING_ADDRESS, "Only Stables Staking contract");
+        _;
+    }
+
     /*//////////////////////////////////////////////////////////////
                             ADMIN FUNCTIONS
     //////////////////////////////////////////////////////////////*/
@@ -87,6 +94,10 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
 
     function setLiquidationTimeWindow(uint256 _timeWindowInSeconds) external onlyOwner {
         LIQUIDATION_TIME_WINDOW = _timeWindowInSeconds;
+    }
+
+    function setStablesStakingAddress(address _address) external onlyOwner {
+        STABLES_STAKING_ADDRESS = _address;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -130,20 +141,20 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
     }
 
     function calculateMaxBorrow(uint256 totalAmount, uint256 fromTime, uint256 toTime) public view returns (uint256) {
-        totalAmount = totalAmount * 1e12;
+        totalAmount = totalAmount * 1e18;
         UD60x18 timeDelta = ud(toTime - fromTime);
         UD60x18 maxBorrowLog2 =
             ud(totalAmount).log2() - (timeDelta / ud(YEAR_IN_SECONDS)) * (ud(UNIT + PROTOCOL_YIELD)).log2();
 
-        return maxBorrowLog2.exp2().intoUint256() / 1e12;
+        return maxBorrowLog2.exp2().intoUint256() / 1e18;
     }
 
     function calculateDebt(uint256 borrowedAmount, uint256 fromTime, uint256 toTime) internal view returns (uint256) {
-        borrowedAmount = borrowedAmount * 1e12;
+        borrowedAmount = borrowedAmount * 1e18;
         UD60x18 timeDelta = ud(toTime - fromTime);
         UD60x18 debtLog2 =
             (timeDelta / ud(YEAR_IN_SECONDS)) * (ud(UNIT + PROTOCOL_YIELD)).log2() + ud(borrowedAmount).log2();
-        return debtLog2.exp2().intoUint256() / 1e12;
+        return debtLog2.exp2().intoUint256() / 1e18;
     }
 
     function userAvailableToBorrow(address userAddress) public view returns (uint256) {
@@ -159,11 +170,6 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
                 calculateDebt(userStats[userAddress].debt, userStats[userAddress].debtUpdateTimestamp, block.timestamp);
             return nominalAvailable - debt;
         }
-    }
-
-    function getRewardAmount() external view returns (uint256) {
-        uint256 currentDebt = calculateDebt(totalStats.debt, totalStats.debtUpdateTimestamp, block.timestamp);
-        return currentDebt - totalStats.borrowed;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -380,5 +386,21 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         stableToken.burn(address(this), positionValue);
         emit Liquidated(positionOwner, msg.sender, nftAddress, tokenId, amount);
         return;
+    }
+
+    function getRewardAmount() external view returns (uint256) {
+        uint256 currentDebt = calculateDebt(totalStats.debt, totalStats.debtUpdateTimestamp, block.timestamp);
+        uint256 rewardAmount = currentDebt - totalStats.borrowed - RewardsTransfered;
+        return rewardAmount;
+    }
+
+    function getRewards() external onlyStablesStaking returns (uint256) {
+        uint256 currentDebt = calculateDebt(totalStats.debt, totalStats.debtUpdateTimestamp, block.timestamp);
+        uint256 rewardAmount = currentDebt - totalStats.borrowed - RewardsTransfered;
+        if (rewardAmount > 0) {
+            stableToken.transfer(msg.sender, rewardAmount);
+        }
+        RewardsTransfered += rewardAmount;
+        return rewardAmount;
     }
 }
