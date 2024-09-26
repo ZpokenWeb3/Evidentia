@@ -16,6 +16,7 @@ contract StableCoinsStaking {
     IERC20 public stakingToken;
     IExternalRewardContract public externalRewardContract;
 
+    uint256 internal constant YEAR_IN_SECONDS = 31536000; // 365 days
     uint256 public totalStaked; // Total amount of tokens staked
     uint256 public rewardPerTokenStored; // Cumulative rewards per staked token
     uint256 public lastUpdateTime; // The last time the rewards were updated
@@ -25,6 +26,7 @@ contract StableCoinsStaking {
         uint256 rewardPaid; // Rewards already paid to the user
         uint256 userRewardPerTokenPaid; // The last reward per token the user has "seen"
         uint256 rewardsEarned; // Rewards earned by the user, unclaimed
+        uint256 stakeTimestamp; // The last time the user updated the stake
     }
 
     mapping(address => StakerInfo) public stakers;
@@ -62,6 +64,8 @@ contract StableCoinsStaking {
         user.stakedAmount += _amount;
         totalStaked += _amount;
 
+        user.stakeTimestamp = block.timestamp;
+
         emit Staked(msg.sender, _amount);
     }
 
@@ -72,6 +76,8 @@ contract StableCoinsStaking {
 
         user.stakedAmount -= _amount;
         totalStaked -= _amount;
+
+        user.stakeTimestamp = block.timestamp;
 
         stakingToken.transfer(msg.sender, _amount);
 
@@ -110,7 +116,7 @@ contract StableCoinsStaking {
     }
 
     // Helper function to view pending rewards for a user
-    function pendingRewards(address _staker) external view returns (uint256) {
+    function pendingRewards(address _staker) public view returns (uint256) {
         if (totalStaked == 0) {
             return 0;
         }
@@ -121,5 +127,15 @@ contract StableCoinsStaking {
         uint256 rewardPerTokenDelta = _rewardPerTokenStored - user.userRewardPerTokenPaid;
 
         return ((user.stakedAmount * rewardPerTokenDelta) / 1e18) + user.rewardsEarned;
+    }
+
+    function expectedAPY(address _staker) external view returns (uint256) {
+        StakerInfo storage user = stakers[_staker];
+        if (user.stakedAmount == 0) {
+            return 0;
+        }
+        uint256 stakerDuration = block.timestamp - user.stakeTimestamp;
+        return YEAR_IN_SECONDS * (pendingRewards(_staker) + user.rewardsEarned) * 10000
+            / (user.stakedAmount * stakerDuration);
     }
 }
