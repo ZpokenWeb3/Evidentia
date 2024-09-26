@@ -35,6 +35,11 @@ contract StableCoinsStaking {
     event Withdrawn(address indexed user, uint256 amount);
     event RewardClaimed(address indexed user, uint256 reward);
 
+    // Custom errors
+    error ZeroAmountNotAllowed();
+    error NotEnoughStaked(uint256);
+    error NoRewardsAvailable();
+
     constructor(address _stakingToken, address _externalRewardContract) {
         stakingToken = IERC20(_stakingToken);
         externalRewardContract = IExternalRewardContract(_externalRewardContract);
@@ -56,7 +61,7 @@ contract StableCoinsStaking {
 
     // Function to stake tokens
     function stake(uint256 _amount) external updateReward(msg.sender) {
-        require(_amount > 0, "Cannot stake 0 tokens");
+        if (_amount == 0) revert ZeroAmountNotAllowed();
 
         stakingToken.transferFrom(msg.sender, address(this), _amount);
 
@@ -71,8 +76,11 @@ contract StableCoinsStaking {
 
     // Function to withdraw staked tokens
     function withdraw(uint256 _amount) external updateReward(msg.sender) {
+        if (_amount == 0) revert ZeroAmountNotAllowed();
+
         StakerInfo storage user = stakers[msg.sender];
-        require(user.stakedAmount >= _amount, "Withdraw amount exceeds staked balance");
+
+        if (_amount > user.stakedAmount) revert NotEnoughStaked(user.stakedAmount);
 
         user.stakedAmount -= _amount;
         totalStaked -= _amount;
@@ -88,7 +96,8 @@ contract StableCoinsStaking {
     function claimRewards() external updateReward(msg.sender) {
         StakerInfo storage user = stakers[msg.sender];
         uint256 reward = user.rewardsEarned;
-        require(reward > 0, "No rewards available");
+
+        if (reward == 0) revert NoRewardsAvailable();
 
         user.rewardsEarned = 0;
         user.rewardPaid += reward;
