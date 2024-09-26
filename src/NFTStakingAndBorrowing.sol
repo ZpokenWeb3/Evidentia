@@ -395,7 +395,13 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
     }
 
     function getRewards() external onlyStablesStaking returns (uint256) {
-        uint256 currentDebt = calculateDebt(totalStats.debt, totalStats.debtUpdateTimestamp, block.timestamp);
+        uint256 currentDebt;
+        if (totalStats.debtUpdateTimestamp == block.timestamp) {
+            currentDebt = totalStats.debt;
+        } else {
+            currentDebt = calculateDebt(totalStats.debt, totalStats.debtUpdateTimestamp, block.timestamp);
+        }
+
         uint256 rewardAmount = currentDebt - totalStats.borrowed - RewardsTransfered;
         if (rewardAmount > 0) {
             stableToken.transfer(msg.sender, rewardAmount);
