@@ -74,6 +74,21 @@ contract StableCoinsStaking {
         emit Staked(msg.sender, _amount);
     }
 
+    // Function to stake tokens on behalf of another address
+    function stakeOnBehalfOf(uint256 _amount, address onBehalfOf) external updateReward(onBehalfOf) {
+        if (_amount == 0) revert ZeroAmountNotAllowed();
+
+        stakingToken.transferFrom(msg.sender, address(this), _amount);
+
+        StakerInfo storage user = stakers[onBehalfOf];
+        user.stakedAmount += _amount;
+        totalStaked += _amount;
+
+        user.stakeTimestamp = block.timestamp;
+
+        emit Staked(onBehalfOf, _amount);
+    }
+
     // Function to withdraw staked tokens
     function withdraw(uint256 _amount) external updateReward(msg.sender) {
         if (_amount == 0) revert ZeroAmountNotAllowed();

@@ -6,6 +6,7 @@ import {ERC1155Holder} from "@openzeppelin/contracts/token/ERC1155/utils/ERC1155
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {UD60x18, ud} from "@prb/math/src/UD60x18.sol";
+import {IStableCoinsStaking} from "./Interfaces/IStableCoinsStaking.sol";
 
 interface IMintableERC20 is IERC20 {
     function mint(address to, uint256 amount) external;
@@ -185,7 +186,7 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
      * @param tokenId The ID of the NFT to stake.
      * @param amount The amount of NFTs to stake.
      */
-    function stakeNFT(address nftAddress, uint256 tokenId, uint256 amount) external {
+    function stakeNFT(address nftAddress, uint256 tokenId, uint256 amount) public {
         if (!whitelistedNFTs[nftAddress]) revert NFTNotWhitelisted();
         if (IBondNFT(nftAddress).balanceOf(msg.sender, tokenId) < amount) revert InsufficientNFTBalance();
 
@@ -206,6 +207,25 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         stableToken.mint(address(this), totalValue);
 
         emit NFTStaked(msg.sender, nftAddress, tokenId, amount);
+    }
+
+    /**
+     * @notice Allows a user to stake an NFT and stake stable coins simultaneously.
+     * @dev This function transfers the NFT to the contract, borrows the stable coins, and stakes the stable coins.
+     * @dev NFT are not locked in the contract.
+     * @dev Stable coins are borrowed at the same time and staked in the Stables Staking contract.
+     * @param nftAddress The address of the NFT contract.
+     * @param tokenId The ID of the NFT to stake.
+     * @param amountNft The amount of NFTs to stake.
+     */
+    function stakeNFTandStables(address nftAddress, uint256 tokenId, uint256 amountNft) external {
+        stakeNFT(nftAddress, tokenId, amountNft);
+        updateUserDebtAndAvailable(msg.sender);
+        updateTotalDebt();
+        uint256 amount_to_stake = userStats[msg.sender].nominalAvailable - userStats[msg.sender].debt;
+        _borrow(amount_to_stake, msg.sender);
+        stableToken.approve(STABLES_STAKING_ADDRESS, amount_to_stake);
+        IStableCoinsStaking(STABLES_STAKING_ADDRESS).stakeOnBehalfOf(amount_to_stake, msg.sender);
     }
 
     /**
@@ -255,7 +275,7 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
      * @dev if the NFT is whitelisted, and if the user's debt is within the allowed limit.
      * @param amount The amount of stable tokens to borrow. 0 means full available amount.
      */
-    function borrow(uint256 amount) external {
+    function borrow(uint256 amount) public {
         updateUserDebtAndAvailable(msg.sender);
         updateTotalDebt();
 
@@ -267,14 +287,24 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
             revert BorrowAmountExceedsLimit(userStats[msg.sender].nominalAvailable - userStats[msg.sender].debt);
         }
 
-        userStats[msg.sender].debt += amount;
-        userStats[msg.sender].borrowed += amount;
+        _borrow(amount, msg.sender);
+
+        stableToken.transfer(msg.sender, amount);
+    }
+
+    /**
+     * @notice Internal function to process borrow
+     * @dev Has no transfer
+     * @param amount The amount of stable tokens to borrow.
+     * @param user_address The address of the user
+     */
+    function _borrow(uint256 amount, address user_address) internal {
+        userStats[user_address].debt += amount;
+        userStats[user_address].borrowed += amount;
         totalStats.borrowed += amount;
         totalStats.debt += amount;
 
-        stableToken.transfer(msg.sender, amount);
-
-        emit Borrowed(msg.sender, amount);
+        emit Borrowed(user_address, amount);
     }
 
     function updateUserDebtAndAvailable(address userAddress) internal {
