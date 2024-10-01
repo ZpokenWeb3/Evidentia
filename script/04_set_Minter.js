@@ -2,10 +2,10 @@ const { ethers } = require('ethers');
 const fs = require('fs');
 require('dotenv').config();
 
-const contractAddress = '0x1a6026a6b3b1a535cA5259e5feC0cDC2E7b3261D'; // StableCoins
+const contractAddress = '0xbDBc6f32699c39DF208595BfC7Dfb96C6F837aBE'; // StableCoins
 const contractABIPath = './script/ABI/StableBondCoins.json';
 
-const newMinterAddress = '0x049fCAB83597C4E6dC2331D945736A3009AE60B7'; // NFT Staking
+const newMinterAddress = '0x5fc677Bec2ccF1E4fDb3b621AC5ae7CD7AaA7EA5'; // NFT Staking
 const privateKey = process.env.PRIVATE_KEY;
 const rpcUrl = process.env.SEPOLIA_RPC_URL;
 

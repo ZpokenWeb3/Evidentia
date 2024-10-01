@@ -10,7 +10,7 @@ const rpcUrl = process.env.SEPOLIA_RPC_URL;
 
 const contractABI = JSON.parse(fs.readFileSync(contractABIPath, 'utf8'));
 
-async function stakeNft() {
+async function whitelistNft() {
   try {
     const provider = new ethers.JsonRpcProvider(rpcUrl);
     const wallet = new ethers.Wallet(privateKey, provider);
@@ -18,13 +18,9 @@ async function stakeNft() {
     const contract = new ethers.Contract(contractAddress, contractABI, wallet);
 
     const bondNFT = "0xc745ffdF5cE0F277a0d42EDD07FaFbE8d57be0F4";
-    const tokenId = "68364407216462399799028636857268510032958042329620656293310648714915379830340"
 
-    console.log("TokenId: ", tokenId);
-
-    console.log('Staking NFTs...');
-    const amount = 10;
-    const tx = await contract.stakeNFT(bondNFT, tokenId, amount, {gasLimit: 500_000});
+    console.log('Whitelisting NFT contract...');
+    const tx = await contract.whitelistNFT(bondNFT, true);
     console.log(`Transaction hash: ${tx.hash}`);
 
     const receipt = await tx.wait();
@@ -37,4 +33,4 @@ async function stakeNft() {
   }
 }
 
-stakeNft();
+whitelistNft();

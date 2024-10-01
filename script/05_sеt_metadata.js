@@ -2,7 +2,7 @@ const { ethers } = require('ethers');
 const fs = require('fs');
 require('dotenv').config();
 
-const contractAddress = '0xAc946D4eb88372446Dd658e358998236577179b7'; // BondNFT
+const contractAddress = '0xc745ffdF5cE0F277a0d42EDD07FaFbE8d57be0F4'; // BondNFT
 const contractABIPath = './script/ABI/BondNFT.json';
 
 const privateKey = process.env.PRIVATE_KEY;

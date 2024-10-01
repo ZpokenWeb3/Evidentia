@@ -2,7 +2,7 @@ const { ethers } = require('ethers');
 const fs = require('fs');
 require('dotenv').config();
 
-const contractAddress = '0xAc946D4eb88372446Dd658e358998236577179b7'; // BondNFT
+const contractAddress = '0xc745ffdF5cE0F277a0d42EDD07FaFbE8d57be0F4'; // BondNFT
 const contractABIPath = './script/ABI/BondNFT.json';
 
 const privateKey = process.env.PRIVATE_KEY;
@@ -18,7 +18,7 @@ async function approveNft() {
     const contract = new ethers.Contract(contractAddress, contractABI, wallet);
 
     console.log('Approving NFT...');
-    const toAddress = "0x049fCAB83597C4E6dC2331D945736A3009AE60B7"; // NFT Staking
+    const toAddress = "0x5fc677Bec2ccF1E4fDb3b621AC5ae7CD7AaA7EA5"; // NFT Staking
     const tx = await contract.setApprovalForAll(toAddress, true);
     console.log(`Transaction hash: ${tx.hash}`);
 

@@ -2,25 +2,29 @@ const { ethers } = require('ethers');
 const fs = require('fs');
 require('dotenv').config();
 
-const contractAddress = '0x049fCAB83597C4E6dC2331D945736A3009AE60B7'; // NftStaking
-const contractABIPath = './script/ABI/NFTStakingAndBorrowing.json';
+const contractAddress = '0xc745ffdF5cE0F277a0d42EDD07FaFbE8d57be0F4'; // BondNFT
+const contractABIPath = './script/ABI/BondNFT.json';
 
 const privateKey = process.env.PRIVATE_KEY;
 const rpcUrl = process.env.SEPOLIA_RPC_URL;
 
 const contractABI = JSON.parse(fs.readFileSync(contractABIPath, 'utf8'));
 
-async function whitelistNft() {
+async function mintNft() {
   try {
     const provider = new ethers.JsonRpcProvider(rpcUrl);
     const wallet = new ethers.Wallet(privateKey, provider);
 
     const contract = new ethers.Contract(contractAddress, contractABI, wallet);
 
-    const bondNFT = "0xAc946D4eb88372446Dd658e358998236577179b7";
+    const timestamp = provider.getBlock("latest").timestamp;
 
-    console.log('Whitelisting NFT contract...');
-    const tx = await contract.whitelistNFT(bondNFT, true);
+    const tokenId = "68364407216462399799028636857268510032958042329620656293310648714915379830340";
+
+    console.log('Minting tokens...');
+    // mint to the msg.sender
+    const mintAmount = 10;
+    const tx = await contract.mint(tokenId, mintAmount, ethers.toUtf8Bytes(""));
     console.log(`Transaction hash: ${tx.hash}`);
 
     const receipt = await tx.wait();
@@ -33,4 +37,4 @@ async function whitelistNft() {
   }
 }
 
-whitelistNft();
+mintNft();
