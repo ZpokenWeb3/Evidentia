@@ -24,6 +24,25 @@
   },
   {
     "type": "function",
+    "name": "expectedAPY",
+    "inputs": [
+      {
+        "name": "_staker",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "externalRewardContract",
     "inputs": [],
     "outputs": [
@@ -31,6 +50,19 @@
         "name": "",
         "type": "address",
         "internalType": "contract IExternalRewardContract"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "lastUpdateTime",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
@@ -56,12 +88,43 @@
   },
   {
     "type": "function",
+    "name": "rewardPerTokenStored",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "stake",
     "inputs": [
       {
         "name": "_amount",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "stakeOnBehalfOf",
+    "inputs": [
+      {
+        "name": "_amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "onBehalfOf",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "outputs": [],
@@ -84,12 +147,22 @@
         "internalType": "uint256"
       },
       {
-        "name": "rewardDebt",
+        "name": "rewardPaid",
         "type": "uint256",
         "internalType": "uint256"
       },
       {
-        "name": "depositTime",
+        "name": "userRewardPerTokenPaid",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "rewardsEarned",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "stakeTimestamp",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -111,53 +184,8 @@
   },
   {
     "type": "function",
-    "name": "timeUpdated",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "totalStaked",
     "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "totalTimeWeightedStake",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "userAPY",
-    "inputs": [
-      {
-        "name": "_staker",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
     "outputs": [
       {
         "name": "",
@@ -236,5 +264,26 @@
       }
     ],
     "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "NoRewardsAvailable",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotEnoughStaked",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ZeroAmountNotAllowed",
+    "inputs": []
   }
 ]
