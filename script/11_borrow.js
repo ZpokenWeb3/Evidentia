@@ -19,7 +19,7 @@ async function borrow() {
 
     console.log('Borrowing stables...');
     const amount = 1000_000000;
-    const tx = await contract.borrow(amount);
+    const tx = await contract.borrow(amount, {gasLimit: 500_000});
     console.log(`Transaction hash: ${tx.hash}`);
 
     const receipt = await tx.wait();
