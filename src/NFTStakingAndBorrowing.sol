@@ -35,10 +35,10 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         uint256 debtUpdateTimestamp;
     }
 
-    TotalStats public totalStats;
+    TotalStats internal totalStats;
 
     mapping(address => bool) public whitelistedNFTs;
-    mapping(address => UserStats) public userStats;
+    mapping(address => UserStats) internal userStats;
     mapping(address => mapping(address => mapping(uint256 => uint256))) public userNFTs;
 
     uint256 internal constant YEAR_IN_SECONDS = 31536000; // 365 days
