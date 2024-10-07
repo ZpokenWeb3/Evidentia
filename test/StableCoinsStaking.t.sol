@@ -458,4 +458,78 @@ contract StakingStablesTest is Test {
         assertEq(stakingStables.pendingRewards(client2), 1715707503);
         assertEq(stakingStables.pendingRewards(client3), 2790515371);
     }
+
+    function test_stake_stables_from_NFT_staking() public {
+        owner = address(1);
+        address client1 = address(2);
+        address client2 = address(3);
+        address client3 = address(4);
+
+        vm.startPrank(owner);
+        bondNFT.setAllowedMints(client1, 1, 30);
+        bondNFT.setAllowedMints(client2, 2, 10);
+        bondNFT.setAllowedMints(client3, 3, 20);
+        vm.stopPrank();
+
+        vm.startPrank(client1);
+        bondNFT.mint(1, 30, "");
+        bondNFT.setApprovalForAll(address(nftStaking), true);
+        nftStaking.stakeNFT(address(bondNFT), 1, 30);
+        nftStaking.borrow(0); // client1 borrows all available stables
+        vm.stopPrank();
+
+        vm.startPrank(client2);
+        bondNFT.mint(2, 10, "");
+        bondNFT.setApprovalForAll(address(nftStaking), true);
+        nftStaking.stakeNFT(address(bondNFT), 2, 10);
+        nftStaking.stakeStables(1000_000000);
+        nftStaking.stakeStables(0);
+        vm.stopPrank();
+
+        vm.warp(30 days);
+        vm.roll(2);
+
+        (uint256 staked,,,,) = stakingStables.stakers(client2);
+        console.log("After 30 days...");
+        console.log("Client2 staked : ", staked);
+        console.log("Client2 rewards: ", stakingStables.pendingRewards(client2));
+        console.log("Client2 APY    : ", stakingStables.expectedAPY(client2));
+
+        vm.startPrank(client3);
+        bondNFT.mint(3, 20, "");
+        bondNFT.setApprovalForAll(address(nftStaking), true);
+        nftStaking.stakeNFT(address(bondNFT), 3, 20);
+        nftStaking.stakeStables(0);
+        vm.stopPrank();
+
+        vm.warp(90 days);
+        vm.roll(3);
+
+        console.log("After 90 days...");
+        console.log("Client2 rewards: ", stakingStables.pendingRewards(client2));
+        console.log("Client3 rewards: ", stakingStables.pendingRewards(client3));
+        console.log("Client2 APY    : ", stakingStables.expectedAPY(client2));
+        console.log("Client3 APY    : ", stakingStables.expectedAPY(client3));
+
+        vm.warp(180 days);
+        vm.roll(4);
+
+        console.log("After 180 days...");
+        console.log("Client2 rewards: ", stakingStables.pendingRewards(client2));
+        console.log("Client3 rewards: ", stakingStables.pendingRewards(client3));
+        console.log("Client2 APY    : ", stakingStables.expectedAPY(client2));
+        console.log("Client3 APY    : ", stakingStables.expectedAPY(client3));
+
+        vm.warp(270 days);
+        vm.roll(5);
+
+        console.log("After 270 days...");
+        console.log("Client2 rewards: ", stakingStables.pendingRewards(client2));
+        console.log("Client3 rewards: ", stakingStables.pendingRewards(client3));
+        console.log("Client2 APY    : ", stakingStables.expectedAPY(client2));
+        console.log("Client3 APY    : ", stakingStables.expectedAPY(client3));
+
+        assertEq(stakingStables.pendingRewards(client2), 1715707503);
+        assertEq(stakingStables.pendingRewards(client3), 2790515371);
+    }
 }

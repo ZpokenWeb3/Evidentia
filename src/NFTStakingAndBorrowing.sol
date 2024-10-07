@@ -229,6 +229,27 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
     }
 
     /**
+     * @notice Allows a user to borrow and stake stable coins simultaneously.
+     * @dev This function borrows the stable coins, and stakes the stable coins.
+     * @dev 0 is all available stable coins to borrow.
+     * @param amount_to_stake The amount of stables to stake.
+     */
+    function stakeStables(uint256 amount_to_stake) external {
+        updateUserDebtAndAvailable(msg.sender);
+        updateTotalDebt();
+        uint256 max_borrow = userStats[msg.sender].nominalAvailable - userStats[msg.sender].debt;
+        if (amount_to_stake == 0) {
+            amount_to_stake = max_borrow;
+        }
+        if (amount_to_stake > max_borrow) {
+            revert BorrowAmountExceedsLimit(max_borrow);
+        }
+        _borrow(amount_to_stake, msg.sender);
+        stableToken.approve(STABLES_STAKING_ADDRESS, amount_to_stake);
+        IStableCoinsStaking(STABLES_STAKING_ADDRESS).stakeOnBehalfOf(amount_to_stake, msg.sender);
+    }
+
+    /**
      * @notice Allows a user to unstake an NFT from the contract.
      * @dev This function transfers the NFT back to the user and updates the user's balance.
      * @dev User should have enough NFT balance left as a collateral.
@@ -278,13 +299,13 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
     function borrow(uint256 amount) public {
         updateUserDebtAndAvailable(msg.sender);
         updateTotalDebt();
-
+        uint256 max_borrow = userStats[msg.sender].nominalAvailable - userStats[msg.sender].debt;
         if (amount == 0) {
-            amount = userStats[msg.sender].nominalAvailable - userStats[msg.sender].debt;
+            amount = max_borrow;
         }
 
-        if (amount > userStats[msg.sender].nominalAvailable - userStats[msg.sender].debt) {
-            revert BorrowAmountExceedsLimit(userStats[msg.sender].nominalAvailable - userStats[msg.sender].debt);
+        if (amount > max_borrow) {
+            revert BorrowAmountExceedsLimit(max_borrow);
         }
 
         _borrow(amount, msg.sender);
