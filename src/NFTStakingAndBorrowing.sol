@@ -43,9 +43,9 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
 
     uint256 internal constant YEAR_IN_SECONDS = 31536000; // 365 days
     uint256 internal constant UNIT = 1e18;
-    uint256 internal constant BIPS = 1e4;
-    uint256 public PROTOCOL_YIELD = 1200 * UNIT / BIPS;
-    uint256 public SAFETY_FEE = 500 * UNIT / BIPS;
+    uint256 internal constant BPS = 1e4;
+    uint256 public PROTOCOL_YIELD = 1200 * UNIT / BPS;
+    uint256 public SAFETY_FEE = 500 * UNIT / BPS;
     uint256 public LIQUIDATION_TIME_WINDOW = 45 * 24 * 60 * 60; // 45 days
     uint256 public RewardsTransfered;
     address public STABLES_STAKING_ADDRESS;
@@ -85,12 +85,12 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         whitelistedNFTs[nftAddress] = status;
     }
 
-    function setProtocolYield(uint256 _protocolYieldInBips) external onlyOwner {
-        PROTOCOL_YIELD = _protocolYieldInBips * UNIT / BIPS;
+    function setProtocolYield(uint256 _protocolYieldInBPS) external onlyOwner {
+        PROTOCOL_YIELD = _protocolYieldInBPS * UNIT / BPS;
     }
 
-    function setSafetyFee(uint256 _safetyFeeInBips) external onlyOwner {
-        SAFETY_FEE = _safetyFeeInBips * UNIT / BIPS;
+    function setSafetyFee(uint256 _safetyFeeInBPS) external onlyOwner {
+        SAFETY_FEE = _safetyFeeInBPS * UNIT / BPS;
     }
 
     function setLiquidationTimeWindow(uint256 _timeWindowInSeconds) external onlyOwner {
@@ -271,7 +271,7 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         // Check if user has enough collateral
         if (
             calculateMaxBorrow(totalUnstakeValue, block.timestamp, metadata.expirationTimestamp)
-                > userStats[msg.sender].nominalAvailable - userStats[msg.sender].debt
+                < userStats[msg.sender].nominalAvailable - userStats[msg.sender].debt
         ) {
             revert NotEnoughCollateral(userStats[msg.sender].nominalAvailable - userStats[msg.sender].debt);
         }
