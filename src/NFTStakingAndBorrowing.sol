@@ -191,7 +191,7 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         if (IBondNFT(nftAddress).balanceOf(msg.sender, tokenId) < amount) revert InsufficientNFTBalance();
 
         IBondNFT(nftAddress).safeTransferFrom(msg.sender, address(this), tokenId, amount, "");
-        userNFTs[msg.sender][nftAddress][tokenId] = amount;
+        userNFTs[msg.sender][nftAddress][tokenId] += amount;
 
         IBondNFT.Metadata memory metadata = IBondNFT(nftAddress).getMetaData(tokenId);
 
