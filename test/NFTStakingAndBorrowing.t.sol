@@ -234,8 +234,11 @@ contract NFTStakingAndBorrowingTest is Test {
         vm.warp(30 days);
         vm.roll(3);
         // Client1 makes some staking
-        vm.prank(client1);
+        vm.startPrank(client1);
         nftStaking.stakeNFT(address(bondNFT), 2, 5);
+        nftStaking.unstakeNFT(address(bondNFT), 2, 5);
+        nftStaking.stakeNFT(address(bondNFT), 2, 5);
+        vm.stopPrank();
 
         vm.warp(35 days);
         vm.roll(4);
@@ -251,6 +254,7 @@ contract NFTStakingAndBorrowingTest is Test {
         nftStaking.borrow(borrow_amount);
 
         // User unstakes
+        console.log("Available to borrow: ", nftStaking.userAvailableToBorrow(client1));
         vm.prank(client1);
         nftStaking.unstakeNFT(address(bondNFT), 2, 4);
 

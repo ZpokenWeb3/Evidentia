@@ -271,7 +271,7 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         // Check if user has enough collateral
         if (
             calculateMaxBorrow(totalUnstakeValue, block.timestamp, metadata.expirationTimestamp)
-                < userStats[msg.sender].nominalAvailable - userStats[msg.sender].debt
+                > userStats[msg.sender].nominalAvailable - userStats[msg.sender].debt
         ) {
             revert NotEnoughCollateral(userStats[msg.sender].nominalAvailable - userStats[msg.sender].debt);
         }
