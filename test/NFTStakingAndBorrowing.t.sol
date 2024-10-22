@@ -238,12 +238,14 @@ contract NFTStakingAndBorrowingTest is Test {
         nftStaking.stakeNFT(address(bondNFT), 2, 5);
         nftStaking.unstakeNFT(address(bondNFT), 2, 5);
         nftStaking.stakeNFT(address(bondNFT), 2, 5);
-        vm.stopPrank();
 
         vm.warp(35 days);
         vm.roll(4);
-        vm.prank(client1);
+
+        nftStaking.unstakeNFT(address(bondNFT), 2, 5);
         nftStaking.stakeNFT(address(bondNFT), 2, 5);
+        nftStaking.stakeNFT(address(bondNFT), 2, 5);
+        vm.stopPrank();
 
         NFTStakingAndBorrowing.UserStats memory userStats = nftStaking.getUserStats(client1);
         assertEq(userStats.staked, 9975_000000);
