@@ -239,8 +239,18 @@ contract NFTStakingAndBorrowingTest is Test {
         nftStaking.unstakeNFT(address(bondNFT), 2, 5);
         nftStaking.stakeNFT(address(bondNFT), 2, 5);
 
-        vm.warp(35 days);
+        vm.warp(30 days + 111);
         vm.roll(4);
+        nftStaking.unstakeNFT(address(bondNFT), 2, 5);
+        nftStaking.stakeNFT(address(bondNFT), 2, 5);
+
+        vm.warp(30 days + 178);
+        vm.roll(5);
+        nftStaking.unstakeNFT(address(bondNFT), 2, 5);
+        nftStaking.stakeNFT(address(bondNFT), 2, 5);
+
+        vm.warp(35 days);
+        vm.roll(6);
 
         nftStaking.unstakeNFT(address(bondNFT), 2, 5);
         nftStaking.stakeNFT(address(bondNFT), 2, 5);

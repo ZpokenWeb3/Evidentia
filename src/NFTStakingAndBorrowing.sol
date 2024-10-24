@@ -270,8 +270,9 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
 
         // Check if user has enough collateral
         if (
-            calculateMaxBorrow(totalUnstakeValue, block.timestamp, metadata.expirationTimestamp)
-                > userStats[msg.sender].nominalAvailable - userStats[msg.sender].debt
+            userStats[msg.sender].debt > 0
+                && calculateMaxBorrow(totalUnstakeValue, block.timestamp, metadata.expirationTimestamp)
+                    > userStats[msg.sender].nominalAvailable - userStats[msg.sender].debt
         ) {
             revert NotEnoughCollateral(userStats[msg.sender].nominalAvailable - userStats[msg.sender].debt);
         }
@@ -279,8 +280,16 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         userNFTs[msg.sender][nftAddress][tokenId] -= amount;
 
         userStats[msg.sender].staked -= totalUnstakeValue;
-        userStats[msg.sender].nominalAvailable -=
-            calculateMaxBorrow(totalUnstakeValue, block.timestamp, metadata.expirationTimestamp);
+        if (
+            userStats[msg.sender].nominalAvailable
+                > calculateMaxBorrow(totalUnstakeValue, block.timestamp, metadata.expirationTimestamp)
+        ) {
+            userStats[msg.sender].nominalAvailable -=
+                calculateMaxBorrow(totalUnstakeValue, block.timestamp, metadata.expirationTimestamp);
+        } else {
+            userStats[msg.sender].nominalAvailable = 0;
+        }
+
         totalStats.staked -= totalUnstakeValue;
 
         IBondNFT(nftAddress).safeTransferFrom(address(this), msg.sender, tokenId, amount, "");
