@@ -376,7 +376,7 @@
     "name": "setProtocolYield",
     "inputs": [
       {
-        "name": "_protocolYieldInBips",
+        "name": "_protocolYieldInBPS",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -389,7 +389,7 @@
     "name": "setSafetyFee",
     "inputs": [
       {
-        "name": "_safetyFeeInBips",
+        "name": "_safetyFeeInBPS",
         "type": "uint256",
         "internalType": "uint256"
       }
