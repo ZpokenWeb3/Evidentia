@@ -31,6 +31,9 @@ contract BondNFT is ERC1155, Ownable, ERC1155Supply {
     // Mapping to track how many mints have been used per user per token ID
     mapping(address => mapping(uint256 => uint256)) public mintedPerUser;
 
+    string public name = "BondNFT";
+    string public symbol = "BNFT";
+
     constructor(address initialOwner, string memory _uri) ERC1155(_uri) Ownable(initialOwner) {}
 
     function setURI(string memory newuri) public onlyOwner {
