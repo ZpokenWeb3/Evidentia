@@ -2,26 +2,25 @@ const { ethers } = require('ethers');
 const fs = require('fs');
 require('dotenv').config();
 
-const contractAddress = '0xbDBc6f32699c39DF208595BfC7Dfb96C6F837aBE'; // StableCoins
-const contractABIPath = './script/ABI/StableBondCoins.json';
+const contractAddress = process.env.NFT_STAKING_ADDRESS; // NftStaking
+const contractABIPath = './script/ABI/NFTStakingAndBorrowing.json';
 
-const newMinterAddress = '0x5fc677Bec2ccF1E4fDb3b621AC5ae7CD7AaA7EA5'; // NFT Staking
 const privateKey = process.env.PRIVATE_KEY;
 const rpcUrl = process.env.SEPOLIA_RPC_URL;
 
 const contractABI = JSON.parse(fs.readFileSync(contractABIPath, 'utf8'));
 
-async function grantMinterRole() {
+async function setStablesStaking() {
   try {
     const provider = new ethers.JsonRpcProvider(rpcUrl);
     const wallet = new ethers.Wallet(privateKey, provider);
 
     const contract = new ethers.Contract(contractAddress, contractABI, wallet);
 
-    const minterRole = ethers.keccak256(ethers.toUtf8Bytes('MINTER_ROLE'));
+    const stablesStakingAddress = process.env.STABLES_STAKING_ADDRESS;
 
-    console.log('Granting minter role...');
-    const tx = await contract.grantRole(minterRole, newMinterAddress);
+    console.log('Setting stables staking contract...');
+    const tx = await contract.setStablesStakingAddress(stablesStakingAddress);
     console.log(`Transaction hash: ${tx.hash}`);
 
     const receipt = await tx.wait();
@@ -34,4 +33,4 @@ async function grantMinterRole() {
   }
 }
 
-grantMinterRole();
+setStablesStaking();

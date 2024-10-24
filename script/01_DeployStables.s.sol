@@ -8,7 +8,7 @@ import {console} from "forge-std/console.sol";
 contract DeployStables is Script {
     function run() external returns (StableBondCoins) {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        address owner = 0x7Df601525A53AbaD47C69E78ae151b6F96c59097;
+        address owner = vm.envAddress("OWNER");
         vm.startBroadcast(deployerPrivateKey);
         StableBondCoins stablesContract = new StableBondCoins(owner, owner);
         vm.stopBroadcast();

@@ -8,7 +8,7 @@ import {console} from "forge-std/console.sol";
 contract DeployNftStaking is Script {
     function run() external returns (NFTStakingAndBorrowing) {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        address stableCoinsAddress = 0xbDBc6f32699c39DF208595BfC7Dfb96C6F837aBE;
+        address stableCoinsAddress = vm.envAddress("STABLES_ADDRESS");
         vm.startBroadcast(deployerPrivateKey);
         NFTStakingAndBorrowing nftStaking = new NFTStakingAndBorrowing(stableCoinsAddress);
         vm.stopBroadcast();
