@@ -375,11 +375,20 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         if (stableToken.balanceOf(msg.sender) < amount) revert InsufficientBalanceToRepay();
 
         stableToken.transferFrom(msg.sender, address(this), amount);
-        userStats[msg.sender].debt -= amount;
-        userStats[msg.sender].borrowed -= amount;
 
-        totalStats.borrowed -= amount;
+        userStats[msg.sender].debt -= amount;
+        if (userStats[msg.sender].borrowed > amount) {
+            userStats[msg.sender].borrowed -= amount;
+        } else {
+            userStats[msg.sender].borrowed = 0;
+        }
+
         totalStats.debt -= amount;
+        if (totalStats.borrowed > amount) {
+            totalStats.borrowed -= amount;
+        } else {
+            totalStats.borrowed = 0;
+        }
 
         emit Repaid(msg.sender, amount);
     }
