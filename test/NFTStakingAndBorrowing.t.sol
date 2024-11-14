@@ -140,7 +140,7 @@ contract NFTStakingAndBorrowingTest is Test {
         assertEq(userStats.nominalAvailable, 8989_596464);
         assertEq(userStats.borrowed, 0);
         assertEq(userStats.debt, 0);
-        assertEq(8989_596464 + 3 - nftStaking.userAvailableToBorrow(client1)  < 5, true);
+        assertEq(8989_596464 + 3 - nftStaking.userAvailableToBorrow(client1) < 5, true);
     }
 
     function test_small_amounts() public {

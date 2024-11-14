@@ -152,14 +152,4 @@ contract StableCoinsStaking {
 
         return ((user.stakedAmount * rewardPerTokenDelta) / 1e18) + user.rewardsEarned;
     }
-
-    function expectedAPY(address _staker) external view returns (uint256) {
-        StakerInfo storage user = stakers[_staker];
-        if (user.stakedAmount == 0) {
-            return 0;
-        }
-        uint256 stakerDuration = block.timestamp - user.stakeTimestamp;
-        return YEAR_IN_SECONDS * (pendingRewards(_staker) + user.rewardsEarned) * 10000
-            / (user.stakedAmount * stakerDuration);
-    }
 }
