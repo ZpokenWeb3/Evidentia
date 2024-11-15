@@ -288,11 +288,11 @@ contract NFTStakingAndBorrowingTest is Test {
         // Client1 makes some staking
         vm.startPrank(client1);
         nftStaking.stakeNFT(address(bondNFT), 2, 5);
-        assertEq(nftStaking.userAvailableToUnstake(client1,address(bondNFT), 2), 5);
+        assertEq(nftStaking.userAvailableToUnstake(client1, address(bondNFT), 2), 5);
         nftStaking.unstakeNFT(address(bondNFT), 2, 5);
-        assertEq(nftStaking.userAvailableToUnstake(client1,address(bondNFT), 2), 0);
+        assertEq(nftStaking.userAvailableToUnstake(client1, address(bondNFT), 2), 0);
         nftStaking.stakeNFT(address(bondNFT), 2, 5);
-        assertEq(nftStaking.userAvailableToUnstake(client1,address(bondNFT), 2), 5);
+        assertEq(nftStaking.userAvailableToUnstake(client1, address(bondNFT), 2), 5);
 
         vm.warp(30 days + 111);
         vm.roll(4);
@@ -301,14 +301,14 @@ contract NFTStakingAndBorrowingTest is Test {
 
         vm.warp(30 days + 178);
         vm.roll(5);
-        assertEq(nftStaking.userAvailableToUnstake(client1,address(bondNFT), 2), 5);
+        assertEq(nftStaking.userAvailableToUnstake(client1, address(bondNFT), 2), 5);
         nftStaking.unstakeNFT(address(bondNFT), 2, 5);
         nftStaking.stakeNFT(address(bondNFT), 2, 5);
 
         vm.warp(35 days);
         vm.roll(6);
 
-        assertEq(nftStaking.userAvailableToUnstake(client1,address(bondNFT), 2), 5);
+        assertEq(nftStaking.userAvailableToUnstake(client1, address(bondNFT), 2), 5);
         nftStaking.unstakeNFT(address(bondNFT), 2, 5);
         nftStaking.stakeNFT(address(bondNFT), 2, 5);
         nftStaking.stakeNFT(address(bondNFT), 2, 5);
@@ -324,7 +324,7 @@ contract NFTStakingAndBorrowingTest is Test {
 
         // User unstakes
         console.log("Available to borrow: ", nftStaking.userAvailableToBorrow(client1));
-        assertEq(nftStaking.userAvailableToUnstake(client1,address(bondNFT), 2), 5);
+        assertEq(nftStaking.userAvailableToUnstake(client1, address(bondNFT), 2), 5);
         vm.prank(client1);
         nftStaking.unstakeNFT(address(bondNFT), 2, 4);
 
@@ -351,22 +351,21 @@ contract NFTStakingAndBorrowingTest is Test {
         vm.warp(30 days);
         vm.roll(3);
         nftStaking.stakeNFT(address(bondNFT), 2, 10);
-        assertEq(nftStaking.userAvailableToUnstake(client1,address(bondNFT), 2), 10);
+        assertEq(nftStaking.userAvailableToUnstake(client1, address(bondNFT), 2), 10);
 
         vm.warp(30 days + 111);
         vm.roll(4);
 
         uint256 borrow_amount = nftStaking.userAvailableToBorrow(client1);
         nftStaking.borrow(borrow_amount - 10);
-        assertEq(nftStaking.userAvailableToUnstake(client1,address(bondNFT), 2), 0);
+        assertEq(nftStaking.userAvailableToUnstake(client1, address(bondNFT), 2), 0);
 
-        
         nftStaking.stakeNFT(address(bondNFT), 3, 10);
-        assertEq(nftStaking.userAvailableToUnstake(client1,address(bondNFT), 2), 10);
-        assertEq(nftStaking.userAvailableToUnstake(client1,address(bondNFT), 3), 10);
+        assertEq(nftStaking.userAvailableToUnstake(client1, address(bondNFT), 2), 10);
+        assertEq(nftStaking.userAvailableToUnstake(client1, address(bondNFT), 3), 10);
 
         nftStaking.unstakeNFT(address(bondNFT), 2, 10);
-        assertEq(nftStaking.userAvailableToUnstake(client1,address(bondNFT), 3), 0);
+        assertEq(nftStaking.userAvailableToUnstake(client1, address(bondNFT), 3), 0);
     }
 
     function test_liquidate_case_01() public {
@@ -393,10 +392,10 @@ contract NFTStakingAndBorrowingTest is Test {
         vm.startPrank(client1);
         nftStaking.stakeNFT(address(bondNFT), 2, 10);
         console.log("Minted Stables:  ", stableBondCoins.balanceOf(address(nftStaking)));
-        assertEq(nftStaking.userAvailableToUnstake(client1,address(bondNFT), 2), 10);
+        assertEq(nftStaking.userAvailableToUnstake(client1, address(bondNFT), 2), 10);
         uint256 borrow_amount = nftStaking.userAvailableToBorrow(client1) / 2;
         nftStaking.borrow(borrow_amount);
-        assertEq(nftStaking.userAvailableToUnstake(client1,address(bondNFT), 2), 5);
+        assertEq(nftStaking.userAvailableToUnstake(client1, address(bondNFT), 2), 5);
         vm.stopPrank();
 
         assertEq(stableBondCoins.balanceOf(client1), borrow_amount);
