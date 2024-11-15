@@ -173,6 +173,37 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         }
     }
 
+    function userAvailableToUnstake(address userAddress, address nftAddress, uint256 tokenId) public view returns (uint256) {
+
+        uint256 amount = userNFTs[userAddress][nftAddress][tokenId];
+
+        if (amount == 0) {
+            return 0;
+        }
+
+        IBondNFT.Metadata memory metadata = IBondNFT(nftAddress).getMetaData(tokenId);
+        uint256 unstakeValue = (metadata.value + metadata.couponValue) * (UNIT - SAFETY_FEE) / UNIT;
+
+        UserStats memory updatedUserStats = getUserStats(userAddress);
+
+        if (updatedUserStats.nominalAvailable <= updatedUserStats.debt) {
+            return 0;
+        }
+
+        if (updatedUserStats.debt == 0) {
+            return amount;
+        }
+
+        uint256 availableToUnstake = (updatedUserStats.nominalAvailable - updatedUserStats.debt) 
+            / calculateMaxBorrow(unstakeValue, block.timestamp, metadata.expirationTimestamp);
+        
+        if (amount > availableToUnstake) {
+            return availableToUnstake;
+        } else {
+            return amount;
+        }
+    }
+
     /*//////////////////////////////////////////////////////////////
                             MAIN FUNCTIONS
     //////////////////////////////////////////////////////////////*/
