@@ -15,7 +15,6 @@ interface IMintableERC20 is IERC20 {
 
 /**
  * @title NFTStakingAndBorrowing
- * @author [Dmytro Birikov]
  * @notice This contract allows users to stake NFTs and borrow stable tokens against them.
  * @dev This contract is designed to work with the BondNFT contract and the StableBondCoins contract with minter role.
  */
@@ -46,7 +45,7 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
     uint256 internal constant BPS = 1e4;
     uint256 public PROTOCOL_YIELD = 1200 * UNIT / BPS;
     uint256 public SAFETY_FEE = 500 * UNIT / BPS;
-    uint256 public LIQUIDATION_TIME_WINDOW = 45 * 24 * 60 * 60; // 45 days
+    uint256 public LIQUIDATION_TIME_WINDOW = 45 days; // 45 days
     uint256 public RewardsTransfered;
     address public STABLES_STAKING_ADDRESS;
 
