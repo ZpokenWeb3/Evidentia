@@ -141,20 +141,20 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
     }
 
     function calculateMaxBorrow(uint256 totalAmount, uint256 fromTime, uint256 toTime) public view returns (uint256) {
-        totalAmount = totalAmount * 1e18;
+        totalAmount = totalAmount * UNIT;
         UD60x18 timeDelta = ud(toTime - fromTime);
         UD60x18 maxBorrowLog2 =
             ud(totalAmount).log2() - (timeDelta / ud(YEAR_IN_SECONDS)) * (ud(UNIT + PROTOCOL_YIELD)).log2();
 
-        return maxBorrowLog2.exp2().intoUint256() / 1e18;
+        return maxBorrowLog2.exp2().intoUint256() / UNIT;
     }
 
     function calculateDebt(uint256 borrowedAmount, uint256 fromTime, uint256 toTime) public view returns (uint256) {
-        borrowedAmount = borrowedAmount * 1e18;
+        borrowedAmount = borrowedAmount * UNIT;
         UD60x18 timeDelta = ud(toTime - fromTime);
         UD60x18 debtLog2 =
             (timeDelta / ud(YEAR_IN_SECONDS)) * (ud(UNIT + PROTOCOL_YIELD)).log2() + ud(borrowedAmount).log2();
-        return debtLog2.exp2().intoUint256() / 1e18;
+        return debtLog2.exp2().intoUint256() / UNIT;
     }
 
     function userAvailableToBorrow(address userAddress) public view returns (uint256) {
