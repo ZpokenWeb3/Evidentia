@@ -17,3 +17,11 @@ Notes.txt
 
 # Dotenv file
 .env
+
+# IDE
+.idea/
+
+# Coverage
+.gas-snapshot
+lcov.info
+coverage_report/

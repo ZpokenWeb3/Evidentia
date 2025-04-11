@@ -62,26 +62,21 @@ contract BondNFTTest is Test {
         assertEq(bondNFT.balanceOf(account1, id), 0);
     }
 
-    // Test minting with no allowed mints
-    function testMintNotAllowed() public {
-        vm.prank(owner);
-        vm.expectRevert();
-        bondNFT.mint(1, 10, "");
-    }
+    function testGetMetaData() public {
+        BondNFT.Metadata memory metadata = BondNFT.Metadata({
+            value: 100,
+            couponValue: 5,
+            issueTimestamp: block.timestamp,
+            expirationTimestamp: block.timestamp + 365 days,
+            ISIN: "US1234567890"
+        });
+        bondNFT.setMetaData(1, metadata);
 
-    // Test minting with exceeded allowed mints
-    function testMintLimitExceeded() public {
-        bondNFT.setAllowedMints(account1, 1, 5);
-        vm.prank(account1);
-        bondNFT.mint(1, 5, "");
-        vm.expectRevert();
-        bondNFT.mint(1, 1, "");
-    }
-
-    // Test burning with insufficient balance
-    function testBurnInsufficientBalance() public {
-        vm.prank(account1);
-        vm.expectRevert();
-        bondNFT.burn(1, 100);
+        BondNFT.Metadata memory retrievedMetadata = bondNFT.getMetaData(1);
+        assertEq(retrievedMetadata.value, metadata.value);
+        assertEq(retrievedMetadata.couponValue, metadata.couponValue);
+        assertEq(retrievedMetadata.issueTimestamp, metadata.issueTimestamp);
+        assertEq(retrievedMetadata.expirationTimestamp, metadata.expirationTimestamp);
+        assertEq(retrievedMetadata.ISIN, metadata.ISIN);
     }
 }

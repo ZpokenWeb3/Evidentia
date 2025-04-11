@@ -5,6 +5,7 @@ import {Test, console} from "forge-std/Test.sol";
 import {NFTStakingAndBorrowing} from "../src/NFTStakingAndBorrowing.sol";
 import {StableBondCoins} from "../src/StableBondCoins.sol";
 import {BondNFT} from "../src/BondNFT.sol";
+import {StableCoinsStaking} from "../src/StableCoinsStaking.sol";
 
 contract NFTStakingAndBorrowingTest is Test {
     NFTStakingAndBorrowing public nftStaking;
@@ -508,5 +509,94 @@ contract NFTStakingAndBorrowingTest is Test {
 
         assertEq(stableBondCoins.balanceOf(client1), 13359_374999);
         assertEq(stableBondCoins.balanceOf(client2), 9851_880762);
+    }
+
+    function test_getRewardAmount() public {
+        vm.startPrank(owner);
+        StableCoinsStaking stableStaking = new StableCoinsStaking(address(stableBondCoins), address(nftStaking));
+        nftStaking.setStablesStakingAddress(address(stableStaking));
+        vm.stopPrank();
+
+        vm.prank(owner);
+        nftStaking.stakeNFT(address(bondNFT), 1, 10);
+
+        vm.startPrank(owner);
+        stableBondCoins.approve(address(nftStaking), type(uint256).max);
+        uint256 borrowAmount = 1000_000000;
+        nftStaking.borrow(borrowAmount);
+        vm.stopPrank();
+
+        // Fast forward time to accumulate interest
+        vm.warp(30 days);
+
+        uint256 rewardAmount = nftStaking.getRewardAmount();
+        assertGt(rewardAmount, 0, "Reward amount should be greater than 0");
+
+        // Claim rewards through stableStaking contract
+        vm.prank(address(stableStaking));
+        uint256 claimedRewards = nftStaking.getRewards();
+
+        assertEq(claimedRewards, rewardAmount);
+        assertEq(nftStaking.getRewardAmount(), 0);
+    }
+
+    function test_edge_cases() public {
+        // Test for small amounts
+        vm.startPrank(owner);
+        nftStaking.stakeNFT(address(bondNFT), 1, 1);
+
+        // Borrow a very small amount (1)
+        uint256 initialBorrow = 1;
+        nftStaking.borrow(initialBorrow);
+
+        assertEq(stableBondCoins.balanceOf(owner), initialBorrow);
+
+        vm.warp(30 days);
+
+        stableBondCoins.approve(address(nftStaking), 1000_000000);
+        nftStaking.repay(0); // full debt
+
+        NFTStakingAndBorrowing.UserStats memory userStats = nftStaking.getUserStats(owner);
+        assertEq(userStats.debt, 0);
+
+        vm.stopPrank();
+    }
+
+    function test_stakeNFTandStables() public {
+        vm.startPrank(owner);
+        StableCoinsStaking stableStaking = new StableCoinsStaking(address(stableBondCoins), address(nftStaking));
+        nftStaking.setStablesStakingAddress(address(stableStaking));
+        vm.stopPrank();
+
+        vm.startPrank(owner);
+        nftStaking.stakeNFT(address(bondNFT), 1, 5);
+
+        stableBondCoins.approve(address(nftStaking), type(uint256).max);
+        nftStaking.stakeNFTandStables(address(bondNFT), 1, 5);
+
+        (uint256 stakedAmount,,,,) = stableStaking.stakers(owner);
+        assertGt(stakedAmount, 0, "Staked amount should be > 0");
+
+        vm.stopPrank();
+    }
+
+    function test_stakeStables_with_amount() public {
+        vm.startPrank(owner);
+        StableCoinsStaking stableStaking = new StableCoinsStaking(address(stableBondCoins), address(nftStaking));
+        nftStaking.setStablesStakingAddress(address(stableStaking));
+        vm.stopPrank();
+
+        vm.startPrank(owner);
+        nftStaking.stakeNFT(address(bondNFT), 1, 10);
+
+        stableBondCoins.approve(address(nftStaking), type(uint256).max);
+
+        uint256 stakeAmount = 1000_000000;
+        nftStaking.stakeStables(stakeAmount);
+
+        (uint256 stakedAmount,,,,) = stableStaking.stakers(owner);
+        assertEq(stakedAmount, stakeAmount);
+
+        vm.stopPrank();
     }
 }
