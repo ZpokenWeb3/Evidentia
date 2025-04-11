@@ -58,6 +58,7 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
     event Liquidated(
         address indexed user, address liquidator, address indexed nftAddress, uint256 tokenId, uint256 amount
     );
+    event StablesStakingAddressUpdated(address indexed oldAddress, address indexed newAddress);
 
     // Custom errors
     error NFTNotWhitelisted();
@@ -66,13 +67,15 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
     error InsufficientBalanceToRepay();
     error NotEnoughCollateral(uint256);
     error TooEarlyToLiquidate();
+    error OnlyStableStakingContract();
+    error ZeroAddress();
 
     constructor(address _stableToken) ERC1155Holder() Ownable(msg.sender) {
         stableToken = IMintableERC20(_stableToken);
     }
 
     modifier onlyStablesStaking() {
-        require(msg.sender == STABLES_STAKING_ADDRESS, "Only Stables Staking contract");
+        if (msg.sender != STABLES_STAKING_ADDRESS) revert OnlyStableStakingContract();
         _;
     }
 
@@ -97,7 +100,10 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
     }
 
     function setStablesStakingAddress(address _address) external onlyOwner {
+        if (_address == address(0)) revert ZeroAddress();
+        address oldAddress = STABLES_STAKING_ADDRESS;
         STABLES_STAKING_ADDRESS = _address;
+        emit StablesStakingAddressUpdated(oldAddress, STABLES_STAKING_ADDRESS);
     }
 
     /*//////////////////////////////////////////////////////////////

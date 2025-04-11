@@ -197,7 +197,13 @@ contract NFTStakingAndBorrowingNegativeTest is Test {
 
     function test_onlyStablesStaking_getRewards() public {
         vm.prank(client1);
-        vm.expectRevert("Only Stables Staking contract");
+        vm.expectRevert(NFTStakingAndBorrowing.OnlyStableStakingContract.selector);
         nftStaking.getRewards();
+    }
+
+    function test_zeroAddressStableStaking() public {
+        vm.expectRevert(NFTStakingAndBorrowing.ZeroAddress.selector);
+        vm.prank(owner);
+        nftStaking.setStablesStakingAddress(address(0));
     }
 }
