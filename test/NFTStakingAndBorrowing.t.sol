@@ -14,6 +14,12 @@ contract NFTStakingAndBorrowingTest is Test {
     address public owner;
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
+    uint256 internal constant YEAR_IN_SECONDS = 31536000; // 365 days
+    uint256 internal constant START_TIME = 1706745600;
+    uint256 internal constant UNIT = 1e18;
+    uint256 internal constant BIPS = 1e4;
+    uint256 internal constant PROTOCOL_YIELD = 1200 * UNIT / BIPS;
+
     function setUp() public {
         owner = address(1);
         vm.startPrank(owner);
@@ -598,5 +604,131 @@ contract NFTStakingAndBorrowingTest is Test {
         assertEq(stakedAmount, stakeAmount);
 
         vm.stopPrank();
+    }
+
+    function testFuzz_MaxBorrow(uint128 x) public view {
+        uint256 x256 = (uint256(x) + uint256(2)) * 1e18;
+        uint256 maxBorrow = nftStaking.calculateMaxBorrow(x256, START_TIME, START_TIME + YEAR_IN_SECONDS);
+        uint256 diff = 0;
+        uint256 borrow_debt = maxBorrow * PROTOCOL_YIELD / UNIT;
+        if ((x256 - borrow_debt) >= maxBorrow) {
+            diff = (x256 - borrow_debt) - maxBorrow;
+        } else {
+            diff = maxBorrow - (x256 - borrow_debt);
+        }
+
+        assertGt(maxBorrow / 5e16, diff);
+    }
+
+    function testFuzz_MaxBorrow_2years(uint128 x) public view {
+        uint256 x256 = (uint256(x) + uint256(2)) * 1e18;
+        uint256 maxBorrow = nftStaking.calculateMaxBorrow(x256, START_TIME, START_TIME + 2 * YEAR_IN_SECONDS);
+        uint256 diff = 0;
+        uint256 first_year_debt = maxBorrow * PROTOCOL_YIELD / UNIT;
+        uint256 second_year_debt = (first_year_debt + maxBorrow) * PROTOCOL_YIELD / UNIT;
+
+        if ((x256 - first_year_debt - second_year_debt) >= maxBorrow) {
+            diff = (x256 - first_year_debt - second_year_debt) - maxBorrow;
+        } else {
+            diff = maxBorrow - (x256 - first_year_debt - second_year_debt);
+        }
+
+        assertGt(maxBorrow / 5e16, diff);
+    }
+
+    function testFuzz_Debt(uint128 x) public view {
+        uint256 x256 = (uint256(x) + uint256(2)) * 1e18;
+        uint256 debt = nftStaking.calculateDebt(x256, START_TIME, START_TIME + YEAR_IN_SECONDS);
+        uint256 diff = 0;
+        if ((x256 + x256 * PROTOCOL_YIELD / UNIT) >= debt) {
+            diff = (x256 + x256 * PROTOCOL_YIELD / UNIT) - debt;
+        } else {
+            diff = debt - (x256 + x256 * PROTOCOL_YIELD / UNIT);
+        }
+
+        assertGt(debt / 3e16, diff);
+    }
+
+    function testFuzz_Debt_2years(uint128 x) public view {
+        uint256 x256 = (uint256(x) + uint256(2)) * 1e18;
+        uint256 debt = nftStaking.calculateDebt(x256, START_TIME, START_TIME + 2 * YEAR_IN_SECONDS);
+        uint256 diff = 0;
+        uint256 first_year_debt = x256 + x256 * PROTOCOL_YIELD / UNIT;
+        uint256 second_year_debt = first_year_debt + first_year_debt * PROTOCOL_YIELD / UNIT;
+        if (second_year_debt >= debt) {
+            diff = second_year_debt - debt;
+        } else {
+            diff = debt - second_year_debt;
+        }
+
+        assertGt(debt / 3e16, diff);
+    }
+
+    function testFuzz_MaxBorrow_1month(uint128 x) public view {
+        uint256 x256 = (uint256(x) + uint256(2)) * 1e18;
+        uint256 month_in_seconds = YEAR_IN_SECONDS / 12;
+        uint256 month_yield = 9488792934583 * UNIT / (BIPS * 1e11); // (1.12)**(1/12)
+        uint256 maxBorrow = nftStaking.calculateMaxBorrow(x256, START_TIME, START_TIME + month_in_seconds);
+        uint256 diff = 0;
+        uint256 month_debt = maxBorrow * month_yield / UNIT;
+
+        if ((x256 - month_debt) >= maxBorrow) {
+            diff = (x256 - month_debt) - maxBorrow;
+        } else {
+            diff = maxBorrow - (x256 - month_debt);
+        }
+
+        assertGt(maxBorrow / 1e16, diff);
+    }
+
+    function testFuzz_MaxBorrow_2months(uint128 x) public view {
+        uint256 x256 = (uint256(x) + uint256(2)) * 1e18;
+        uint256 month_in_seconds = YEAR_IN_SECONDS / 12;
+        uint256 month_yield = 9488792934583 * UNIT / (BIPS * 1e11); // (1.12)**(1/12)
+        uint256 maxBorrow = nftStaking.calculateMaxBorrow(x256, START_TIME, START_TIME + 2 * month_in_seconds);
+        uint256 diff = 0;
+        uint256 first_month_debt = maxBorrow * month_yield / UNIT;
+        uint256 second_month_debt = (maxBorrow + first_month_debt) * month_yield / UNIT;
+
+        if ((x256 - first_month_debt - second_month_debt) >= maxBorrow) {
+            diff = (x256 - first_month_debt - second_month_debt) - maxBorrow;
+        } else {
+            diff = maxBorrow - (x256 - first_month_debt - second_month_debt);
+        }
+
+        assertGt(maxBorrow / 1e16, diff);
+    }
+
+    function testFuzz_Debt_1month(uint128 x) public view {
+        uint256 x256 = (uint256(x) + uint256(2)) * 1e18;
+        uint256 month_in_seconds = YEAR_IN_SECONDS / 12;
+        uint256 month_yield = 9488792934583 * UNIT / (BIPS * 1e11); // (1.12)**(1/12)
+        uint256 debt = nftStaking.calculateDebt(x256, START_TIME, START_TIME + month_in_seconds);
+        uint256 diff = 0;
+        uint256 first_month_debt = x256 + x256 * month_yield / UNIT;
+        if (first_month_debt >= debt) {
+            diff = first_month_debt - debt;
+        } else {
+            diff = debt - first_month_debt;
+        }
+
+        assertGt(debt / 1e16, diff);
+    }
+
+    function testFuzz_Debt_2month(uint128 x) public view {
+        uint256 x256 = (uint256(x) + uint256(2)) * 1e18;
+        uint256 month_in_seconds = YEAR_IN_SECONDS / 12;
+        uint256 month_yield = 9488792934583 * UNIT / (BIPS * 1e11); // (1.12)**(1/12)
+        uint256 debt = nftStaking.calculateDebt(x256, START_TIME, START_TIME + 2 * month_in_seconds);
+        uint256 diff = 0;
+        uint256 first_month_debt = x256 + x256 * month_yield / UNIT;
+        uint256 second_month_debt = first_month_debt + first_month_debt * month_yield / UNIT;
+        if (second_month_debt >= debt) {
+            diff = second_month_debt - debt;
+        } else {
+            diff = debt - second_month_debt;
+        }
+
+        assertGt(debt / 1e16, diff);
     }
 }
