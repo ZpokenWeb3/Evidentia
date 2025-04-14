@@ -731,4 +731,48 @@ contract NFTStakingAndBorrowingTest is Test {
 
         assertGt(debt / 1e16, diff);
     }
+
+    function test_total_borrow_for_many_users() public {
+        owner = address(1);
+        uint256 number_of_users = 100;
+
+        vm.roll(1);
+        vm.warp(1);
+
+        for (uint256 i = 0; i < number_of_users; i++) {
+            address client = address(uint160(i+1000));
+            vm.prank(owner);
+            bondNFT.setAllowedMints(client, 1, 10);
+
+            vm.startPrank(client);
+            bondNFT.mint(1, 10, "");
+            bondNFT.setApprovalForAll(address(nftStaking), true);
+            nftStaking.stakeNFT(address(bondNFT), 1, 10);
+            nftStaking.borrow(0);
+            vm.stopPrank();
+        }
+
+        NFTStakingAndBorrowing.TotalStats memory totalStats = nftStaking.getTotalStats();
+        assertEq(totalStats.staked, number_of_users * 9_975_000000);
+        assertEq(totalStats.borrowed, number_of_users * 8_906_250000);
+        assertEq(totalStats.debt, number_of_users * 8_906_250000);
+
+        vm.roll(12345);
+        vm.warp(1 + YEAR_IN_SECONDS);
+
+        totalStats = nftStaking.getTotalStats();
+        assertEq(totalStats.staked, number_of_users * 9_975_000000);
+        assertEq(totalStats.borrowed, number_of_users * 8_906_250000);
+        assertEq(totalStats.debt, number_of_users * 9_975_000000);
+
+        // Sum of the Debt per each user
+        NFTStakingAndBorrowing.UserStats memory userStats;
+        uint256 total_user_debt;
+        for (uint256 i = 0; i < number_of_users; i++) {
+            address client = address(uint160(i+1000));
+            userStats = nftStaking.getUserStats(client);
+            total_user_debt += userStats.debt;
+        }
+        assertEq(totalStats.debt, total_user_debt);
+    }
 }
