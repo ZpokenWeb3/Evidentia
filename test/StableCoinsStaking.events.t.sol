@@ -10,7 +10,7 @@ contract MockReward {
     function getRewardAmount() external pure returns (uint256) {
         return 0;
     }
-    
+
     function getRewards() external pure returns (uint256) {
         return 0;
     }
@@ -31,7 +31,7 @@ contract StableCoinsStakingEventsTest is Test {
     event Staked(address indexed user, uint256 amount);
     event Withdrawn(address indexed user, uint256 amount);
     event RewardClaimed(address indexed user, uint256 reward);
-    
+
     // Custom errors
     error NoRewardsAvailable();
 
@@ -42,58 +42,58 @@ contract StableCoinsStakingEventsTest is Test {
 
         vm.startPrank(owner);
         stableBondCoins = new StableBondCoins(owner, owner);
-        
+
         MockReward mockReward = new MockReward();
         staking = new StableCoinsStaking(address(stableBondCoins), address(mockReward));
-        
+
         stableBondCoins.grantRole(MINTER_ROLE, owner);
-        
+
         stableBondCoins.mint(user1, 1000_000000);
         stableBondCoins.mint(user2, 1000_000000);
         vm.stopPrank();
-        
+
         vm.prank(user1);
         stableBondCoins.approve(address(staking), type(uint256).max);
-        
+
         vm.prank(user2);
         stableBondCoins.approve(address(staking), type(uint256).max);
     }
 
     function test_StakedEvent() public {
         uint256 stakeAmount = 100_000000;
-        
+
         vm.expectEmit(true, false, false, true);
         emit Staked(user1, stakeAmount);
-        
+
         vm.prank(user1);
         staking.stake(stakeAmount);
-        
+
         (uint256 stakedAmount,,,,) = staking.stakers(user1);
         assertEq(stakedAmount, stakeAmount);
         assertEq(staking.totalStaked(), stakeAmount);
     }
-    
+
     function test_StakedOnBehalfOfEvent() public {
         uint256 stakeAmount = 100_000000;
-        
+
         vm.expectEmit(true, false, false, true);
         emit Staked(user2, stakeAmount);
-        
+
         vm.prank(user1);
         staking.stakeOnBehalfOf(stakeAmount, user2);
-        
+
         (uint256 stakedAmount,,,,) = staking.stakers(user2);
         assertEq(stakedAmount, stakeAmount);
         assertEq(staking.totalStaked(), stakeAmount);
     }
-    
+
     function test_MultipleStakes() public {
         vm.prank(user1);
         staking.stake(50_000000);
-        
+
         vm.prank(user1);
         staking.stake(30_000000);
-        
+
         (uint256 stakedAmount,,,,) = staking.stakers(user1);
         assertEq(stakedAmount, 80_000000);
     }
@@ -101,33 +101,33 @@ contract StableCoinsStakingEventsTest is Test {
     function test_WithdrawnEvent() public {
         uint256 stakeAmount = 100_000000;
         uint256 withdrawAmount = 50_000000;
-        
+
         vm.prank(user1);
         staking.stake(stakeAmount);
-        
+
         vm.expectEmit(true, false, false, true);
         emit Withdrawn(user1, withdrawAmount);
-        
+
         vm.prank(user1);
         staking.withdraw(withdrawAmount);
-        
+
         (uint256 stakedAmount,,,,) = staking.stakers(user1);
         assertEq(stakedAmount, stakeAmount - withdrawAmount);
         assertEq(staking.totalStaked(), stakeAmount - withdrawAmount);
     }
-    
+
     function test_FullWithdrawalEvent() public {
         uint256 stakeAmount = 100_000000;
-        
+
         vm.prank(user1);
         staking.stake(stakeAmount);
-        
+
         vm.expectEmit(true, false, false, true);
         emit Withdrawn(user1, stakeAmount);
-        
+
         vm.prank(user1);
         staking.withdraw(stakeAmount);
-        
+
         (uint256 stakedAmount,,,,) = staking.stakers(user1);
         assertEq(stakedAmount, 0);
         assertEq(staking.totalStaked(), 0);
@@ -135,12 +135,12 @@ contract StableCoinsStakingEventsTest is Test {
 
     function test_RewardClaimedNoRewardsError() public {
         uint256 stakeAmount = 100_000000;
-        
+
         vm.prank(user1);
         staking.stake(stakeAmount);
-        
+
         vm.expectRevert(abi.encodeWithSelector(NoRewardsAvailable.selector));
         vm.prank(user1);
         staking.claimRewards();
     }
-} 
+}

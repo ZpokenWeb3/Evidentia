@@ -50,7 +50,7 @@ contract NFTStakingAndBorrowingEventsTest is Test {
         bondNFT.setAllowedMints(owner, 1, 10);
         bondNFT.setAllowedMints(client1, 2, 10);
         bondNFT.setAllowedMints(client2, 3, 10);
-        
+
         bondNFT.mint(1, 10, "");
         bondNFT.setApprovalForAll(address(nftStaking), true);
         nftStaking.whitelistNFT(address(bondNFT), true);
@@ -70,7 +70,7 @@ contract NFTStakingAndBorrowingEventsTest is Test {
     function test_NFTStakedEvent() public {
         vm.expectEmit(true, true, true, true);
         emit NFTStaked(owner, address(bondNFT), 1, 5);
-        
+
         vm.prank(owner);
         nftStaking.stakeNFT(address(bondNFT), 1, 5);
     }
@@ -78,10 +78,10 @@ contract NFTStakingAndBorrowingEventsTest is Test {
     function test_NFTUnstakedEvent() public {
         vm.prank(owner);
         nftStaking.stakeNFT(address(bondNFT), 1, 5);
-        
+
         vm.expectEmit(true, true, true, true);
         emit NFTUnstaked(owner, address(bondNFT), 1, 3);
-        
+
         vm.prank(owner);
         nftStaking.unstakeNFT(address(bondNFT), 1, 3);
     }
@@ -89,12 +89,12 @@ contract NFTStakingAndBorrowingEventsTest is Test {
     function test_BorrowedEvent() public {
         vm.prank(client1);
         nftStaking.stakeNFT(address(bondNFT), 2, 10);
-        
+
         uint256 borrowAmount = 500_000000;
-        
+
         vm.expectEmit(true, true, false, true);
         emit Borrowed(client1, borrowAmount);
-        
+
         vm.prank(client1);
         nftStaking.borrow(borrowAmount);
     }
@@ -104,12 +104,12 @@ contract NFTStakingAndBorrowingEventsTest is Test {
         nftStaking.stakeNFT(address(bondNFT), 2, 10);
         uint256 borrowAmount = 500_000000;
         nftStaking.borrow(borrowAmount);
-        
+
         stableBondCoins.approve(address(nftStaking), borrowAmount);
-        
+
         vm.expectEmit(true, true, false, true);
         emit Repaid(client1, borrowAmount);
-        
+
         nftStaking.repay(borrowAmount);
         vm.stopPrank();
     }
@@ -117,22 +117,22 @@ contract NFTStakingAndBorrowingEventsTest is Test {
     function test_LiquidatedEvent() public {
         vm.startPrank(client1);
         nftStaking.stakeNFT(address(bondNFT), 2, 10);
-        
+
         uint256 borrowAmount = 500_000000;
         nftStaking.borrow(borrowAmount);
         vm.stopPrank();
-        
+
         vm.warp(1 + 31536000 - nftStaking.LIQUIDATION_TIME_WINDOW() + 1 days);
-        
+
         vm.prank(owner);
         stableBondCoins.mint(client2, 1000_000000);
-        
+
         vm.startPrank(client2);
         stableBondCoins.approve(address(nftStaking), 1000_000000);
-        
+
         vm.expectEmit(true, true, true, true);
         emit Liquidated(client1, client2, address(bondNFT), 2, 10);
-        
+
         nftStaking.liquidate(address(bondNFT), 2, client1);
         vm.stopPrank();
     }
@@ -140,92 +140,92 @@ contract NFTStakingAndBorrowingEventsTest is Test {
     function test_MultipleEventsInOneTransaction() public {
         vm.startPrank(owner);
         nftStaking.stakeNFT(address(bondNFT), 1, 5);
-        
+
         vm.expectEmit(true, true, false, true);
         emit Borrowed(owner, 100_000000);
-        
+
         nftStaking.borrow(100_000000);
-        
+
         vm.expectEmit(true, true, true, true);
         emit NFTUnstaked(owner, address(bondNFT), 1, 2);
-        
+
         nftStaking.unstakeNFT(address(bondNFT), 1, 2);
         vm.stopPrank();
     }
 
     function test_stakeNFTandStables_Events() public {
         address stablesStaking = address(new StableCoinsStaking(address(stableBondCoins), address(nftStaking)));
-        
+
         vm.startPrank(owner);
         nftStaking.setStablesStakingAddress(stablesStaking);
         stableBondCoins.grantRole(MINTER_ROLE, stablesStaking);
         vm.stopPrank();
-        
+
         vm.expectEmit(true, true, true, true);
         emit NFTStaked(client1, address(bondNFT), 2, 5);
-        
+
         vm.expectEmit(true, false, false, false);
         emit Borrowed(client1, 0);
-        
+
         vm.prank(client1);
         nftStaking.stakeNFTandStables(address(bondNFT), 2, 5);
-        
+
         assertEq(bondNFT.balanceOf(address(nftStaking), 2), 5);
-        
+
         NFTStakingAndBorrowing.UserStats memory userStats = nftStaking.getUserStats(client1);
         assertTrue(userStats.borrowed > 0, "No tokens were borrowed");
     }
-    
+
     function test_liquidate_NoDebt_Event() public {
         vm.prank(client1);
         nftStaking.stakeNFT(address(bondNFT), 2, 10);
-        
+
         vm.warp(1 + 31536000 - nftStaking.LIQUIDATION_TIME_WINDOW() + 1 days);
-        
+
         vm.expectEmit(true, true, true, true);
         emit NFTUnstaked(client1, address(bondNFT), 2, 10);
-        
+
         vm.prank(client2);
         nftStaking.liquidate(address(bondNFT), 2, client1);
-        
+
         assertEq(bondNFT.balanceOf(client1, 2), 10);
     }
-    
+
     function test_partialUnstakeEvents() public {
         vm.prank(owner);
         nftStaking.stakeNFT(address(bondNFT), 1, 10);
-        
+
         vm.expectEmit(true, true, true, true);
         emit NFTUnstaked(owner, address(bondNFT), 1, 3);
-        
+
         vm.prank(owner);
         nftStaking.unstakeNFT(address(bondNFT), 1, 3);
-        
+
         vm.expectEmit(true, true, true, true);
         emit NFTUnstaked(owner, address(bondNFT), 1, 5);
-        
+
         vm.prank(owner);
         nftStaking.unstakeNFT(address(bondNFT), 1, 5);
-        
+
         assertEq(bondNFT.balanceOf(address(nftStaking), 1), 2);
         assertEq(bondNFT.balanceOf(owner, 1), 8);
     }
-    
+
     function test_zeroAmountRepayEvent() public {
         vm.startPrank(client1);
         nftStaking.stakeNFT(address(bondNFT), 2, 10);
         uint256 borrowAmount = 500_000000;
         nftStaking.borrow(borrowAmount);
-        
+
         stableBondCoins.approve(address(nftStaking), type(uint256).max);
-        
+
         vm.expectEmit(true, true, false, true);
         emit Repaid(client1, borrowAmount);
-        
+
         nftStaking.repay(0);
         vm.stopPrank();
-        
+
         NFTStakingAndBorrowing.UserStats memory userStats = nftStaking.getUserStats(client1);
         assertEq(userStats.debt, 0);
     }
-} 
+}

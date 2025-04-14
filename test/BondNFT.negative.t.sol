@@ -149,6 +149,4 @@ contract BondNFTNegativeTest is Test {
         // Check remaining mints after full usage
         assertEq(bondNFT.remainingMints(account1, 1), 0);
     }
-
-    // Note: Event tests moved to BondNFT.events.t.sol
 }
