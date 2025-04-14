@@ -7,6 +7,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {UD60x18, ud} from "@prb/math/src/UD60x18.sol";
 import {IStableCoinsStaking} from "./Interfaces/IStableCoinsStaking.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 interface IMintableERC20 is IERC20 {
     function mint(address to, uint256 amount) external;
@@ -18,7 +19,7 @@ interface IMintableERC20 is IERC20 {
  * @notice This contract allows users to stake NFTs and borrow stable tokens against them.
  * @dev This contract is designed to work with the BondNFT contract and the StableBondCoins contract with minter role.
  */
-contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
+contract NFTStakingAndBorrowing is ERC1155Holder, Ownable, ReentrancyGuard {
     struct TotalStats {
         uint256 staked;
         uint256 borrowed;
@@ -225,7 +226,14 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
      * @param tokenId The ID of the NFT to stake.
      * @param amount The amount of NFTs to stake.
      */
-    function stakeNFT(address nftAddress, uint256 tokenId, uint256 amount) public {
+    function stakeNFT(address nftAddress, uint256 tokenId, uint256 amount) public nonReentrant {
+        _stakeNFT(nftAddress, tokenId, amount);
+    }
+
+    /**
+     * @notice Internal function to process stake NFT
+     */
+    function _stakeNFT(address nftAddress, uint256 tokenId, uint256 amount) internal {
         if (!whitelistedNFTs[nftAddress]) revert NFTNotWhitelisted();
         if (IBondNFT(nftAddress).balanceOf(msg.sender, tokenId) < amount) revert InsufficientNFTBalance();
 
@@ -257,8 +265,8 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
      * @param tokenId The ID of the NFT to stake.
      * @param amountNft The amount of NFTs to stake.
      */
-    function stakeNFTandStables(address nftAddress, uint256 tokenId, uint256 amountNft) external {
-        stakeNFT(nftAddress, tokenId, amountNft);
+    function stakeNFTandStables(address nftAddress, uint256 tokenId, uint256 amountNft) external nonReentrant {
+        _stakeNFT(nftAddress, tokenId, amountNft);
         updateUserDebtAndAvailable(msg.sender);
         updateTotalDebt();
         uint256 amount_to_stake = userStats[msg.sender].nominalAvailable - userStats[msg.sender].debt;
@@ -273,7 +281,7 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
      * @dev 0 is all available stable coins to borrow.
      * @param amount_to_stake The amount of stables to stake.
      */
-    function stakeStables(uint256 amount_to_stake) external {
+    function stakeStables(uint256 amount_to_stake) external nonReentrant {
         updateUserDebtAndAvailable(msg.sender);
         updateTotalDebt();
         uint256 max_borrow = userStats[msg.sender].nominalAvailable - userStats[msg.sender].debt;
@@ -296,7 +304,7 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
      * @param tokenId The ID of the NFT to unstake.
      * @param amount The amount of NFTs to unstake.
      */
-    function unstakeNFT(address nftAddress, uint256 tokenId, uint256 amount) external {
+    function unstakeNFT(address nftAddress, uint256 tokenId, uint256 amount) external nonReentrant {
         if (!whitelistedNFTs[nftAddress]) revert NFTNotWhitelisted();
         // Only NFT owner can unstake anytime
         if (userNFTs[msg.sender][nftAddress][tokenId] < amount) revert InsufficientNFTBalance();
@@ -344,7 +352,7 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
      * @dev if the NFT is whitelisted, and if the user's debt is within the allowed limit.
      * @param amount The amount of stable tokens to borrow. 0 means full available amount.
      */
-    function borrow(uint256 amount) public {
+    function borrow(uint256 amount) public nonReentrant {
         updateUserDebtAndAvailable(msg.sender);
         updateTotalDebt();
         uint256 max_borrow = userStats[msg.sender].nominalAvailable - userStats[msg.sender].debt;
@@ -405,7 +413,7 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
      * @dev This function transfers the repayment amount from the user's wallet to the contract.
      * @param amount The amount to repay. 0 for full debt.
      */
-    function repay(uint256 amount) external {
+    function repay(uint256 amount) external nonReentrant {
         updateUserDebtAndAvailable(msg.sender);
         updateTotalDebt();
 
@@ -439,7 +447,7 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
      * @param tokenId The ID of the NFT to liquidate in the position.
      * @param positionOwner The address of the user who owns the NFT position.
      */
-    function liquidate(address nftAddress, uint256 tokenId, address positionOwner) external {
+    function liquidate(address nftAddress, uint256 tokenId, address positionOwner) external nonReentrant {
         if (!whitelistedNFTs[nftAddress]) revert NFTNotWhitelisted();
         if (userNFTs[positionOwner][nftAddress][tokenId] == 0) revert InsufficientNFTBalance();
         IBondNFT.Metadata memory metadata = IBondNFT(nftAddress).getMetaData(tokenId);
