@@ -517,6 +517,91 @@ contract NFTStakingAndBorrowingTest is Test {
         assertEq(stableBondCoins.balanceOf(client2), 9851_880762);
     }
 
+    function test_liquidate_case_03() public {
+        owner = address(1);
+        address client1 = address(2);
+        address client2 = address(3);
+
+        vm.startPrank(owner);
+        bondNFT.setAllowedMints(client1, 2, 10);
+        bondNFT.setAllowedMints(client2, 3, 10);
+        vm.stopPrank();
+
+        vm.prank(client1);
+        bondNFT.mint(2, 10, "");
+        vm.prank(client2);
+        bondNFT.mint(3, 10, "");
+
+        vm.prank(client1);
+        bondNFT.setApprovalForAll(address(nftStaking), true);
+        vm.prank(client2);
+        bondNFT.setApprovalForAll(address(nftStaking), true);
+
+        // Client1 stakes NFT and borrows a small amount
+        vm.startPrank(client1);
+        nftStaking.stakeNFT(address(bondNFT), 2, 10);
+
+        // Borrowing only 1/4 of the available amount so debt will be less than max borrow
+        uint256 borrow_amount = nftStaking.userAvailableToBorrow(client1) / 4;
+        nftStaking.borrow(borrow_amount);
+        vm.stopPrank();
+
+        assertEq(stableBondCoins.balanceOf(client1), borrow_amount);
+
+        // we go to the future, 40 days to expiration
+        vm.warp(365 days - 40 days);
+        vm.roll(2);
+
+        NFTStakingAndBorrowing.UserStats memory userStats = nftStaking.getUserStats(client1);
+        assertEq(userStats.borrowed, borrow_amount);
+
+        // Check that debt has accumulated but is still less than max borrow
+        uint256 currentDebt = userStats.debt;
+        BondNFT.Metadata memory metadata = bondNFT.getMetaData(2);
+        uint256 maxBorrow =
+            nftStaking.calculateMaxBorrow(userStats.staked, block.timestamp, metadata.expirationTimestamp);
+
+        assertLt(currentDebt, maxBorrow, "Debt should be less than max borrow for Case 3");
+
+        // Check initial balances
+        assertEq(bondNFT.balanceOf(client1, 2), 0);
+        assertEq(bondNFT.balanceOf(address(nftStaking), 2), 10);
+        assertEq(stableBondCoins.balanceOf(client2), 0);
+
+        // Calculate how many NFTs liquidator should receive
+        uint256 expectedNFTToLiquidator = (currentDebt * 10 / maxBorrow) + (currentDebt * 10 % maxBorrow == 0 ? 0 : 1);
+        uint256 expectedNFTToOwner = 10 - expectedNFTToLiquidator;
+
+        // Client2 prepares and liquidates
+        vm.startPrank(client2);
+        nftStaking.stakeNFT(address(bondNFT), 3, 10);
+        nftStaking.borrow(0);
+        stableBondCoins.approve(address(nftStaking), type(uint256).max);
+
+        uint256 client2BalanceBefore = stableBondCoins.balanceOf(client2);
+        uint256 client1BalanceBefore = stableBondCoins.balanceOf(client1);
+
+        nftStaking.liquidate(address(bondNFT), 2, client1);
+        vm.stopPrank();
+
+        // Verify balances after liquidation
+        assertEq(bondNFT.balanceOf(client1, 2), expectedNFTToOwner, "Original owner should receive remaining NFTs");
+        assertEq(bondNFT.balanceOf(client2, 2), expectedNFTToLiquidator, "Liquidator should receive proportional NFTs");
+        assertEq(bondNFT.balanceOf(address(nftStaking), 2), 0, "Contract should have no NFTs left");
+
+        // Verify that client1 received excess payment (liquidationPayment - debt)
+        assertGt(
+            stableBondCoins.balanceOf(client1), client1BalanceBefore, "Position owner should receive excess payment"
+        );
+
+        // Verify client2 paid for the liquidation
+        assertLt(stableBondCoins.balanceOf(client2), client2BalanceBefore, "Liquidator should pay for liquidation");
+
+        // Verify client1's debt is cleared
+        userStats = nftStaking.getUserStats(client1);
+        assertEq(userStats.debt, 0, "Debt should be cleared after liquidation");
+    }
+
     function test_getRewardAmount() public {
         vm.startPrank(owner);
         StableCoinsStaking stableStaking = new StableCoinsStaking(address(stableBondCoins), address(nftStaking));
