@@ -441,6 +441,13 @@ contract NFTStakingAndBorrowingTest is Test {
         assertEq(bondNFT.balanceOf(client2, 2), 5);
         assertEq(bondNFT.balanceOf(address(nftStaking), 2), 0);
 
+        // Check internal mapping state
+        assertEq(
+            nftStaking.getUserNFTBalance(client1, address(bondNFT), 2),
+            5,
+            "userNFTs balance incorrect after liquidation"
+        );
+
         assertEq(stableBondCoins.balanceOf(client1), 4453_125000);
         assertEq(stableBondCoins.balanceOf(client2), 4925_940381);
     }
@@ -512,6 +519,13 @@ contract NFTStakingAndBorrowingTest is Test {
         assertEq(bondNFT.balanceOf(client1, 2), 0);
         assertEq(bondNFT.balanceOf(client2, 2), 10);
         assertEq(bondNFT.balanceOf(address(nftStaking), 2), 0);
+
+        // Verify internal mapping state matches expected NFT balance
+        assertEq(
+            nftStaking.getUserNFTBalance(client1, address(bondNFT), 2),
+            0,
+            "userNFTs balance incorrect after liquidation"
+        );
 
         assertEq(stableBondCoins.balanceOf(client1), 13359_374999);
         assertEq(stableBondCoins.balanceOf(client2), 9851_880762);
@@ -588,6 +602,13 @@ contract NFTStakingAndBorrowingTest is Test {
         assertEq(bondNFT.balanceOf(client1, 2), expectedNFTToOwner, "Original owner should receive remaining NFTs");
         assertEq(bondNFT.balanceOf(client2, 2), expectedNFTToLiquidator, "Liquidator should receive proportional NFTs");
         assertEq(bondNFT.balanceOf(address(nftStaking), 2), 0, "Contract should have no NFTs left");
+
+        // Check internal mapping state
+        assertEq(
+            nftStaking.getUserNFTBalance(client1, address(bondNFT), 2),
+            expectedNFTToOwner,
+            "userNFTs balance incorrect after liquidation"
+        );
 
         // Verify that client1 received excess payment (liquidationPayment - debt)
         assertGt(

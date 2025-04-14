@@ -458,6 +458,12 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         if (userStats[positionOwner].debt == 0) {
             IBondNFT(nftAddress).safeTransferFrom(address(this), positionOwner, tokenId, amount, "");
             stableToken.burn(address(this), positionValue);
+
+            // Update NFT balance and staked values
+            userNFTs[positionOwner][nftAddress][tokenId] = 0;
+            userStats[positionOwner].staked -= positionValue;
+            totalStats.staked -= positionValue;
+
             emit NFTUnstaked(positionOwner, nftAddress, tokenId, amount);
             return;
         }
@@ -467,6 +473,11 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         if (userStats[positionOwner].debt >= maxPositionBorrow) {
             stableToken.transferFrom(msg.sender, address(this), maxPositionBorrow);
             IBondNFT(nftAddress).safeTransferFrom(address(this), msg.sender, tokenId, amount, "");
+
+            // Update NFT balance and staked values
+            userNFTs[positionOwner][nftAddress][tokenId] = 0;
+            userStats[positionOwner].staked -= positionValue;
+            totalStats.staked -= positionValue;
 
             userStats[positionOwner].debt -= maxPositionBorrow;
             totalStats.debt -= maxPositionBorrow;
@@ -486,6 +497,14 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
 
             IBondNFT(nftAddress).safeTransferFrom(address(this), msg.sender, tokenId, amountToLiquidate, "");
             IBondNFT(nftAddress).safeTransferFrom(address(this), positionOwner, tokenId, amount - amountToLiquidate, "");
+
+            // Update NFT balance and staked values
+            userNFTs[positionOwner][nftAddress][tokenId] = amount - amountToLiquidate;
+
+            uint256 liquidatedValue =
+                (metadata.value + metadata.couponValue) * amountToLiquidate * (UNIT - SAFETY_FEE) / UNIT;
+            userStats[positionOwner].staked -= liquidatedValue;
+            totalStats.staked -= liquidatedValue;
 
             uint256 currentDebt = userStats[positionOwner].debt;
             userStats[positionOwner].debt = 0;
@@ -517,5 +536,17 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         }
         RewardsTransfered += rewardAmount;
         return rewardAmount;
+    }
+
+    /**
+     * @notice Get the amount of NFTs a user has staked for a specific NFT contract and token ID
+     * @dev This is a view function for testing purposes
+     * @param user The address of the user
+     * @param nftAddress The address of the NFT contract
+     * @param tokenId The ID of the NFT
+     * @return The amount of NFTs the user has staked
+     */
+    function getUserNFTBalance(address user, address nftAddress, uint256 tokenId) external view returns (uint256) {
+        return userNFTs[user][nftAddress][tokenId];
     }
 }
