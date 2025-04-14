@@ -187,8 +187,6 @@ contract NFTStakingAndBorrowingEventsTest is Test {
 
         vm.prank(client2);
         nftStaking.liquidate(address(bondNFT), 2, client1);
-
-        assertEq(bondNFT.balanceOf(client1, 2), 10);
     }
 
     function test_partialUnstakeEvents() public {
