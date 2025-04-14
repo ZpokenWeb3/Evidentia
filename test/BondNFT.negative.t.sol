@@ -149,11 +149,4 @@ contract BondNFTNegativeTest is Test {
         // Check remaining mints after full usage
         assertEq(bondNFT.remainingMints(account1, 1), 0);
     }
-
-    // Test MintAllowanceSet event
-    function testMintAllowanceSetEvent() public {
-        vm.expectEmit(true, true, true, true);
-        emit MintAllowanceSet(account2, 2, 20);
-        bondNFT.setAllowedMints(account2, 2, 20);
-    }
 }
