@@ -487,8 +487,9 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
             IBondNFT(nftAddress).safeTransferFrom(address(this), msg.sender, tokenId, amountToLiquidate, "");
             IBondNFT(nftAddress).safeTransferFrom(address(this), positionOwner, tokenId, amount - amountToLiquidate, "");
 
+            uint256 currentDebt = userStats[positionOwner].debt;
             userStats[positionOwner].debt = 0;
-            totalStats.debt -= userStats[positionOwner].debt;
+            totalStats.debt -= currentDebt;
         }
 
         stableToken.burn(address(this), positionValue);
