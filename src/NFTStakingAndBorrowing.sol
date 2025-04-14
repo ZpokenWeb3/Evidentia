@@ -481,7 +481,7 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
 
             userStats[positionOwner].debt -= maxPositionBorrow;
             totalStats.debt -= maxPositionBorrow;
-            
+
             emit Liquidated(positionOwner, msg.sender, nftAddress, tokenId, amount);
         } else {
             // Case 3: Position has debt less than max borrow at this point - part or all of NFTs goes to the liquidator
