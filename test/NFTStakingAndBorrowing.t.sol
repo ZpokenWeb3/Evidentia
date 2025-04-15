@@ -881,4 +881,9 @@ contract NFTStakingAndBorrowingTest is Test {
         }
         assertEq(totalStats.debt - number_of_users, total_user_debt - 1);
     }
+
+    function test_calculateMaxBorrowShouldReturnZero() public view {
+        // fromTime > toTime
+        assertEq(nftStaking.calculateMaxBorrow(1000, 1000, 900), 0);
+    }
 }

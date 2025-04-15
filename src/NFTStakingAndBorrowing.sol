@@ -148,6 +148,9 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable, ReentrancyGuard {
     }
 
     function calculateMaxBorrow(uint256 totalAmount, uint256 fromTime, uint256 toTime) public view returns (uint256) {
+        if (fromTime >= toTime) {
+            return 0;
+        }
         totalAmount = totalAmount * UNIT;
         UD60x18 timeDelta = ud(toTime - fromTime);
         UD60x18 maxBorrowLog2 =
