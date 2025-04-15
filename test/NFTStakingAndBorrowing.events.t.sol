@@ -229,36 +229,36 @@ contract NFTStakingAndBorrowingEventsTest is Test {
 
     function test_liquidate_Case3_Event() public {
         owner = address(1);
-        address client1 = address(2);
-        address client2 = address(3);
+        address localClient1 = address(2);
+        address localClient2 = address(3);
 
         vm.startPrank(owner);
-        bondNFT.setAllowedMints(client1, 1, 10);
-        bondNFT.setAllowedMints(client2, 2, 20);
+        bondNFT.setAllowedMints(localClient1, 1, 10);
+        bondNFT.setAllowedMints(localClient2, 2, 20);
         vm.stopPrank();
 
         // Client1 mints and stakes NFTs
-        vm.prank(client1);
+        vm.prank(localClient1);
         bondNFT.mint(1, 10, "");
-        vm.prank(client1);
+        vm.prank(localClient1);
         bondNFT.setApprovalForAll(address(nftStaking), true);
 
-        vm.startPrank(client1);
+        vm.startPrank(localClient1);
         nftStaking.stakeNFT(address(bondNFT), 1, 10);
-        uint256 maxBorrowAmount = nftStaking.userAvailableToBorrow(client1);
+        uint256 maxBorrowAmount = nftStaking.userAvailableToBorrow(localClient1);
         uint256 borrowAmount = maxBorrowAmount / 2; // Borrow only half of available amount
         nftStaking.borrow(borrowAmount);
         vm.stopPrank();
 
         // Client2 prepares for liquidation
-        vm.prank(client2);
+        vm.prank(localClient2);
         bondNFT.mint(2, 20, "");
-        vm.prank(client2);
+        vm.prank(localClient2);
         bondNFT.setApprovalForAll(address(nftStaking), true);
 
-        vm.startPrank(client2);
+        vm.startPrank(localClient2);
         nftStaking.stakeNFT(address(bondNFT), 2, 20);
-        nftStaking.borrow(nftStaking.userAvailableToBorrow(client2));
+        nftStaking.borrow(nftStaking.userAvailableToBorrow(localClient2));
         stableBondCoins.approve(address(nftStaking), type(uint256).max);
         vm.stopPrank();
 
@@ -268,10 +268,10 @@ contract NFTStakingAndBorrowingEventsTest is Test {
 
         // Expect the Liquidated event
         vm.expectEmit(true, true, false, true);
-        emit Liquidated(client1, client2, address(bondNFT), 1, 10);
+        emit Liquidated(localClient1, localClient2, address(bondNFT), 1, 10);
 
         // Client2 liquidates part of client1's position
-        vm.prank(client2);
-        nftStaking.liquidate(address(bondNFT), 1, client1);
+        vm.prank(localClient2);
+        nftStaking.liquidate(address(bondNFT), 1, localClient1);
     }
 }
