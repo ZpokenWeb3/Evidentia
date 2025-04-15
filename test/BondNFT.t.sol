@@ -18,7 +18,7 @@ contract BondNFTTest is Test {
         bondNFT.setAllowedMints(account1, 1, 10);
     }
 
-    function testInitialOwner() public {
+    function testInitialOwner() public view {
         assertEq(bondNFT.owner(), owner);
     }
 
@@ -100,7 +100,7 @@ contract BondNFTTest is Test {
         assertEq(bondNFT.remainingMints(account2, 1), 0);
     }
 
-    function testNameAndSymbol() public {
+    function testNameAndSymbol() public view {
         assertEq(bondNFT.name(), "BondNFT");
         assertEq(bondNFT.symbol(), "BNFT");
     }

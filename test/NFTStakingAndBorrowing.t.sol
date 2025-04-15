@@ -141,9 +141,6 @@ contract NFTStakingAndBorrowingTest is Test {
         nftStaking.repay(0);
 
         NFTStakingAndBorrowing.UserStats memory userStats = nftStaking.getUserStats(client1);
-        NFTStakingAndBorrowing.TotalStats memory totalStats = nftStaking.getTotalStats();
-
-        userStats = nftStaking.getUserStats(client1);
         assertEq(userStats.nominalAvailable, 8989_596464);
         assertEq(userStats.borrowed, 0);
         assertEq(userStats.debt, 0);
@@ -997,7 +994,7 @@ contract NFTStakingAndBorrowingTest is Test {
         assertEq(rewardAmount, 0);
     }
 
-    function test_userAvailableToBorrow_WithZeroNominalAvailable() public {
+    function test_userAvailableToBorrow_WithZeroNominalAvailable() public view {
         address testUser = address(42);
 
         uint256 available = nftStaking.userAvailableToBorrow(testUser);
