@@ -5,8 +5,9 @@ pragma solidity ^0.8.20;
 import {ERC1155} from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ERC1155Supply} from "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-contract BondNFT is ERC1155, Ownable, ERC1155Supply {
+contract BondNFT is ERC1155, Ownable, ERC1155Supply, ReentrancyGuard {
     struct Metadata {
         uint256 value;
         uint256 couponValue;
@@ -55,7 +56,7 @@ contract BondNFT is ERC1155, Ownable, ERC1155Supply {
     }
 
     // Function to mint tokens, ensuring the user has remaining allowed mints
-    function mint(uint256 id, uint256 amount, bytes memory data) public {
+    function mint(uint256 id, uint256 amount, bytes memory data) public nonReentrant {
         if (allowedMints[msg.sender][id] == 0) revert NftMintingNotAllowed();
         if (mintedPerUser[msg.sender][id] + amount > allowedMints[msg.sender][id]) {
             revert NftMintingLimitExceeded(allowedMints[msg.sender][id] - mintedPerUser[msg.sender][id]);
@@ -68,7 +69,7 @@ contract BondNFT is ERC1155, Ownable, ERC1155Supply {
     }
 
     // Function to mint multiple tokens in batch, checking allowed mints for each token ID
-    function mintBatch(uint256[] memory ids, uint256[] memory amounts, bytes memory data) public {
+    function mintBatch(uint256[] memory ids, uint256[] memory amounts, bytes memory data) public nonReentrant {
         for (uint256 i = 0; i < ids.length; i++) {
             uint256 id = ids[i];
             uint256 amount = amounts[i];
@@ -88,7 +89,7 @@ contract BondNFT is ERC1155, Ownable, ERC1155Supply {
     }
 
     // Function to burn tokens, ensuring only the token owner can burn
-    function burn(uint256 id, uint256 amount) public {
+    function burn(uint256 id, uint256 amount) public nonReentrant {
         if (balanceOf(msg.sender, id) < amount) revert NftInsufficientBalanceToBurn();
 
         // Burn the tokens

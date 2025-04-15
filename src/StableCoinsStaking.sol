@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.20;
 
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+
 interface IERC20 {
     function transferFrom(address from, address to, uint256 value) external returns (bool);
     function transfer(address to, uint256 value) external returns (bool);
@@ -12,7 +14,7 @@ interface IExternalRewardContract {
     function getRewards() external returns (uint256);
 }
 
-contract StableCoinsStaking {
+contract StableCoinsStaking is ReentrancyGuard {
     IERC20 public stakingToken;
     IExternalRewardContract public externalRewardContract;
 
@@ -60,7 +62,7 @@ contract StableCoinsStaking {
     }
 
     // Function to stake tokens
-    function stake(uint256 _amount) external updateReward(msg.sender) {
+    function stake(uint256 _amount) external nonReentrant updateReward(msg.sender) {
         if (_amount == 0) revert ZeroAmountNotAllowed();
 
         stakingToken.transferFrom(msg.sender, address(this), _amount);
@@ -75,7 +77,7 @@ contract StableCoinsStaking {
     }
 
     // Function to stake tokens on behalf of another address
-    function stakeOnBehalfOf(uint256 _amount, address onBehalfOf) external updateReward(onBehalfOf) {
+    function stakeOnBehalfOf(uint256 _amount, address onBehalfOf) external nonReentrant updateReward(onBehalfOf) {
         if (_amount == 0) revert ZeroAmountNotAllowed();
 
         stakingToken.transferFrom(msg.sender, address(this), _amount);
@@ -90,7 +92,7 @@ contract StableCoinsStaking {
     }
 
     // Function to withdraw staked tokens
-    function withdraw(uint256 _amount) external updateReward(msg.sender) {
+    function withdraw(uint256 _amount) external nonReentrant updateReward(msg.sender) {
         if (_amount == 0) revert ZeroAmountNotAllowed();
 
         StakerInfo storage user = stakers[msg.sender];
@@ -108,7 +110,7 @@ contract StableCoinsStaking {
     }
 
     // Function to claim rewards
-    function claimRewards() external updateReward(msg.sender) {
+    function claimRewards() external nonReentrant updateReward(msg.sender) {
         StakerInfo storage user = stakers[msg.sender];
         uint256 reward = user.rewardsEarned;
 
