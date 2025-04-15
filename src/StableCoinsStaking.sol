@@ -41,6 +41,7 @@ contract StableCoinsStaking is ReentrancyGuard {
     error ZeroAmountNotAllowed();
     error NotEnoughStaked(uint256);
     error NoRewardsAvailable();
+    error NotEnoughBalance();
 
     constructor(address _stakingToken, address _externalRewardContract) {
         stakingToken = IERC20(_stakingToken);
@@ -64,14 +65,14 @@ contract StableCoinsStaking is ReentrancyGuard {
     // Function to stake tokens
     function stake(uint256 _amount) external nonReentrant updateReward(msg.sender) {
         if (_amount == 0) revert ZeroAmountNotAllowed();
-
-        stakingToken.transferFrom(msg.sender, address(this), _amount);
+        if (stakingToken.balanceOf(msg.sender) < _amount) revert NotEnoughBalance();
 
         StakerInfo storage user = stakers[msg.sender];
         user.stakedAmount += _amount;
         totalStaked += _amount;
-
         user.stakeTimestamp = block.timestamp;
+
+        stakingToken.transferFrom(msg.sender, address(this), _amount);
 
         emit Staked(msg.sender, _amount);
     }
@@ -79,14 +80,14 @@ contract StableCoinsStaking is ReentrancyGuard {
     // Function to stake tokens on behalf of another address
     function stakeOnBehalfOf(uint256 _amount, address onBehalfOf) external nonReentrant updateReward(onBehalfOf) {
         if (_amount == 0) revert ZeroAmountNotAllowed();
-
-        stakingToken.transferFrom(msg.sender, address(this), _amount);
+        if (stakingToken.balanceOf(msg.sender) < _amount) revert NotEnoughBalance();
 
         StakerInfo storage user = stakers[onBehalfOf];
         user.stakedAmount += _amount;
         totalStaked += _amount;
-
         user.stakeTimestamp = block.timestamp;
+
+        stakingToken.transferFrom(msg.sender, address(this), _amount);
 
         emit Staked(onBehalfOf, _amount);
     }
@@ -130,8 +131,9 @@ contract StableCoinsStaking is ReentrancyGuard {
             return rewardPerTokenStored;
         }
 
+        uint256 currentRewardPerTokenStored = rewardPerTokenStored;
         uint256 rewardFromExternal = externalRewardContract.getRewards();
-        return rewardPerTokenStored + ((rewardFromExternal * 1e18) / totalStaked);
+        return currentRewardPerTokenStored + ((rewardFromExternal * 1e18) / totalStaked);
     }
 
     // Internal function to calculate the user's earned rewards

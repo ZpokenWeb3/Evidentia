@@ -237,20 +237,18 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable, ReentrancyGuard {
         if (!whitelistedNFTs[nftAddress]) revert NFTNotWhitelisted();
         if (IBondNFT(nftAddress).balanceOf(msg.sender, tokenId) < amount) revert InsufficientNFTBalance();
 
-        IBondNFT(nftAddress).safeTransferFrom(msg.sender, address(this), tokenId, amount, "");
-        userNFTs[msg.sender][nftAddress][tokenId] += amount;
-
         IBondNFT.Metadata memory metadata = IBondNFT(nftAddress).getMetaData(tokenId);
 
         uint256 totalValue = (metadata.value + metadata.couponValue) * amount * (UNIT - safetyFee) / UNIT;
 
+        userNFTs[msg.sender][nftAddress][tokenId] += amount;
         totalStats.staked += totalValue;
-
         userStats[msg.sender].staked += totalValue;
         userStats[msg.sender].nominalAvailable +=
             calculateMaxBorrow(totalValue, block.timestamp, metadata.expirationTimestamp);
         userStats[msg.sender].debtUpdateTimestamp = block.timestamp;
 
+        IBondNFT(nftAddress).safeTransferFrom(msg.sender, address(this), tokenId, amount, "");
         stableToken.mint(address(this), totalValue);
 
         emit NFTStaked(msg.sender, nftAddress, tokenId, amount);
@@ -270,9 +268,15 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable, ReentrancyGuard {
         updateUserDebtAndAvailable(msg.sender);
         updateTotalDebt();
         uint256 amount_to_stake = userStats[msg.sender].nominalAvailable - userStats[msg.sender].debt;
+
+        // Effects - update state
         _borrow(amount_to_stake, msg.sender);
+
+        // Interactions
         stableToken.approve(stablesStakingAddress, amount_to_stake);
         IStableCoinsStaking(stablesStakingAddress).stakeOnBehalfOf(amount_to_stake, msg.sender);
+
+        emit Borrowed(msg.sender, amount_to_stake);
     }
 
     /**
@@ -291,7 +295,11 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable, ReentrancyGuard {
         if (amount_to_stake > max_borrow) {
             revert BorrowAmountExceedsLimit(max_borrow);
         }
+
+        // Effects - update state
         _borrow(amount_to_stake, msg.sender);
+
+        // Interactions
         stableToken.approve(stablesStakingAddress, amount_to_stake);
         IStableCoinsStaking(stablesStakingAddress).stakeOnBehalfOf(amount_to_stake, msg.sender);
     }
@@ -325,7 +333,6 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable, ReentrancyGuard {
         }
 
         userNFTs[msg.sender][nftAddress][tokenId] -= amount;
-
         userStats[msg.sender].staked -= totalUnstakeValue;
         if (
             userStats[msg.sender].nominalAvailable
@@ -336,11 +343,9 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable, ReentrancyGuard {
         } else {
             userStats[msg.sender].nominalAvailable = 0;
         }
-
         totalStats.staked -= totalUnstakeValue;
 
         IBondNFT(nftAddress).safeTransferFrom(address(this), msg.sender, tokenId, amount, "");
-
         stableToken.burn(address(this), totalUnstakeValue);
 
         emit NFTUnstaked(msg.sender, nftAddress, tokenId, amount);
@@ -364,14 +369,16 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable, ReentrancyGuard {
             revert BorrowAmountExceedsLimit(max_borrow);
         }
 
+        // Effects - update state
         _borrow(amount, msg.sender);
 
+        // Interactions
         stableToken.transfer(msg.sender, amount);
     }
 
     /**
      * @notice Internal function to process borrow
-     * @dev Has no transfer
+     * @dev Has no transfer, only updates state - should always be followed by external interactions afterwards
      * @param amount The amount of stable tokens to borrow.
      * @param user_address The address of the user
      */
@@ -421,8 +428,6 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable, ReentrancyGuard {
 
         if (stableToken.balanceOf(msg.sender) < amount) revert InsufficientBalanceToRepay();
 
-        stableToken.transferFrom(msg.sender, address(this), amount);
-
         userStats[msg.sender].debt -= amount;
         if (userStats[msg.sender].borrowed > amount) {
             userStats[msg.sender].borrowed -= amount;
@@ -436,6 +441,8 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable, ReentrancyGuard {
         } else {
             totalStats.borrowed = 0;
         }
+
+        stableToken.transferFrom(msg.sender, address(this), amount);
 
         emit Repaid(msg.sender, amount);
     }
@@ -464,13 +471,12 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable, ReentrancyGuard {
         // Case 1: Position has no debt - all NFTs return to the position owner
         //         Liquidator does not pay any debt only for transaction fee
         if (userStats[positionOwner].debt == 0) {
-            IBondNFT(nftAddress).safeTransferFrom(address(this), positionOwner, tokenId, amount, "");
-            stableToken.burn(address(this), positionValue);
-
-            // Update NFT balance and staked values
             userNFTs[positionOwner][nftAddress][tokenId] = 0;
             userStats[positionOwner].staked -= positionValue;
             totalStats.staked -= positionValue;
+
+            IBondNFT(nftAddress).safeTransferFrom(address(this), positionOwner, tokenId, amount, "");
+            stableToken.burn(address(this), positionValue);
 
             emit NFTUnstaked(positionOwner, nftAddress, tokenId, amount);
             return;
@@ -480,15 +486,15 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable, ReentrancyGuard {
         //         Liquidator pays part of the debt equivalent to max borrow at this point
         if (userStats[positionOwner].debt >= maxPositionBorrow) {
             stableToken.transferFrom(msg.sender, address(this), maxPositionBorrow);
-            IBondNFT(nftAddress).safeTransferFrom(address(this), msg.sender, tokenId, amount, "");
 
-            // Update NFT balance and staked values
             userNFTs[positionOwner][nftAddress][tokenId] = 0;
             userStats[positionOwner].staked -= positionValue;
             totalStats.staked -= positionValue;
-
             userStats[positionOwner].debt -= maxPositionBorrow;
             totalStats.debt -= maxPositionBorrow;
+
+            IBondNFT(nftAddress).safeTransferFrom(address(this), msg.sender, tokenId, amount, "");
+            stableToken.burn(address(this), positionValue);
 
             emit Liquidated(positionOwner, msg.sender, nftAddress, tokenId, amount);
         } else {
@@ -502,26 +508,24 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable, ReentrancyGuard {
                 block.timestamp,
                 metadata.expirationTimestamp
             );
+
             stableToken.transferFrom(msg.sender, address(this), liquidationPayment);
-            stableToken.transfer(positionOwner, liquidationPayment - userStats[positionOwner].debt);
 
-            IBondNFT(nftAddress).safeTransferFrom(address(this), msg.sender, tokenId, amountToLiquidate, "");
-            IBondNFT(nftAddress).safeTransferFrom(address(this), positionOwner, tokenId, amount - amountToLiquidate, "");
-
-            // Update NFT balance and staked values
+            uint256 currentDebt = userStats[positionOwner].debt;
             userNFTs[positionOwner][nftAddress][tokenId] = amount - amountToLiquidate;
-
             uint256 liquidatedValue =
                 (metadata.value + metadata.couponValue) * amountToLiquidate * (UNIT - safetyFee) / UNIT;
             userStats[positionOwner].staked -= liquidatedValue;
             totalStats.staked -= liquidatedValue;
-
-            uint256 currentDebt = userStats[positionOwner].debt;
             userStats[positionOwner].debt = 0;
             totalStats.debt -= currentDebt;
+
+            stableToken.transfer(positionOwner, liquidationPayment - currentDebt);
+            IBondNFT(nftAddress).safeTransferFrom(address(this), msg.sender, tokenId, amountToLiquidate, "");
+            IBondNFT(nftAddress).safeTransferFrom(address(this), positionOwner, tokenId, amount - amountToLiquidate, "");
+            stableToken.burn(address(this), positionValue);
         }
 
-        stableToken.burn(address(this), positionValue);
         emit Liquidated(positionOwner, msg.sender, nftAddress, tokenId, amount);
         return;
     }
@@ -541,10 +545,12 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable, ReentrancyGuard {
         }
 
         uint256 rewardAmount = currentDebt - totalStats.borrowed - RewardsTransfered;
+        RewardsTransfered += rewardAmount;
+
         if (rewardAmount > 0) {
             stableToken.transfer(msg.sender, rewardAmount);
         }
-        RewardsTransfered += rewardAmount;
+
         return rewardAmount;
     }
 
