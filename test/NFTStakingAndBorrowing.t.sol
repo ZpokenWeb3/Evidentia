@@ -977,37 +977,37 @@ contract NFTStakingAndBorrowingTest is Test {
 
     function test_getRewardsWithRecentUpdate() public {
         StableCoinsStaking stableStaking;
-        
+
         vm.startPrank(owner);
         stableStaking = new StableCoinsStaking(address(stableBondCoins), address(nftStaking));
         nftStaking.setStablesStakingAddress(address(stableStaking));
-        
+
         nftStaking.stakeNFT(address(bondNFT), 1, 5);
         nftStaking.borrow(1000_000000);
-        
+
         // Call that updates totalStats.debtUpdateTimestamp to current block timestamp
         nftStaking.borrow(0);
         vm.stopPrank();
-        
+
         // Test getRewards when debtUpdateTimestamp equals block.timestamp
         vm.prank(address(stableStaking));
         uint256 rewardAmount = nftStaking.getRewards();
-        
+
         // Should be 0 since debt was just updated
         assertEq(rewardAmount, 0);
     }
-    
+
     function test_userAvailableToBorrow_WithZeroNominalAvailable() public {
         address testUser = address(42);
-        
+
         uint256 available = nftStaking.userAvailableToBorrow(testUser);
         assertEq(available, 0);
     }
-    
+
     function test_userAvailableToBorrow_WithZeroDebt() public {
         vm.startPrank(owner);
         nftStaking.stakeNFT(address(bondNFT), 1, 1);
-        
+
         uint256 available = nftStaking.userAvailableToBorrow(owner);
         assertGt(available, 0);
         vm.stopPrank();
@@ -1015,22 +1015,22 @@ contract NFTStakingAndBorrowingTest is Test {
 
     function test_userAvailableToUnstake_WithVariousConditions() public {
         vm.startPrank(owner);
-        
+
         // Case 1: No staked NFTs
         assertEq(nftStaking.userAvailableToUnstake(owner, address(bondNFT), 1), 0);
-        
+
         // Case 2: Has staked, no debt
         nftStaking.stakeNFT(address(bondNFT), 1, 5);
         assertEq(nftStaking.userAvailableToUnstake(owner, address(bondNFT), 1), 5);
-        
+
         // Case 3: Has staked, has debt, enough collateral
         nftStaking.borrow(1000_000000);
         assertGt(nftStaking.userAvailableToUnstake(owner, address(bondNFT), 1), 0);
-        
+
         // Case 4: Has staked, has debt, nominalAvailable <= debt
         nftStaking.borrow(0); // Borrow max available
         assertEq(nftStaking.userAvailableToUnstake(owner, address(bondNFT), 1), 0);
-        
+
         vm.stopPrank();
     }
 
@@ -1067,35 +1067,35 @@ contract NFTStakingAndBorrowingTest is Test {
     function test_repay_partial_borrowed_amount() public {
         owner = address(1);
         address client1 = address(2);
-        
+
         vm.startPrank(owner);
         bondNFT.setAllowedMints(client1, 2, 10);
         vm.stopPrank();
-        
+
         vm.prank(client1);
         bondNFT.mint(2, 10, "");
-        
+
         vm.prank(client1);
         bondNFT.setApprovalForAll(address(nftStaking), true);
-        
+
         vm.startPrank(client1);
         nftStaking.stakeNFT(address(bondNFT), 2, 10);
-        
+
         uint256 borrowAmount = 5000_000000;
         nftStaking.borrow(borrowAmount);
-        
+
         NFTStakingAndBorrowing.UserStats memory statsBefore = nftStaking.getUserStats(client1);
         assertEq(statsBefore.borrowed, borrowAmount);
-        
+
         // Repay part of the debt (less than borrowed)
         uint256 repayAmount = borrowAmount / 2;
         stableBondCoins.approve(address(nftStaking), repayAmount);
         nftStaking.repay(repayAmount);
-        
+
         NFTStakingAndBorrowing.UserStats memory statsAfter = nftStaking.getUserStats(client1);
         assertEq(statsAfter.borrowed, borrowAmount - repayAmount);
         assertEq(statsAfter.debt, statsBefore.debt - repayAmount);
-        
+
         vm.stopPrank();
     }
 
@@ -1103,17 +1103,17 @@ contract NFTStakingAndBorrowingTest is Test {
         vm.startPrank(owner);
         StableCoinsStaking stableStaking = new StableCoinsStaking(address(stableBondCoins), address(nftStaking));
         nftStaking.setStablesStakingAddress(address(stableStaking));
-        
+
         nftStaking.stakeNFT(address(bondNFT), 1, 1);
-        
+
         uint256 availableToBorrow = nftStaking.userAvailableToBorrow(owner);
-        
+
         // Try to stake more than available limit
         uint256 excessiveAmount = availableToBorrow + 1000;
-        
+
         vm.expectRevert();
         nftStaking.stakeStables(excessiveAmount);
-        
+
         vm.stopPrank();
     }
 }
