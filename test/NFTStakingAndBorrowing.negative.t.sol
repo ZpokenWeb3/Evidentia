@@ -206,4 +206,9 @@ contract NFTStakingAndBorrowingNegativeTest is Test {
         vm.prank(owner);
         nftStaking.setStablesStakingAddress(address(0));
     }
+
+    function test_calculateMaxBorrowOverflow() public {
+        vm.expectRevert(NFTStakingAndBorrowing.AmountOverflow.selector);
+        nftStaking.calculateMaxBorrow(type(uint256).max / 10 ^ 18 + 1, 90, 1_000_000);
+    }
 }

@@ -70,6 +70,7 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable, ReentrancyGuard {
     error TooEarlyToLiquidate();
     error OnlyStableStakingContract();
     error ZeroAddress();
+    error AmountOverflow();
 
     constructor(address _stableToken) ERC1155Holder() Ownable(msg.sender) {
         stableToken = IMintableERC20(_stableToken);
@@ -150,6 +151,9 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable, ReentrancyGuard {
     function calculateMaxBorrow(uint256 totalAmount, uint256 fromTime, uint256 toTime) public view returns (uint256) {
         if (fromTime >= toTime) {
             return 0;
+        }
+        if (totalAmount > type(uint256).max / UNIT) {
+            revert AmountOverflow();
         }
         totalAmount = totalAmount * UNIT;
         UD60x18 timeDelta = ud(toTime - fromTime);
