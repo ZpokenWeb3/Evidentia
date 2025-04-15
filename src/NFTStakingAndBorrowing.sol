@@ -40,14 +40,14 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
     mapping(address => UserStats) internal userStats;
     mapping(address => mapping(address => mapping(uint256 => uint256))) public userNFTs;
 
-    uint256 internal constant YEAR_IN_SECONDS = 31536000; // 365 days
+    uint256 internal constant YEAR_IN_SECONDS = 31536000;
     uint256 internal constant UNIT = 1e18;
     uint256 internal constant BPS = 1e4;
-    uint256 public PROTOCOL_YIELD = 1200 * UNIT / BPS;
-    uint256 public SAFETY_FEE = 500 * UNIT / BPS;
-    uint256 public LIQUIDATION_TIME_WINDOW = 45 days; // 45 days
+    uint256 public protocolYield = 1200 * UNIT / BPS;
+    uint256 public safetyFee = 500 * UNIT / BPS;
+    uint256 public liquidationTimeWindow = 45 days;
     uint256 public RewardsTransfered;
-    address public STABLES_STAKING_ADDRESS;
+    address public stablesStakingAddress;
 
     IMintableERC20 public stableToken;
 
@@ -75,7 +75,7 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
     }
 
     modifier onlyStablesStaking() {
-        if (msg.sender != STABLES_STAKING_ADDRESS) revert OnlyStableStakingContract();
+        if (msg.sender != stablesStakingAddress) revert OnlyStableStakingContract();
         _;
     }
 
@@ -88,22 +88,22 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
     }
 
     function setProtocolYield(uint256 _protocolYieldInBPS) external onlyOwner {
-        PROTOCOL_YIELD = _protocolYieldInBPS * UNIT / BPS;
+        protocolYield = _protocolYieldInBPS * UNIT / BPS;
     }
 
     function setSafetyFee(uint256 _safetyFeeInBPS) external onlyOwner {
-        SAFETY_FEE = _safetyFeeInBPS * UNIT / BPS;
+        safetyFee = _safetyFeeInBPS * UNIT / BPS;
     }
 
     function setLiquidationTimeWindow(uint256 _timeWindowInSeconds) external onlyOwner {
-        LIQUIDATION_TIME_WINDOW = _timeWindowInSeconds;
+        liquidationTimeWindow = _timeWindowInSeconds;
     }
 
     function setStablesStakingAddress(address _address) external onlyOwner {
         if (_address == address(0)) revert ZeroAddress();
-        address oldAddress = STABLES_STAKING_ADDRESS;
-        STABLES_STAKING_ADDRESS = _address;
-        emit StablesStakingAddressUpdated(oldAddress, STABLES_STAKING_ADDRESS);
+        address oldAddress = stablesStakingAddress;
+        stablesStakingAddress = _address;
+        emit StablesStakingAddressUpdated(oldAddress, stablesStakingAddress);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -150,7 +150,7 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         totalAmount = totalAmount * UNIT;
         UD60x18 timeDelta = ud(toTime - fromTime);
         UD60x18 maxBorrowLog2 =
-            ud(totalAmount).log2() - (timeDelta / ud(YEAR_IN_SECONDS)) * (ud(UNIT + PROTOCOL_YIELD)).log2();
+            ud(totalAmount).log2() - (timeDelta / ud(YEAR_IN_SECONDS)) * (ud(UNIT + protocolYield)).log2();
 
         return maxBorrowLog2.exp2().intoUint256() / UNIT;
     }
@@ -159,7 +159,7 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         borrowedAmount = borrowedAmount * UNIT;
         UD60x18 timeDelta = ud(toTime - fromTime);
         UD60x18 debtLog2 =
-            (timeDelta / ud(YEAR_IN_SECONDS)) * (ud(UNIT + PROTOCOL_YIELD)).log2() + ud(borrowedAmount).log2();
+            (timeDelta / ud(YEAR_IN_SECONDS)) * (ud(UNIT + protocolYield)).log2() + ud(borrowedAmount).log2();
         return debtLog2.exp2().intoUint256() / UNIT;
     }
 
@@ -190,7 +190,7 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         }
 
         IBondNFT.Metadata memory metadata = IBondNFT(nftAddress).getMetaData(tokenId);
-        uint256 unstakeValue = (metadata.value + metadata.couponValue) * (UNIT - SAFETY_FEE) / UNIT;
+        uint256 unstakeValue = (metadata.value + metadata.couponValue) * (UNIT - safetyFee) / UNIT;
 
         UserStats memory updatedUserStats = getUserStats(userAddress);
 
@@ -234,7 +234,7 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
 
         IBondNFT.Metadata memory metadata = IBondNFT(nftAddress).getMetaData(tokenId);
 
-        uint256 totalValue = (metadata.value + metadata.couponValue) * amount * (UNIT - SAFETY_FEE) / UNIT;
+        uint256 totalValue = (metadata.value + metadata.couponValue) * amount * (UNIT - safetyFee) / UNIT;
 
         totalStats.staked += totalValue;
 
@@ -263,8 +263,8 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         updateTotalDebt();
         uint256 amount_to_stake = userStats[msg.sender].nominalAvailable - userStats[msg.sender].debt;
         _borrow(amount_to_stake, msg.sender);
-        stableToken.approve(STABLES_STAKING_ADDRESS, amount_to_stake);
-        IStableCoinsStaking(STABLES_STAKING_ADDRESS).stakeOnBehalfOf(amount_to_stake, msg.sender);
+        stableToken.approve(stablesStakingAddress, amount_to_stake);
+        IStableCoinsStaking(stablesStakingAddress).stakeOnBehalfOf(amount_to_stake, msg.sender);
     }
 
     /**
@@ -284,8 +284,8 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
             revert BorrowAmountExceedsLimit(max_borrow);
         }
         _borrow(amount_to_stake, msg.sender);
-        stableToken.approve(STABLES_STAKING_ADDRESS, amount_to_stake);
-        IStableCoinsStaking(STABLES_STAKING_ADDRESS).stakeOnBehalfOf(amount_to_stake, msg.sender);
+        stableToken.approve(stablesStakingAddress, amount_to_stake);
+        IStableCoinsStaking(stablesStakingAddress).stakeOnBehalfOf(amount_to_stake, msg.sender);
     }
 
     /**
@@ -302,7 +302,7 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         if (userNFTs[msg.sender][nftAddress][tokenId] < amount) revert InsufficientNFTBalance();
 
         IBondNFT.Metadata memory metadata = IBondNFT(nftAddress).getMetaData(tokenId);
-        uint256 totalUnstakeValue = (metadata.value + metadata.couponValue) * amount * (UNIT - SAFETY_FEE) / UNIT;
+        uint256 totalUnstakeValue = (metadata.value + metadata.couponValue) * amount * (UNIT - safetyFee) / UNIT;
 
         updateUserDebtAndAvailable(msg.sender);
         updateTotalDebt();
@@ -443,11 +443,11 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
         if (!whitelistedNFTs[nftAddress]) revert NFTNotWhitelisted();
         if (userNFTs[positionOwner][nftAddress][tokenId] == 0) revert InsufficientNFTBalance();
         IBondNFT.Metadata memory metadata = IBondNFT(nftAddress).getMetaData(tokenId);
-        if (block.timestamp < metadata.expirationTimestamp - LIQUIDATION_TIME_WINDOW) revert TooEarlyToLiquidate();
+        if (block.timestamp < metadata.expirationTimestamp - liquidationTimeWindow) revert TooEarlyToLiquidate();
 
         uint256 amount = userNFTs[positionOwner][nftAddress][tokenId];
 
-        uint256 positionValue = (metadata.value + metadata.couponValue) * amount * (UNIT - SAFETY_FEE) / UNIT;
+        uint256 positionValue = (metadata.value + metadata.couponValue) * amount * (UNIT - safetyFee) / UNIT;
         uint256 maxPositionBorrow = calculateMaxBorrow(positionValue, block.timestamp, metadata.expirationTimestamp);
 
         updateUserDebtAndAvailable(positionOwner);
@@ -490,7 +490,7 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
             uint256 amountToLiquidate = amount * userStats[positionOwner].debt / maxPositionBorrow
                 + (amount * userStats[positionOwner].debt % maxPositionBorrow == 0 ? 0 : 1);
             uint256 liquidationPayment = calculateMaxBorrow(
-                (metadata.value + metadata.couponValue) * amountToLiquidate * (UNIT - SAFETY_FEE) / UNIT,
+                (metadata.value + metadata.couponValue) * amountToLiquidate * (UNIT - safetyFee) / UNIT,
                 block.timestamp,
                 metadata.expirationTimestamp
             );
@@ -504,7 +504,7 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable {
             userNFTs[positionOwner][nftAddress][tokenId] = amount - amountToLiquidate;
 
             uint256 liquidatedValue =
-                (metadata.value + metadata.couponValue) * amountToLiquidate * (UNIT - SAFETY_FEE) / UNIT;
+                (metadata.value + metadata.couponValue) * amountToLiquidate * (UNIT - safetyFee) / UNIT;
             userStats[positionOwner].staked -= liquidatedValue;
             totalStats.staked -= liquidatedValue;
 

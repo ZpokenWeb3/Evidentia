@@ -122,7 +122,7 @@ contract NFTStakingAndBorrowingEventsTest is Test {
         nftStaking.borrow(borrowAmount);
         vm.stopPrank();
 
-        vm.warp(1 + 31536000 - nftStaking.LIQUIDATION_TIME_WINDOW() + 1 days);
+        vm.warp(1 + 31536000 - nftStaking.liquidationTimeWindow() + 1 days);
 
         vm.prank(owner);
         stableBondCoins.mint(client2, 1000_000000);
@@ -180,7 +180,7 @@ contract NFTStakingAndBorrowingEventsTest is Test {
         vm.prank(client1);
         nftStaking.stakeNFT(address(bondNFT), 2, 10);
 
-        vm.warp(1 + 31536000 - nftStaking.LIQUIDATION_TIME_WINDOW() + 1 days);
+        vm.warp(1 + 31536000 - nftStaking.liquidationTimeWindow() + 1 days);
 
         vm.expectEmit(true, true, true, true);
         emit NFTUnstaked(client1, address(bondNFT), 2, 10);
