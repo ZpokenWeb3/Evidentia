@@ -269,14 +269,10 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable, ReentrancyGuard {
         updateTotalDebt();
         uint256 amount_to_stake = userStats[msg.sender].nominalAvailable - userStats[msg.sender].debt;
 
-        // Effects - update state
         _borrow(amount_to_stake, msg.sender);
 
-        // Interactions
         stableToken.approve(stablesStakingAddress, amount_to_stake);
         IStableCoinsStaking(stablesStakingAddress).stakeOnBehalfOf(amount_to_stake, msg.sender);
-
-        emit Borrowed(msg.sender, amount_to_stake);
     }
 
     /**
@@ -296,10 +292,8 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable, ReentrancyGuard {
             revert BorrowAmountExceedsLimit(max_borrow);
         }
 
-        // Effects - update state
         _borrow(amount_to_stake, msg.sender);
 
-        // Interactions
         stableToken.approve(stablesStakingAddress, amount_to_stake);
         IStableCoinsStaking(stablesStakingAddress).stakeOnBehalfOf(amount_to_stake, msg.sender);
     }
@@ -333,6 +327,7 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable, ReentrancyGuard {
         }
 
         userNFTs[msg.sender][nftAddress][tokenId] -= amount;
+
         userStats[msg.sender].staked -= totalUnstakeValue;
         if (
             userStats[msg.sender].nominalAvailable
@@ -343,9 +338,11 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable, ReentrancyGuard {
         } else {
             userStats[msg.sender].nominalAvailable = 0;
         }
+
         totalStats.staked -= totalUnstakeValue;
 
         IBondNFT(nftAddress).safeTransferFrom(address(this), msg.sender, tokenId, amount, "");
+
         stableToken.burn(address(this), totalUnstakeValue);
 
         emit NFTUnstaked(msg.sender, nftAddress, tokenId, amount);
@@ -369,16 +366,14 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable, ReentrancyGuard {
             revert BorrowAmountExceedsLimit(max_borrow);
         }
 
-        // Effects - update state
         _borrow(amount, msg.sender);
 
-        // Interactions
         stableToken.transfer(msg.sender, amount);
     }
 
     /**
      * @notice Internal function to process borrow
-     * @dev Has no transfer, only updates state - should always be followed by external interactions afterwards
+     * @dev Has no transfer
      * @param amount The amount of stable tokens to borrow.
      * @param user_address The address of the user
      */
@@ -471,6 +466,7 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable, ReentrancyGuard {
         // Case 1: Position has no debt - all NFTs return to the position owner
         //         Liquidator does not pay any debt only for transaction fee
         if (userStats[positionOwner].debt == 0) {
+            // Update NFT balance and staked values
             userNFTs[positionOwner][nftAddress][tokenId] = 0;
             userStats[positionOwner].staked -= positionValue;
             totalStats.staked -= positionValue;
@@ -485,6 +481,8 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable, ReentrancyGuard {
         // Case 2: Position has debt greater than max borrow at this point - all NFTs go to the liquidator
         //         Liquidator pays part of the debt equivalent to max borrow at this point
         if (userStats[positionOwner].debt >= maxPositionBorrow) {
+            // Intentional deviation from checks-effects-interactions pattern:
+            // Transfer called before state changes for atomicity reasons
             stableToken.transferFrom(msg.sender, address(this), maxPositionBorrow);
 
             userNFTs[positionOwner][nftAddress][tokenId] = 0;
@@ -508,7 +506,8 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable, ReentrancyGuard {
                 block.timestamp,
                 metadata.expirationTimestamp
             );
-
+            // Intentional deviation from checks-effects-interactions pattern:
+            // Transfer called before state changes for atomicity reasons
             stableToken.transferFrom(msg.sender, address(this), liquidationPayment);
 
             uint256 currentDebt = userStats[positionOwner].debt;
