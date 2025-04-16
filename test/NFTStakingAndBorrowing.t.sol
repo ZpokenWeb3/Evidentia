@@ -799,6 +799,29 @@ contract NFTStakingAndBorrowingTest is Test {
         assertGt(debt, x256 / 1e18, "Debt should increase over time");
     }
 
+    function testFuzz_MaxBorrow_VariableInterval(uint128 x, uint32 intervalInSeconds) public view {
+        uint256 x256 = (uint256(x) + uint256(2)) * 1e18;
+
+        // Bound interval to reasonable values (0 to 10 years to avoid overflow)
+        uint256 maxInterval = 10 * YEAR_IN_SECONDS;
+        uint256 boundedInterval = bound(intervalInSeconds, 0, maxInterval);
+        uint256 diff = 0;
+
+        // If fromTime >= toTime, maxBorrow should be 0
+        if (boundedInterval == 0) {
+            uint256 maxBorrow = nftStaking.calculateMaxBorrow(x256, START_TIME, START_TIME);
+            assertEq(maxBorrow, 0, "Max borrow should be zero for zero interval");
+            return;
+        }
+
+        uint256 maxBorrow = nftStaking.calculateMaxBorrow(x256, START_TIME, START_TIME + boundedInterval);
+        uint256 debt = nftStaking.calculateDebt(maxBorrow, START_TIME, START_TIME + boundedInterval);
+
+        assertGe(maxBorrow + debt, x256, "Max borrow plus debt should be less than input amount");
+        assertLe(maxBorrow, x256, "Max borrow should not exceed input amount");
+        assertGt(maxBorrow, 0, "Max borrow should be positive for non-zero interval");
+    }
+
     function testFuzz_MaxBorrow_1month(uint128 x) public view {
         uint256 x256 = (uint256(x) + uint256(2)) * 1e18;
         uint256 month_in_seconds = YEAR_IN_SECONDS / 12;
