@@ -245,7 +245,7 @@ contract NFTStakingAndBorrowingTest is Test {
         assertEq(userStats.debtUpdateTimestamp, 90 days);
         assertEq(totalStats.debtUpdateTimestamp, 90 days);
         assertEq(userStats.nominalAvailable, 915_863667);
-        assertEq(nftStaking.userAvailableToBorrow(client2), 915_863666);
+        assertEq(nftStaking.userAvailableToBorrow(client2), 915_863667);
         assertEq(nftStaking.userAvailableToBorrow(client1), 0);
 
         // Client2 borrows everything available
@@ -413,7 +413,7 @@ contract NFTStakingAndBorrowingTest is Test {
         vm.roll(2);
         NFTStakingAndBorrowing.UserStats memory userStats = nftStaking.getUserStats(client1);
         assertEq(userStats.borrowed, borrow_amount);
-        assertEq(userStats.debt, 4925_940379);
+        assertEq(userStats.debt, 4925_940380);
 
         console.log("Client1 debt:    ", userStats.debt);
         console.log("Client1 Stables: ", stableBondCoins.balanceOf(client1));
@@ -492,7 +492,7 @@ contract NFTStakingAndBorrowingTest is Test {
         vm.roll(2);
         NFTStakingAndBorrowing.UserStats memory userStats = nftStaking.getUserStats(client1);
         assertEq(userStats.borrowed, borrow_amount);
-        assertEq(userStats.debt, 14777_821141);
+        assertEq(userStats.debt, 14777_821142);
 
         console.log("Client1 debt:    ", userStats.debt);
         console.log("Client1 Stables: ", stableBondCoins.balanceOf(client1));
@@ -524,7 +524,7 @@ contract NFTStakingAndBorrowingTest is Test {
             "userNFTs balance incorrect after liquidation"
         );
 
-        assertEq(stableBondCoins.balanceOf(client1), 13359_374999);
+        assertEq(stableBondCoins.balanceOf(client1), 13359_375000);
         assertEq(stableBondCoins.balanceOf(client2), 9851_880762);
     }
 

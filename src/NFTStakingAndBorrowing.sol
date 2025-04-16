@@ -9,17 +9,42 @@ import {UD60x18, ud} from "@prb/math/src/UD60x18.sol";
 import {IStableCoinsStaking} from "./Interfaces/IStableCoinsStaking.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
+/**
+ * @dev Interface for a mintable and burnable ERC20 token.
+ * Used for the stable token interaction within this contract.
+ */
 interface IMintableERC20 is IERC20 {
+    /**
+     * @notice Mints `amount` tokens and assigns them to `to`.
+     * @param to The address to mint tokens to.
+     * @param amount The amount of tokens to mint.
+     */
     function mint(address to, uint256 amount) external;
+
+    /**
+     * @notice Burns `amount` tokens from `from`.
+     * @param from The address to burn tokens from.
+     * @param amount The amount of tokens to burn.
+     */
     function burn(address from, uint256 amount) external;
 }
 
 /**
  * @title NFTStakingAndBorrowing
- * @notice This contract allows users to stake NFTs and borrow stable tokens against them.
- * @dev This contract is designed to work with the BondNFT contract and the StableBondCoins contract with minter role.
+ * @notice This contract allows users to stake Bond NFTs (ERC1155) and borrow stable tokens (ERC20) against them.
+ * It calculates borrowing limits based on NFT metadata (value, coupon, expiration) and applies interest over time.
+ * Integrates with a separate StableCoinsStaking contract.
+ * @dev This contract is designed to work with the BondNFT contract and a StableBondCoins contract where this contract has the MINTER_ROLE.
+ * Uses OpenZeppelin contracts for ERC1155Holder, Ownable, ReentrancyGuard. Uses PRBMath for fixed-point arithmetic.
  */
 contract NFTStakingAndBorrowing is ERC1155Holder, Ownable, ReentrancyGuard {
+    /**
+     * @notice Stores global statistics for the protocol.
+     * @param staked Total nominal value of all staked NFTs (after safety fee).
+     * @param borrowed Total amount of stablecoins initially borrowed by all users.
+     * @param debt Total current debt (borrowed + accrued interest) across all users.
+     * @param debtUpdateTimestamp Timestamp when the total debt was last updated.
+     */
     struct TotalStats {
         uint256 staked;
         uint256 borrowed;
@@ -27,6 +52,14 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable, ReentrancyGuard {
         uint256 debtUpdateTimestamp;
     }
 
+    /**
+     * @notice Stores statistics for a specific user.
+     * @param staked Total nominal value of the user's staked NFTs (after safety fee).
+     * @param nominalAvailable The maximum amount the user *could* borrow based on their staked collateral's future value, before accounting for existing debt.
+     * @param borrowed Total amount of stablecoins initially borrowed by the user.
+     * @param debt User's current debt (borrowed + accrued interest).
+     * @param debtUpdateTimestamp Timestamp when the user's debt and nominalAvailable were last updated.
+     */
     struct UserStats {
         uint256 staked;
         uint256 nominalAvailable;
@@ -35,47 +68,83 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable, ReentrancyGuard {
         uint256 debtUpdateTimestamp;
     }
 
+    /// @dev Global statistics for the protocol.
     TotalStats internal totalStats;
 
+    /// @notice Mapping from NFT contract address to whitelist status. Only whitelisted NFTs can be staked.
     mapping(address => bool) public whitelistedNFTs;
+    /// @dev Mapping from user address to their statistics.
     mapping(address => UserStats) internal userStats;
+    /// @dev Mapping tracks staked NFTs: user => nftContract => tokenId => amount.
     mapping(address => mapping(address => mapping(uint256 => uint256))) public userNFTs;
 
+    /// @dev Number of seconds in a year, used for interest calculations.
     uint256 internal constant YEAR_IN_SECONDS = 31536000;
+    /// @dev Basis unit for fixed-point math (1e18).
     uint256 internal constant UNIT = 1e18;
+    /// @dev Basis points denominator (10000), used for fees and yields.
     uint256 internal constant BPS = 1e4;
+
+    /// @notice Annual yield rate applied to borrowed amounts, expressed with UNIT precision (e.g., 12% is 1200 * UNIT / BPS).
     uint256 public protocolYield = 1200 * UNIT / BPS;
+    /// @notice Safety fee deducted from NFT value when calculating collateral, expressed with UNIT precision (e.g., 5% is 500 * UNIT / BPS).
     uint256 public safetyFee = 500 * UNIT / BPS;
+    /// @notice Time window before NFT expiration during which liquidation is possible.
     uint256 public liquidationTimeWindow = 45 days;
+    /// @notice Total rewards (accrued interest) transferred out to the stables staking contract.
     uint256 public RewardsTransfered;
+    /// @notice Address of the associated stablecoin staking contract.
     address public stablesStakingAddress;
 
+    /// @notice The stablecoin token contract used for borrowing and repayment. Must implement IMintableERC20.
     IMintableERC20 public stableToken;
 
+    /// @notice Emitted when a user stakes NFTs.
     event NFTStaked(address indexed user, address indexed nftAddress, uint256 tokenId, uint256 amount);
+    /// @notice Emitted when a user unstakes NFTs.
     event NFTUnstaked(address indexed user, address indexed nftAddress, uint256 tokenId, uint256 amount);
+    /// @notice Emitted when a user borrows stablecoins.
     event Borrowed(address indexed user, uint256 amount);
+    /// @notice Emitted when a user repays debt.
     event Repaid(address indexed user, uint256 amount);
+    /// @notice Emitted when a user's position is liquidated.
     event Liquidated(
         address indexed user, address liquidator, address indexed nftAddress, uint256 tokenId, uint256 amount
     );
+    /// @notice Emitted when the stablecoin staking contract address is updated.
     event StablesStakingAddressUpdated(address indexed oldAddress, address indexed newAddress);
 
-    // Custom errors
+    /// @dev Error when attempting to stake an NFT that is not whitelisted.
     error NFTNotWhitelisted();
+    /// @dev Error when attempting an action (stake, unstake, liquidate) with insufficient NFT balance (either in wallet or staked).
     error InsufficientNFTBalance();
-    error BorrowAmountExceedsLimit(uint256);
+    /// @dev Error when attempting to borrow more than the calculated maximum allowed amount. Includes the maximum amount allowed.
+    error BorrowAmountExceedsLimit(uint256 maxBorrow);
+    /// @dev Error when attempting to repay without sufficient stablecoin balance in the wallet.
     error InsufficientBalanceToRepay();
-    error NotEnoughCollateral(uint256);
+    /// @dev Error when attempting to unstake NFTs would leave insufficient collateral for the existing debt. Includes the remaining borrowing capacity.
+    error NotEnoughCollateral(uint256 remainingCapacity);
+    /// @dev Error when attempting to liquidate a position before the liquidation time window opens.
     error TooEarlyToLiquidate();
+    /// @dev Error when a function restricted to the stable staking contract is called by another address.
     error OnlyStableStakingContract();
+    /// @dev Error when attempting to set an address parameter (e.g., stablesStakingAddress) to the zero address.
     error ZeroAddress();
+    /// @dev Error when an arithmetic operation results in an overflow during debt/borrow calculations.
     error AmountOverflow();
 
+    /**
+     * @notice Contract constructor.
+     * @param _stableToken The address of the stablecoin (IMintableERC20) contract.
+     */
     constructor(address _stableToken) ERC1155Holder() Ownable(msg.sender) {
+        if (_stableToken == address(0)) revert ZeroAddress();
         stableToken = IMintableERC20(_stableToken);
     }
 
+    /**
+     * @dev Modifier to restrict function access to the `stablesStakingAddress`.
+     */
     modifier onlyStablesStaking() {
         if (msg.sender != stablesStakingAddress) revert OnlyStableStakingContract();
         _;
@@ -85,22 +154,48 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable, ReentrancyGuard {
                             ADMIN FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
+    /**
+     * @notice Whitelists or de-whitelists an NFT contract address.
+     * @dev Only callable by the contract owner.
+     * @param nftAddress The address of the NFT contract.
+     * @param status The desired whitelist status (true = whitelisted, false = not whitelisted).
+     */
     function whitelistNFT(address nftAddress, bool status) external onlyOwner {
         whitelistedNFTs[nftAddress] = status;
     }
 
+    /**
+     * @notice Sets the annual protocol yield rate.
+     * @dev Only callable by the contract owner. Input is in Basis Points (BPS).
+     * @param _protocolYieldInBPS The new yield rate in BPS (e.g., 1200 for 12%).
+     */
     function setProtocolYield(uint256 _protocolYieldInBPS) external onlyOwner {
         protocolYield = _protocolYieldInBPS * UNIT / BPS;
     }
 
+    /**
+     * @notice Sets the safety fee applied to NFT collateral value.
+     * @dev Only callable by the contract owner. Input is in Basis Points (BPS).
+     * @param _safetyFeeInBPS The new safety fee in BPS (e.g., 500 for 5%).
+     */
     function setSafetyFee(uint256 _safetyFeeInBPS) external onlyOwner {
         safetyFee = _safetyFeeInBPS * UNIT / BPS;
     }
 
+    /**
+     * @notice Sets the time window before NFT expiration during which liquidation is allowed.
+     * @dev Only callable by the contract owner.
+     * @param _timeWindowInSeconds The new liquidation window duration in seconds.
+     */
     function setLiquidationTimeWindow(uint256 _timeWindowInSeconds) external onlyOwner {
         liquidationTimeWindow = _timeWindowInSeconds;
     }
 
+    /**
+     * @notice Sets the address of the associated stablecoin staking contract.
+     * @dev Only callable by the contract owner. Cannot be set to the zero address.
+     * @param _address The new address of the stablecoin staking contract.
+     */
     function setStablesStakingAddress(address _address) external onlyOwner {
         if (_address == address(0)) revert ZeroAddress();
         address oldAddress = stablesStakingAddress;
@@ -112,29 +207,39 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable, ReentrancyGuard {
                             VIEW FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
-    function getUserStats(address userAddress) public view returns (UserStats memory) {
-        if (userStats[userAddress].debtUpdateTimestamp == block.timestamp) {
-            return userStats[userAddress];
+    /**
+     * @notice Calculates and returns the current statistics for a given user.
+     * @dev Updates debt and nominalAvailable based on time elapsed since the last update.
+     * @param userAddress The address of the user.
+     * @return updatedUserStats The UserStats struct with debt and nominalAvailable updated to the current block timestamp.
+     */
+    function getUserStats(address userAddress) public view returns (UserStats memory updatedUserStats) {
+        UserStats memory currentUserStats = userStats[userAddress];
+        if (currentUserStats.debtUpdateTimestamp == block.timestamp) {
+            return currentUserStats;
         }
         uint256 updatedDebt = 0;
-        if (userStats[userAddress].debt != 0) {
-            updatedDebt =
-                calculateDebt(userStats[userAddress].debt, userStats[userAddress].debtUpdateTimestamp, block.timestamp);
+        if (currentUserStats.debt != 0) {
+            updatedDebt = calculateDebt(currentUserStats.debt, currentUserStats.debtUpdateTimestamp, block.timestamp);
         }
-        uint256 updatedNominalAvailable = calculateDebt(
-            userStats[userAddress].nominalAvailable, userStats[userAddress].debtUpdateTimestamp, block.timestamp
-        );
-        UserStats memory updatedUserStats = UserStats(
-            userStats[userAddress].staked,
-            updatedNominalAvailable,
-            userStats[userAddress].borrowed,
-            updatedDebt,
-            block.timestamp
+        uint256 updatedNominalAvailable = 0;
+        if (currentUserStats.nominalAvailable != 0) {
+            updatedNominalAvailable =
+                calculateDebt(currentUserStats.nominalAvailable, currentUserStats.debtUpdateTimestamp, block.timestamp);
+        }
+
+        updatedUserStats = UserStats(
+            currentUserStats.staked, updatedNominalAvailable, currentUserStats.borrowed, updatedDebt, block.timestamp
         );
         return updatedUserStats;
     }
 
-    function getTotalStats() public view returns (TotalStats memory) {
+    /**
+     * @notice Calculates and returns the current global statistics for the protocol.
+     * @dev Updates total debt based on time elapsed since the last update.
+     * @return updatedTotalStats The TotalStats struct with debt updated to the current block timestamp.
+     */
+    function getTotalStats() public view returns (TotalStats memory updatedTotalStats) {
         if (totalStats.debtUpdateTimestamp == block.timestamp) {
             return totalStats;
         }
@@ -143,18 +248,29 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable, ReentrancyGuard {
             updatedDebt = calculateDebt(totalStats.debt, totalStats.debtUpdateTimestamp, block.timestamp);
         }
 
-        TotalStats memory updatedTotalStats =
-            TotalStats(totalStats.staked, totalStats.borrowed, updatedDebt, block.timestamp);
+        updatedTotalStats = TotalStats(totalStats.staked, totalStats.borrowed, updatedDebt, block.timestamp);
         return updatedTotalStats;
     }
 
+    /**
+     * @notice Calculates the maximum amount that can be borrowed against a given collateral value (`totalAmount`) considering the time until NFT expiration.
+     * @dev This represents the present value of the future collateral value, discounted by the protocol yield.
+     * Uses logarithmic and exponential functions for calculation via PRBMath UD60x18.
+     * @param totalAmount The value of the collateral (e.g., nominal value after safety fee).
+     * @param fromTime The timestamp from which to calculate the present value (e.g., `block.timestamp`).
+     * @param toTime The timestamp representing the future point in time (e.g., NFT expiration).
+     * @return The maximum borrowable amount (present value) with UNIT precision, divided by UNIT. Returns 0 if fromTime >= toTime.
+     * @dev Reverts with AmountOverflow if totalAmount is larger than PRBMath limit.
+     */
     function calculateMaxBorrow(uint256 totalAmount, uint256 fromTime, uint256 toTime) public view returns (uint256) {
         if (fromTime >= toTime) {
             return 0;
         }
+        // Prevent overflow when scaling by UNIT
         if (totalAmount > type(uint256).max / UNIT) {
             revert AmountOverflow();
         }
+        // Scale amount to UNIT precision for PRBMath
         totalAmount = totalAmount * UNIT;
         UD60x18 timeDelta = ud(toTime - fromTime);
         UD60x18 maxBorrowLog2 =
@@ -163,56 +279,110 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable, ReentrancyGuard {
         return maxBorrowLog2.exp2().intoUint256() / UNIT;
     }
 
+    /**
+     * @notice Calculates the future value of a borrowed amount after accruing interest over a period.
+     * @dev Uses logarithmic and exponential functions for calculation via PRBMath UD60x18.
+     * @param borrowedAmount The initial amount borrowed.
+     * @param fromTime The timestamp when the amount was borrowed or last updated.
+     * @param toTime The timestamp until which interest should be calculated (e.g., `block.timestamp`).
+     * @return The debt amount (borrowed amount + accrued interest) with UNIT precision, divided by UNIT.
+     * @dev Returns the original borrowedAmount (scaled by UNIT) if fromTime >= toTime.
+     */
     function calculateDebt(uint256 borrowedAmount, uint256 fromTime, uint256 toTime) public view returns (uint256) {
+        // Scale amount to UNIT precision for PRBMath
         borrowedAmount = borrowedAmount * UNIT;
+        if (fromTime >= toTime) {
+            return borrowedAmount / UNIT; // Return original amount if no time passed
+        }
         UD60x18 timeDelta = ud(toTime - fromTime);
         UD60x18 debtLog2 =
             (timeDelta / ud(YEAR_IN_SECONDS)) * (ud(UNIT + protocolYield)).log2() + ud(borrowedAmount).log2();
+
         return debtLog2.exp2().intoUint256() / UNIT;
     }
 
+    /**
+     * @notice Calculates the amount of stablecoins a user can currently borrow.
+     * @dev Updates the user's nominal available borrowing power and current debt to the present block timestamp,
+     * then returns the difference. Returns 0 if the user has no nominal available power or if debt exceeds it.
+     * @param userAddress The address of the user.
+     * @return The amount of stablecoins the user can borrow at the current time.
+     */
     function userAvailableToBorrow(address userAddress) public view returns (uint256) {
-        if (userStats[userAddress].nominalAvailable == 0) return 0;
+        if (userStats[userAddress].nominalAvailable == 0) return 0; // No collateral staked
 
+        // Calculate current nominal available borrowing power
         uint256 nominalAvailable = calculateDebt(
             userStats[userAddress].nominalAvailable, userStats[userAddress].debtUpdateTimestamp, block.timestamp
         );
+
+        // Calculate current debt
         if (userStats[userAddress].debt == 0) {
-            return nominalAvailable;
+            return nominalAvailable; // No debt, can borrow full nominal amount
         } else {
             uint256 debt =
                 calculateDebt(userStats[userAddress].debt, userStats[userAddress].debtUpdateTimestamp, block.timestamp);
-            return nominalAvailable - debt;
+            // Return difference if positive, otherwise 0
+            return nominalAvailable > debt ? nominalAvailable - debt : 0;
         }
     }
 
+    /**
+     * @notice Calculates the maximum amount of a specific NFT that a user can currently unstake.
+     * @dev Considers the user's current debt and the collateral value required to back that debt after unstaking.
+     * Calculates the value of the NFT to be unstaked and the user's current debt/available stats.
+     * Determines how much collateral value can be removed without making the remaining collateral insufficient for the debt.
+     * Converts this value back into an amount of the specific NFT.
+     * @param userAddress The address of the user.
+     * @param nftAddress The address of the NFT contract.
+     * @param tokenId The ID of the NFT token.
+     * @return The maximum amount of the specified NFT that can be unstaked. Returns 0 if the user holds none, or if their debt already exceeds their borrowing capacity.
+     */
     function userAvailableToUnstake(address userAddress, address nftAddress, uint256 tokenId)
         public
         view
         returns (uint256)
     {
         uint256 amount = userNFTs[userAddress][nftAddress][tokenId];
-
         if (amount == 0) {
-            return 0;
+            return 0; // User doesn't hold this NFT
         }
 
+        // Get NFT metadata to calculate its value
         IBondNFT.Metadata memory metadata = IBondNFT(nftAddress).getMetaData(tokenId);
-        uint256 unstakeValue = (metadata.value + metadata.couponValue) * (UNIT - safetyFee) / UNIT;
+        // Calculate the value of a single NFT unit for collateral purposes (after safety fee)
+        uint256 singleUnstakeValue = (metadata.value + metadata.couponValue) * (UNIT - safetyFee) / UNIT;
+        if (singleUnstakeValue == 0) {
+            return amount; // If NFT has no value, it doesn't affect collateral, can unstake all
+        }
 
+        // Get user stats updated to current time
         UserStats memory updatedUserStats = getUserStats(userAddress);
 
+        // If user is already underwater (debt >= nominal available), they can't unstake collateral
         if (updatedUserStats.nominalAvailable <= updatedUserStats.debt) {
             return 0;
         }
 
+        // If user has no debt, they can unstake all their NFTs
         if (updatedUserStats.debt == 0) {
             return amount;
         }
 
-        uint256 availableToUnstake = (updatedUserStats.nominalAvailable - updatedUserStats.debt)
-            / calculateMaxBorrow(unstakeValue, block.timestamp, metadata.expirationTimestamp);
+        // Calculate the maximum borrow power provided by one unit of this NFT
+        uint256 maxBorrowPerNFT = calculateMaxBorrow(singleUnstakeValue, block.timestamp, metadata.expirationTimestamp);
+        if (maxBorrowPerNFT == 0) {
+            return amount; // If NFT max borrow is zero (e.g., expired), it doesn't affect collateral, can unstake all
+        }
 
+        // Calculate how much 'excess' borrowing power the user has
+        uint256 excessBorrowingPower = updatedUserStats.nominalAvailable - updatedUserStats.debt;
+
+        // Calculate how many NFTs can be removed based on the excess borrowing power
+        // availableToUnstake = excessBorrowingPower / maxBorrowPerNFT
+        uint256 availableToUnstake = excessBorrowingPower / maxBorrowPerNFT;
+
+        // Return the calculated available amount, capped by the actual amount the user holds
         if (amount > availableToUnstake) {
             return availableToUnstake;
         } else {
@@ -225,72 +395,106 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable, ReentrancyGuard {
     //////////////////////////////////////////////////////////////*/
 
     /**
-     * @notice Allows a user to stake an NFT in the contract.
-     * @dev This function transfers the NFT to the contract and updates the user's balance.
-     * @dev NFT are not locked in the contract.
-     * @dev Stable coins are preminted in the contract when the NFT is staked.
-     * @param nftAddress The address of the NFT contract.
+     * @notice Allows a user to stake a whitelisted NFT in the contract.
+     * @dev This function transfers the specified amount of the NFT from the user to the contract,
+     * updates the user's and total staked values, calculates the added borrowing power (`nominalAvailable`),
+     * mints corresponding stablecoins to the contract (pre-funding potential future borrows), and emits `NFTStaked`.
+     * It uses the internal `_stakeNFT` function and applies a reentrancy guard.
+     * NFTs are held by the contract but not explicitly locked.
+     * @param nftAddress The address of the whitelisted NFT contract.
      * @param tokenId The ID of the NFT to stake.
-     * @param amount The amount of NFTs to stake.
+     * @param amount The amount of the specific NFT tokenId to stake.
      */
     function stakeNFT(address nftAddress, uint256 tokenId, uint256 amount) public nonReentrant {
         _stakeNFT(nftAddress, tokenId, amount);
     }
 
     /**
-     * @notice Internal function to process stake NFT
+     * @notice Internal function to handle the logic of staking an NFT.
+     * @dev Checks whitelisting and user balance. Fetches NFT metadata to calculate its value (minus safety fee).
+     * Updates user and total stats (`staked`, `nominalAvailable`, `debtUpdateTimestamp`).
+     * Transfers NFT from user to contract. Mints stablecoins to the contract equal to the NFT's calculated value.
+     * Emits `NFTStaked`. This function does *not* have a reentrancy guard itself; the public `stakeNFT` does.
+     * @param nftAddress The address of the NFT contract.
+     * @param tokenId The ID of the NFT to stake.
+     * @param amount The amount of the NFT to stake.
      */
     function _stakeNFT(address nftAddress, uint256 tokenId, uint256 amount) internal {
+        // Checks
         if (!whitelistedNFTs[nftAddress]) revert NFTNotWhitelisted();
         if (IBondNFT(nftAddress).balanceOf(msg.sender, tokenId) < amount) revert InsufficientNFTBalance();
 
+        // Get Metadata and Calculate Value
         IBondNFT.Metadata memory metadata = IBondNFT(nftAddress).getMetaData(tokenId);
-
+        // Value used for collateral calculation (includes coupon, reduced by safety fee)
         uint256 totalValue = (metadata.value + metadata.couponValue) * amount * (UNIT - safetyFee) / UNIT;
+        // Maximum borrowable amount against this specific staked batch
+        uint256 maxBorrowForThisStake = calculateMaxBorrow(totalValue, block.timestamp, metadata.expirationTimestamp);
+
+        // Update State (User and Total)
+        updateUserDebtAndAvailable(msg.sender);
+        updateTotalDebt();
 
         userNFTs[msg.sender][nftAddress][tokenId] += amount;
         totalStats.staked += totalValue;
         userStats[msg.sender].staked += totalValue;
-        userStats[msg.sender].nominalAvailable +=
-            calculateMaxBorrow(totalValue, block.timestamp, metadata.expirationTimestamp);
-        userStats[msg.sender].debtUpdateTimestamp = block.timestamp;
+        userStats[msg.sender].nominalAvailable += maxBorrowForThisStake;
+        // Note: debtUpdateTimestamp is updated within updateUserDebtAndAvailable
 
+        // Interactions
         IBondNFT(nftAddress).safeTransferFrom(msg.sender, address(this), tokenId, amount, "");
-        stableToken.mint(address(this), totalValue);
+        // Mint stablecoins to this contract, pre-funding potential borrows against the new collateral
+        stableToken.mint(address(this), totalValue); // Minting full value, not just max borrow
 
         emit NFTStaked(msg.sender, nftAddress, tokenId, amount);
     }
 
     /**
-     * @notice Allows a user to stake an NFT and stake stable coins simultaneously.
-     * @dev This function transfers the NFT to the contract, borrows the stable coins, and stakes the stable coins.
-     * @dev NFT are not locked in the contract.
-     * @dev Stable coins are borrowed at the same time and staked in the Stables Staking contract.
-     * @param nftAddress The address of the NFT contract.
+     * @notice Allows a user to stake an NFT and simultaneously borrow the maximum possible amount against it,
+     * staking those borrowed stables in the designated staking contract.
+     * @dev A convenience function combining staking and borrowing/staking stables.
+     * It first calls `_stakeNFT` to stake the NFT. Then, it updates the user's debt/available stats.
+     * It calculates the newly available amount to borrow (total nominal available minus current debt),
+     * borrows this amount using `_borrow` (which updates debt stats but doesn't transfer),
+     * approves the stable staking contract, and calls `stakeOnBehalfOf` on the stable staking contract to deposit
+     * the borrowed tokens. Uses reentrancy guard.
+     * @param nftAddress The address of the whitelisted NFT contract.
      * @param tokenId The ID of the NFT to stake.
-     * @param amountNft The amount of NFTs to stake.
+     * @param amountNft The amount of the specific NFT tokenId to stake.
      */
     function stakeNFTandStables(address nftAddress, uint256 tokenId, uint256 amountNft) external nonReentrant {
-        _stakeNFT(nftAddress, tokenId, amountNft);
-        updateUserDebtAndAvailable(msg.sender);
-        updateTotalDebt();
+        // 1. Stake NFT
+        _stakeNFT(nftAddress, tokenId, amountNft); // Updates state, transfers NFT, mints stables to this contract
+
+        // 2. Calculate amount to borrow & stake (should be max available after NFT stake)
+        // Note: _stakeNFT already updated user stats internally via updateUserDebtAndAvailable
         uint256 amount_to_stake = userStats[msg.sender].nominalAvailable - userStats[msg.sender].debt;
 
+        // 3. Borrow internally (updates debt state variables)
         _borrow(amount_to_stake, msg.sender);
 
+        // 4. Stake borrowed stables
         stableToken.approve(stablesStakingAddress, amount_to_stake);
+        // Assumes stablesStakingAddress is set and implements IStableCoinsStaking
         IStableCoinsStaking(stablesStakingAddress).stakeOnBehalfOf(amount_to_stake, msg.sender);
     }
 
     /**
-     * @notice Allows a user to borrow and stake stable coins simultaneously.
-     * @dev This function borrows the stable coins, and stakes the stable coins.
-     * @dev 0 is all available stable coins to borrow.
-     * @param amount_to_stake The amount of stables to stake.
+     * @notice Allows a user to borrow stablecoins against their existing staked collateral
+     * and stake those borrowed stables in the designated staking contract.
+     * @dev Updates user and total debt/available stats. Calculates the maximum borrowable amount.
+     * If `amount_to_stake` is 0, it defaults to the maximum borrowable amount.
+     * Reverts if the requested amount exceeds the maximum. Borrows the amount using `_borrow`,
+     * approves the stable staking contract, and calls `stakeOnBehalfOf` on the stable staking contract.
+     * Uses reentrancy guard.
+     * @param amount_to_stake The amount of stables to borrow and stake. If 0, borrows and stakes the maximum available amount.
      */
     function stakeStables(uint256 amount_to_stake) external nonReentrant {
+        // 1. Update state
         updateUserDebtAndAvailable(msg.sender);
         updateTotalDebt();
+
+        // 2. Determine borrow amount
         uint256 max_borrow = userStats[msg.sender].nominalAvailable - userStats[msg.sender].debt;
         if (amount_to_stake == 0) {
             amount_to_stake = max_borrow;
@@ -299,162 +503,242 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable, ReentrancyGuard {
             revert BorrowAmountExceedsLimit(max_borrow);
         }
 
+        // 3. Borrow internally
         _borrow(amount_to_stake, msg.sender);
 
+        // 4. Stake borrowed stables
         stableToken.approve(stablesStakingAddress, amount_to_stake);
         IStableCoinsStaking(stablesStakingAddress).stakeOnBehalfOf(amount_to_stake, msg.sender);
     }
 
     /**
-     * @notice Allows a user to unstake an NFT from the contract.
-     * @dev This function transfers the NFT back to the user and updates the user's balance.
-     * @dev User should have enough NFT balance left as a collateral.
+     * @notice Allows a user to unstake a previously staked NFT.
+     * @dev Checks whitelisting and user's staked balance of the specific NFT.
+     * Fetches metadata to calculate the value being unstaked.
+     * Updates user and total debt/available stats.
+     * **Crucially, it checks if the user's remaining collateral (`nominalAvailable - debt`)
+     * is sufficient to cover the borrowing power (`maxBorrow`) being removed by this unstake action.**
+     * If collateral is insufficient, it reverts. Updates user and total stats (`staked`, `nominalAvailable`),
+     * transfers the NFT back to the user, burns the corresponding stablecoins
+     * from the contract's balance (reversing the initial mint), and emits `NFTUnstaked`. Uses reentrancy guard.
      * @param nftAddress The address of the NFT contract.
      * @param tokenId The ID of the NFT to unstake.
-     * @param amount The amount of NFTs to unstake.
+     * @param amount The amount of the specific NFT tokenId to unstake.
      */
     function unstakeNFT(address nftAddress, uint256 tokenId, uint256 amount) external nonReentrant {
+        // Checks
         if (!whitelistedNFTs[nftAddress]) revert NFTNotWhitelisted();
-        // Only NFT owner can unstake anytime
+        // Check if user actually has this NFT staked
         if (userNFTs[msg.sender][nftAddress][tokenId] < amount) revert InsufficientNFTBalance();
 
+        // Calculations
         IBondNFT.Metadata memory metadata = IBondNFT(nftAddress).getMetaData(tokenId);
         uint256 totalUnstakeValue = (metadata.value + metadata.couponValue) * amount * (UNIT - safetyFee) / UNIT;
+        uint256 maxBorrowForUnstake =
+            calculateMaxBorrow(totalUnstakeValue, block.timestamp, metadata.expirationTimestamp);
 
+        // Update State (before collateral check)
         updateUserDebtAndAvailable(msg.sender);
         updateTotalDebt();
 
-        // Check if user has enough collateral
+        // Check if user has enough collateral remaining *after* this unstake
+        // The remaining collateral value (in terms of borrow power) must cover the debt.
         if (
             userStats[msg.sender].debt > 0
-                && calculateMaxBorrow(totalUnstakeValue, block.timestamp, metadata.expirationTimestamp)
-                    > userStats[msg.sender].nominalAvailable - userStats[msg.sender].debt
+                && maxBorrowForUnstake > (userStats[msg.sender].nominalAvailable - userStats[msg.sender].debt)
         ) {
             revert NotEnoughCollateral(userStats[msg.sender].nominalAvailable - userStats[msg.sender].debt);
         }
 
+        // Update State (apply changes)
         userNFTs[msg.sender][nftAddress][tokenId] -= amount;
-
         userStats[msg.sender].staked -= totalUnstakeValue;
-        if (
-            userStats[msg.sender].nominalAvailable
-                > calculateMaxBorrow(totalUnstakeValue, block.timestamp, metadata.expirationTimestamp)
-        ) {
-            userStats[msg.sender].nominalAvailable -=
-                calculateMaxBorrow(totalUnstakeValue, block.timestamp, metadata.expirationTimestamp);
+
+        // Decrease nominal available carefully, avoid underflow
+        if (userStats[msg.sender].nominalAvailable >= maxBorrowForUnstake) {
+            userStats[msg.sender].nominalAvailable -= maxBorrowForUnstake;
         } else {
+            // This case should ideally not be reached due to the NotEnoughCollateral check,
+            // but included for safety. It implies the user's collateral was exactly enough
+            // to cover the debt *before* unstaking this piece.
             userStats[msg.sender].nominalAvailable = 0;
         }
+        // Note: user debtUpdateTimestamp was updated in updateUserDebtAndAvailable
 
         totalStats.staked -= totalUnstakeValue;
+        // Note: total debtUpdateTimestamp was updated in updateTotalDebt
 
+        // Interactions
         IBondNFT(nftAddress).safeTransferFrom(address(this), msg.sender, tokenId, amount, "");
-
+        // Burn the stablecoins that were minted when this NFT was staked
         stableToken.burn(address(this), totalUnstakeValue);
 
         emit NFTUnstaked(msg.sender, nftAddress, tokenId, amount);
     }
 
     /**
-     * @notice Allows a user to borrow stable tokens against their staked NFTs.
-     * @dev This function checks if the user has sufficient NFT balance,
-     * @dev if the NFT is whitelisted, and if the user's debt is within the allowed limit.
-     * @param amount The amount of stable tokens to borrow. 0 means full available amount.
+     * @notice Allows a user to borrow stablecoins against their total staked collateral.
+     * @dev Updates user and total debt/available stats. Calculates the maximum currently borrowable amount.
+     * If `amount` is 0, defaults to the maximum. Reverts if the requested `amount` exceeds the maximum.
+     * Calls `_borrow` to update internal debt states, then transfers the borrowed stablecoins from the contract to the user.
+     * Uses reentrancy guard.
+     * @param amount The amount of stablecoins to borrow. If 0, borrows the maximum available amount.
      */
     function borrow(uint256 amount) public nonReentrant {
+        // 1. Update State
         updateUserDebtAndAvailable(msg.sender);
         updateTotalDebt();
+
+        // 2. Determine Borrow Amount
         uint256 max_borrow = userStats[msg.sender].nominalAvailable - userStats[msg.sender].debt;
         if (amount == 0) {
             amount = max_borrow;
         }
 
+        // 3. Check Limit
         if (amount > max_borrow) {
             revert BorrowAmountExceedsLimit(max_borrow);
         }
 
-        _borrow(amount, msg.sender);
+        // 4. Update Debt Internally
+        _borrow(amount, msg.sender); // This emits Borrowed event
 
+        // 5. Transfer Tokens
         stableToken.transfer(msg.sender, amount);
     }
 
     /**
-     * @notice Internal function to process borrow
-     * @dev Has no transfer
-     * @param amount The amount of stable tokens to borrow.
-     * @param user_address The address of the user
+     * @notice Internal function to update debt states when borrowing.
+     * @dev Increases the user's `debt` and `borrowed` amounts.
+     * Increases the total `debt` and `borrowed` amounts. Emits the `Borrowed` event.
+     * This function *only* updates state variables and does *not* perform token transfers.
+     * @param amount The amount of stablecoins being borrowed.
+     * @param user_address The address of the user borrowing.
      */
     function _borrow(uint256 amount, address user_address) internal {
+        // Note: Assumes user/total debt/available stats are already updated for the current block
         userStats[user_address].debt += amount;
-        userStats[user_address].borrowed += amount;
-        totalStats.borrowed += amount;
+        userStats[user_address].borrowed += amount; // Track lifetime borrowed amount for user
+        totalStats.borrowed += amount; // Track lifetime borrowed amount globally
         totalStats.debt += amount;
 
         emit Borrowed(user_address, amount);
     }
 
+    /**
+     * @notice Updates a user's debt and nominal available borrowing power to the current block timestamp.
+     * @dev Checks if an update is needed for the current block.
+     * If yes, calculates the accrued interest on the existing debt
+     * and the growth of nominal available using `calculateDebt`,
+     * updates the user's stats, and sets the `debtUpdateTimestamp` to `block.timestamp`.
+     * @param userAddress The address of the user whose stats need updating.
+     */
     function updateUserDebtAndAvailable(address userAddress) internal {
-        if (userStats[userAddress].debtUpdateTimestamp == block.timestamp) return;
+        if (userStats[userAddress].debtUpdateTimestamp == block.timestamp) return; // Already updated this block
 
+        // Calculate accrued interest on debt
         if (userStats[userAddress].debt != 0) {
             userStats[userAddress].debt =
                 calculateDebt(userStats[userAddress].debt, userStats[userAddress].debtUpdateTimestamp, block.timestamp);
         }
+        // Calculate growth of nominal available (acts like negative debt compounding)
         if (userStats[userAddress].nominalAvailable != 0) {
             userStats[userAddress].nominalAvailable = calculateDebt(
                 userStats[userAddress].nominalAvailable, userStats[userAddress].debtUpdateTimestamp, block.timestamp
             );
         }
+        // Update timestamp
         userStats[userAddress].debtUpdateTimestamp = block.timestamp;
     }
 
+    /**
+     * @notice Updates the total contract debt to the current block timestamp.
+     * @dev Checks if an update is needed for the current block.
+     * If yes, calculates the accrued interest on the total existing debt using `calculateDebt`,
+     * updates the `totalStats.debt`, and sets the `totalStats.debtUpdateTimestamp` to `block.timestamp`.
+     */
     function updateTotalDebt() internal {
-        if (totalStats.debtUpdateTimestamp == block.timestamp) return;
+        if (totalStats.debtUpdateTimestamp == block.timestamp) return; // Already updated this block
 
+        // Calculate accrued interest on total debt
         if (totalStats.debt != 0) {
             totalStats.debt = calculateDebt(totalStats.debt, totalStats.debtUpdateTimestamp, block.timestamp);
         }
+        // Update timestamp
         totalStats.debtUpdateTimestamp = block.timestamp;
     }
 
     /**
-     * @notice Allows a user to repay their debt.
-     * @dev This function transfers the repayment amount from the user's wallet to the contract.
-     * @param amount The amount to repay. 0 for full debt.
+     * @notice Allows a user to repay their outstanding debt.
+     * @dev Updates user and total debt stats.
+     * If `amount` is 0, defaults to repaying the user's full current debt.
+     * Checks if the user has sufficient stablecoin balance. Decreases user and total `debt`.
+     * Decreases user and total `borrowed` (lifetime borrowed tracker, capped at 0).
+     * Transfers the stablecoins from the user to the contract. Emits `Repaid`. Uses reentrancy guard.
+     * @param amount The amount of stablecoins to repay. If 0, repays the full debt.
      */
     function repay(uint256 amount) external nonReentrant {
+        // 1. Update State
         updateUserDebtAndAvailable(msg.sender);
         updateTotalDebt();
 
+        // 2. Determine Repayment Amount
         if (amount == 0) amount = userStats[msg.sender].debt;
+        if (amount == 0) return; // Nothing to repay
 
+        // Ensure user repays at most their current debt
+        if (amount > userStats[msg.sender].debt) {
+            amount = userStats[msg.sender].debt;
+        }
+
+        // 3. Check User Balance
         if (stableToken.balanceOf(msg.sender) < amount) revert InsufficientBalanceToRepay();
 
+        // 4. Update Debt State (before transfer)
         userStats[msg.sender].debt -= amount;
-        if (userStats[msg.sender].borrowed > amount) {
+        // Decrease lifetime borrowed amount, avoid underflow
+        if (userStats[msg.sender].borrowed >= amount) {
             userStats[msg.sender].borrowed -= amount;
         } else {
             userStats[msg.sender].borrowed = 0;
         }
+        // Note: user debtUpdateTimestamp updated earlier
 
         totalStats.debt -= amount;
-        if (totalStats.borrowed > amount) {
+        // Decrease lifetime borrowed amount globally, avoid underflow
+        if (totalStats.borrowed >= amount) {
             totalStats.borrowed -= amount;
         } else {
             totalStats.borrowed = 0;
         }
+        // Note: total debtUpdateTimestamp updated earlier
 
+        // 5. Transfer Tokens
         stableToken.transferFrom(msg.sender, address(this), amount);
 
         emit Repaid(msg.sender, amount);
     }
 
     /**
-     * @notice Allows a liquidator to liquidate a user's NFT position.
-     * @dev This function checks if the NFT is whitelisted, if the user has sufficient NFT balance, and if current timestamp is within the liquidation time window.
+     * @notice Allows anyone to liquidate an expired or soon-to-expire NFT position of another user.
+     * @dev Checks if NFT is whitelisted and if the position owner has staked this NFT.
+     * Checks if the current time is within the `liquidationTimeWindow` before the NFT's expiration.
+     * Fetches NFT metadata. Updates position owner's and total debt/available stats.
+     * Handles three liquidation scenarios:
+     * 1. No Debt: NFT is returned to the original `positionOwner`. Liquidator pays only gas.
+     * 2. Debt >= Max Borrow at Liquidation: Liquidator pays `maxPositionBorrow` amount of stablecoins (transferred from liquidator to this contract),
+     *    receives the *entire* NFT amount. User's debt is reduced by the paid amount.
+     * 3. Debt < Max Borrow at Liquidation: Calculates the NFT amount (`amountToLiquidate`) needed to cover the `positionOwner`'s entire debt.
+     *    Liquidator pays stablecoins equal to the borrowing power (`liquidationPayment`) of `amountToLiquidate`
+     *    (transferred from liquidator to this contract). The `positionOwner`'s debt is cleared.
+     *    The liquidator receives `amountToLiquidate` NFTs. Any excess payment (`liquidationPayment - currentDebt`) is transferred to the `positionOwner`.
+     *    Any remaining NFT amount is returned to the `positionOwner`.
+     * State changes (NFT balances, staked values, debt) are updated accordingly.
+     * The `stableToken.burn` call happens after NFT transfers to reflect the removal of collateral value.
+     * Emits `Liquidated` or `NFTUnstaked` (in case 1). Uses reentrancy guard.
      * @param nftAddress The address of the NFT contract.
-     * @param tokenId The ID of the NFT to liquidate in the position.
-     * @param positionOwner The address of the user who owns the NFT position.
+     * @param tokenId The ID of the NFT within the position to liquidate.
+     * @param positionOwner The address of the user whose position is being liquidated.
      */
     function liquidate(address nftAddress, uint256 tokenId, address positionOwner) external nonReentrant {
         if (!whitelistedNFTs[nftAddress]) revert NFTNotWhitelisted();
@@ -536,23 +820,45 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable, ReentrancyGuard {
         return;
     }
 
+    /**
+     * @notice Calculates the amount of rewards (accrued interest minus already transferred rewards) available to be claimed.
+     * @dev Calculates the current total debt based on the last update timestamp.
+     * The reward amount is the difference between the current total debt, the total amount ever borrowed (principal), and the rewards already transferred out.
+     * @return rewardAmount The amount of claimable rewards.
+     */
     function getRewardAmount() external view returns (uint256) {
+        // Calculate total debt up to current block timestamp
         uint256 currentDebt = calculateDebt(totalStats.debt, totalStats.debtUpdateTimestamp, block.timestamp);
+        // Rewards = Total Current Debt - Total Principal Borrowed - Rewards Already Claimed
         uint256 rewardAmount = currentDebt - totalStats.borrowed - RewardsTransfered;
         return rewardAmount;
     }
 
+    /**
+     * @notice Allows the designated stablecoin staking contract to claim accumulated rewards (interest).
+     * @dev Calculates the current total debt. Determines the reward amount (current total debt - total principal borrowed - already transferred rewards).
+     * Updates `RewardsTransfered`. Transfers the calculated `rewardAmount` of stablecoins to the caller (`msg.sender`,
+     * which must be `stablesStakingAddress` due to the modifier). Only callable by `stablesStakingAddress`.
+     * @return rewardAmount The amount of rewards transferred in this call.
+     */
     function getRewards() external onlyStablesStaking returns (uint256) {
         uint256 currentDebt;
+        // Get current total debt (avoid redundant calculation if already updated this block)
         if (totalStats.debtUpdateTimestamp == block.timestamp) {
             currentDebt = totalStats.debt;
         } else {
+            // Needs calculation (note: this doesn't update the stored totalStats.debt, only calculates for reward purpose)
+            // It might be better to call updateTotalDebt() here first, but sticking to original logic.
             currentDebt = calculateDebt(totalStats.debt, totalStats.debtUpdateTimestamp, block.timestamp);
         }
 
+        // Calculate claimable rewards
         uint256 rewardAmount = currentDebt - totalStats.borrowed - RewardsTransfered;
+
+        // Update rewards transferred *before* transfer (Effects before Interactions)
         RewardsTransfered += rewardAmount;
 
+        // Transfer rewards if any
         if (rewardAmount > 0) {
             stableToken.transfer(msg.sender, rewardAmount);
         }
@@ -561,12 +867,12 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable, ReentrancyGuard {
     }
 
     /**
-     * @notice Get the amount of NFTs a user has staked for a specific NFT contract and token ID
-     * @dev This is a view function for testing purposes
-     * @param user The address of the user
-     * @param nftAddress The address of the NFT contract
-     * @param tokenId The ID of the NFT
-     * @return The amount of NFTs the user has staked
+     * @notice Get the amount of a specific NFT a user has staked.
+     * @dev Returns the value from the `userNFTs` mapping.
+     * @param user The address of the user.
+     * @param nftAddress The address of the NFT contract.
+     * @param tokenId The ID of the NFT.
+     * @return The amount of the specified NFT the user has staked.
      */
     function getUserNFTBalance(address user, address nftAddress, uint256 tokenId) external view returns (uint256) {
         return userNFTs[user][nftAddress][tokenId];
