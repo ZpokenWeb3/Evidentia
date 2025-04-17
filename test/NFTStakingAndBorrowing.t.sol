@@ -774,10 +774,11 @@ contract NFTStakingAndBorrowingTest is Test {
         uint256 maxInterval = 10 * YEAR_IN_SECONDS;
         uint256 boundedInterval = bound(intervalInSeconds, 0, maxInterval);
         uint256 diff = 0;
+        uint256 debt;
 
         // If fromTime >= toTime, debt should equal input amount
         if (boundedInterval == 0) {
-            uint256 debt = nftStaking.calculateDebt(x256, START_TIME, START_TIME);
+            debt = nftStaking.calculateDebt(x256, START_TIME, START_TIME);
 
             if (x256 >= debt) {
                 diff = x256 - debt;
@@ -789,7 +790,7 @@ contract NFTStakingAndBorrowingTest is Test {
             return;
         }
 
-        uint256 debt = nftStaking.calculateDebt(x256, START_TIME, START_TIME + boundedInterval);
+        debt = nftStaking.calculateDebt(x256, START_TIME, START_TIME + boundedInterval);
 
         // Linear approximation for comparison
         // Linear debt = principal + (principal * protocolYield * time / YEAR_IN_SECONDS)
@@ -805,16 +806,16 @@ contract NFTStakingAndBorrowingTest is Test {
         // Bound interval to reasonable values (0 to 10 years to avoid overflow)
         uint256 maxInterval = 10 * YEAR_IN_SECONDS;
         uint256 boundedInterval = bound(intervalInSeconds, 0, maxInterval);
-        uint256 diff = 0;
+        uint256 maxBorrow;
 
         // If fromTime >= toTime, maxBorrow should be 0
         if (boundedInterval == 0) {
-            uint256 maxBorrow = nftStaking.calculateMaxBorrow(x256, START_TIME, START_TIME);
+            maxBorrow = nftStaking.calculateMaxBorrow(x256, START_TIME, START_TIME);
             assertEq(maxBorrow, 0, "Max borrow should be zero for zero interval");
             return;
         }
 
-        uint256 maxBorrow = nftStaking.calculateMaxBorrow(x256, START_TIME, START_TIME + boundedInterval);
+        maxBorrow = nftStaking.calculateMaxBorrow(x256, START_TIME, START_TIME + boundedInterval);
         uint256 debt = nftStaking.calculateDebt(maxBorrow, START_TIME, START_TIME + boundedInterval);
 
         assertGe(maxBorrow + debt, x256, "Max borrow plus debt should be less than input amount");
