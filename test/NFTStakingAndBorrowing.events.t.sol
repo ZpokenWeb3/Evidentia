@@ -67,7 +67,7 @@ contract NFTStakingAndBorrowingEventsTest is Test {
         vm.stopPrank();
     }
 
-    function test_NFTStakedEvent() public {
+    function testNFTStakedEvent() public {
         vm.expectEmit(true, true, true, true);
         emit NFTStaked(owner, address(bondNFT), 1, 5);
 
@@ -75,7 +75,7 @@ contract NFTStakingAndBorrowingEventsTest is Test {
         nftStaking.stakeNFT(address(bondNFT), 1, 5);
     }
 
-    function test_NFTUnstakedEvent() public {
+    function testNFTUnstakedEvent() public {
         vm.prank(owner);
         nftStaking.stakeNFT(address(bondNFT), 1, 5);
 
@@ -86,7 +86,7 @@ contract NFTStakingAndBorrowingEventsTest is Test {
         nftStaking.unstakeNFT(address(bondNFT), 1, 3);
     }
 
-    function test_BorrowedEvent() public {
+    function testBorrowedEvent() public {
         vm.prank(client1);
         nftStaking.stakeNFT(address(bondNFT), 2, 10);
 
@@ -99,7 +99,7 @@ contract NFTStakingAndBorrowingEventsTest is Test {
         nftStaking.borrow(borrowAmount);
     }
 
-    function test_RepaidEvent() public {
+    function testRepaidEvent() public {
         vm.startPrank(client1);
         nftStaking.stakeNFT(address(bondNFT), 2, 10);
         uint256 borrowAmount = 500_000000;
@@ -114,7 +114,7 @@ contract NFTStakingAndBorrowingEventsTest is Test {
         vm.stopPrank();
     }
 
-    function test_LiquidatedEvent() public {
+    function testLiquidatedEvent() public {
         vm.startPrank(client1);
         nftStaking.stakeNFT(address(bondNFT), 2, 10);
 
@@ -137,7 +137,7 @@ contract NFTStakingAndBorrowingEventsTest is Test {
         vm.stopPrank();
     }
 
-    function test_MultipleEventsInOneTransaction() public {
+    function testMultipleEventsInOneTransaction() public {
         vm.startPrank(owner);
         nftStaking.stakeNFT(address(bondNFT), 1, 5);
 
@@ -153,7 +153,7 @@ contract NFTStakingAndBorrowingEventsTest is Test {
         vm.stopPrank();
     }
 
-    function test_stakeNFTandStables_Events() public {
+    function testStakeNFTandStablesEvents() public {
         address stablesStaking = address(new StableCoinsStaking(address(stableBondCoins), address(nftStaking)));
 
         vm.startPrank(owner);
@@ -176,7 +176,7 @@ contract NFTStakingAndBorrowingEventsTest is Test {
         assertTrue(userStats.borrowed > 0, "No tokens were borrowed");
     }
 
-    function test_liquidate_NoDebt_Event() public {
+    function testLiquidateNoDebtEvent() public {
         vm.prank(client1);
         nftStaking.stakeNFT(address(bondNFT), 2, 10);
 
@@ -189,7 +189,7 @@ contract NFTStakingAndBorrowingEventsTest is Test {
         nftStaking.liquidate(address(bondNFT), 2, client1);
     }
 
-    function test_partialUnstakeEvents() public {
+    function testPartialUnstakeEvents() public {
         vm.prank(owner);
         nftStaking.stakeNFT(address(bondNFT), 1, 10);
 
@@ -209,7 +209,7 @@ contract NFTStakingAndBorrowingEventsTest is Test {
         assertEq(bondNFT.balanceOf(owner, 1), 8);
     }
 
-    function test_zeroAmountRepayEvent() public {
+    function testZeroAmountRepayEvent() public {
         vm.startPrank(client1);
         nftStaking.stakeNFT(address(bondNFT), 2, 10);
         uint256 borrowAmount = 500_000000;
@@ -227,7 +227,7 @@ contract NFTStakingAndBorrowingEventsTest is Test {
         assertEq(userStats.debt, 0);
     }
 
-    function test_liquidate_Case3_Event() public {
+    function testLiquidateCase3Event() public {
         owner = address(1);
         address localClient1 = address(2);
         address localClient2 = address(3);

@@ -33,7 +33,7 @@ contract BondNFTEventsTest is Test {
         vm.stopPrank();
     }
 
-    function test_MintAllowanceSetEvent() public {
+    function testMintAllowanceSetEvent() public {
         uint256 tokenId = 1;
         uint256 allowedAmount = 10;
 
@@ -46,7 +46,7 @@ contract BondNFTEventsTest is Test {
         assertEq(bondNFT.allowedMints(user1, tokenId), allowedAmount);
     }
 
-    function test_MultipleAllowanceEvents() public {
+    function testMultipleAllowanceEvents() public {
         vm.startPrank(owner);
 
         vm.expectEmit(true, true, true, true);
@@ -68,7 +68,7 @@ contract BondNFTEventsTest is Test {
         assertEq(bondNFT.allowedMints(user2, 1), 15);
     }
 
-    function test_UpdateAllowanceEvent() public {
+    function testUpdateAllowanceEvent() public {
         vm.prank(owner);
         bondNFT.setAllowedMints(user1, 1, 5);
 
@@ -81,7 +81,7 @@ contract BondNFTEventsTest is Test {
         assertEq(bondNFT.allowedMints(user1, 1), 10);
     }
 
-    function test_ZeroAllowanceEvent() public {
+    function testZeroAllowanceEvent() public {
         vm.prank(owner);
         bondNFT.setAllowedMints(user1, 1, 5);
 

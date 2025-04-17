@@ -92,7 +92,7 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable, ReentrancyGuard {
     /// @notice Time window before NFT expiration during which liquidation is possible.
     uint256 public liquidationTimeWindow = 45 days;
     /// @notice Total rewards (accrued interest) transferred out to the stables staking contract.
-    uint256 public RewardsTransfered;
+    uint256 public rewardsTransfered;
     /// @notice Address of the associated stablecoin staking contract.
     address public stablesStakingAddress;
 
@@ -468,47 +468,47 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable, ReentrancyGuard {
 
         // 2. Calculate amount to borrow & stake (should be max available after NFT stake)
         // Note: _stakeNFT already updated user stats internally via updateUserDebtAndAvailable
-        uint256 amount_to_stake = userStats[msg.sender].nominalAvailable - userStats[msg.sender].debt;
+        uint256 amountToStake = userStats[msg.sender].nominalAvailable - userStats[msg.sender].debt;
 
         // 3. Borrow internally (updates debt state variables)
-        _borrow(amount_to_stake, msg.sender);
+        _borrow(amountToStake, msg.sender);
 
         // 4. Stake borrowed stables
-        stableToken.approve(stablesStakingAddress, amount_to_stake);
+        stableToken.approve(stablesStakingAddress, amountToStake);
         // Assumes stablesStakingAddress is set and implements IStableCoinsStaking
-        IStableCoinsStaking(stablesStakingAddress).stakeOnBehalfOf(amount_to_stake, msg.sender);
+        IStableCoinsStaking(stablesStakingAddress).stakeOnBehalfOf(amountToStake, msg.sender);
     }
 
     /**
      * @notice Allows a user to borrow stablecoins against their existing staked collateral
      * and stake those borrowed stables in the designated staking contract.
      * @dev Updates user and total debt/available stats. Calculates the maximum borrowable amount.
-     * If `amount_to_stake` is 0, it defaults to the maximum borrowable amount.
+     * If `amountToStake` is 0, it defaults to the maximum borrowable amount.
      * Reverts if the requested amount exceeds the maximum. Borrows the amount using `_borrow`,
      * approves the stable staking contract, and calls `stakeOnBehalfOf` on the stable staking contract.
      * Uses reentrancy guard.
-     * @param amount_to_stake The amount of stables to borrow and stake. If 0, borrows and stakes the maximum available amount.
+     * @param amountToStake The amount of stables to borrow and stake. If 0, borrows and stakes the maximum available amount.
      */
-    function stakeStables(uint256 amount_to_stake) external nonReentrant {
+    function stakeStables(uint256 amountToStake) external nonReentrant {
         // 1. Update state
         updateUserDebtAndAvailable(msg.sender);
         updateTotalDebt();
 
         // 2. Determine borrow amount
-        uint256 max_borrow = userStats[msg.sender].nominalAvailable - userStats[msg.sender].debt;
-        if (amount_to_stake == 0) {
-            amount_to_stake = max_borrow;
+        uint256 maxBorrow = userStats[msg.sender].nominalAvailable - userStats[msg.sender].debt;
+        if (amountToStake == 0) {
+            amountToStake = maxBorrow;
         }
-        if (amount_to_stake > max_borrow) {
-            revert BorrowAmountExceedsLimit(max_borrow);
+        if (amountToStake > maxBorrow) {
+            revert BorrowAmountExceedsLimit(maxBorrow);
         }
 
         // 3. Borrow internally
-        _borrow(amount_to_stake, msg.sender);
+        _borrow(amountToStake, msg.sender);
 
         // 4. Stake borrowed stables
-        stableToken.approve(stablesStakingAddress, amount_to_stake);
-        IStableCoinsStaking(stablesStakingAddress).stakeOnBehalfOf(amount_to_stake, msg.sender);
+        stableToken.approve(stablesStakingAddress, amountToStake);
+        IStableCoinsStaking(stablesStakingAddress).stakeOnBehalfOf(amountToStake, msg.sender);
     }
 
     /**
@@ -590,14 +590,14 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable, ReentrancyGuard {
         updateTotalDebt();
 
         // 2. Determine Borrow Amount
-        uint256 max_borrow = userStats[msg.sender].nominalAvailable - userStats[msg.sender].debt;
+        uint256 maxBorrow = userStats[msg.sender].nominalAvailable - userStats[msg.sender].debt;
         if (amount == 0) {
-            amount = max_borrow;
+            amount = maxBorrow;
         }
 
         // 3. Check Limit
-        if (amount > max_borrow) {
-            revert BorrowAmountExceedsLimit(max_borrow);
+        if (amount > maxBorrow) {
+            revert BorrowAmountExceedsLimit(maxBorrow);
         }
 
         // 4. Update Debt Internally
@@ -613,16 +613,16 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable, ReentrancyGuard {
      * Increases the total `debt` and `borrowed` amounts. Emits the `Borrowed` event.
      * This function *only* updates state variables and does *not* perform token transfers.
      * @param amount The amount of stablecoins being borrowed.
-     * @param user_address The address of the user borrowing.
+     * @param userAddress The address of the user borrowing.
      */
-    function _borrow(uint256 amount, address user_address) internal {
+    function _borrow(uint256 amount, address userAddress) internal {
         // Note: Assumes user/total debt/available stats are already updated for the current block
-        userStats[user_address].debt += amount;
-        userStats[user_address].borrowed += amount; // Track lifetime borrowed amount for user
+        userStats[userAddress].debt += amount;
+        userStats[userAddress].borrowed += amount; // Track lifetime borrowed amount for user
         totalStats.borrowed += amount; // Track lifetime borrowed amount globally
         totalStats.debt += amount;
 
-        emit Borrowed(user_address, amount);
+        emit Borrowed(userAddress, amount);
     }
 
     /**
@@ -830,14 +830,14 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable, ReentrancyGuard {
         // Calculate total debt up to current block timestamp
         uint256 currentDebt = calculateDebt(totalStats.debt, totalStats.debtUpdateTimestamp, block.timestamp);
         // Rewards = Total Current Debt - Total Principal Borrowed - Rewards Already Claimed
-        uint256 rewardAmount = currentDebt - totalStats.borrowed - RewardsTransfered;
+        uint256 rewardAmount = currentDebt - totalStats.borrowed - rewardsTransfered;
         return rewardAmount;
     }
 
     /**
      * @notice Allows the designated stablecoin staking contract to claim accumulated rewards (interest).
      * @dev Calculates the current total debt. Determines the reward amount (current total debt - total principal borrowed - already transferred rewards).
-     * Updates `RewardsTransfered`. Transfers the calculated `rewardAmount` of stablecoins to the caller (`msg.sender`,
+     * Updates `rewardsTransfered`. Transfers the calculated `rewardAmount` of stablecoins to the caller (`msg.sender`,
      * which must be `stablesStakingAddress` due to the modifier). Only callable by `stablesStakingAddress`.
      * @return rewardAmount The amount of rewards transferred in this call.
      */
@@ -853,10 +853,10 @@ contract NFTStakingAndBorrowing is ERC1155Holder, Ownable, ReentrancyGuard {
         }
 
         // Calculate claimable rewards
-        uint256 rewardAmount = currentDebt - totalStats.borrowed - RewardsTransfered;
+        uint256 rewardAmount = currentDebt - totalStats.borrowed - rewardsTransfered;
 
         // Update rewards transferred *before* transfer (Effects before Interactions)
-        RewardsTransfered += rewardAmount;
+        rewardsTransfered += rewardAmount;
 
         // Transfer rewards if any
         if (rewardAmount > 0) {

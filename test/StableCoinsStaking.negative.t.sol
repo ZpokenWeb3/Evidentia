@@ -68,19 +68,19 @@ contract StableCoinsStakingNegativeTest is Test {
         stableBondCoins.approve(address(staking), type(uint256).max);
     }
 
-    function test_ZeroStake() public {
+    function testZeroStakeReverts() public {
         vm.expectRevert(abi.encodeWithSelector(ZeroAmountNotAllowed.selector));
         vm.prank(user1);
         staking.stake(0);
     }
 
-    function test_ZeroStakeOnBehalfOf() public {
+    function testZeroStakeOnBehalfOfReverts() public {
         vm.expectRevert(abi.encodeWithSelector(ZeroAmountNotAllowed.selector));
         vm.prank(user1);
         staking.stakeOnBehalfOf(0, user2);
     }
 
-    function test_ZeroWithdraw() public {
+    function testZeroWithdrawReverts() public {
         vm.prank(user1);
         staking.stake(500_000000);
 
@@ -89,7 +89,7 @@ contract StableCoinsStakingNegativeTest is Test {
         staking.withdraw(0);
     }
 
-    function test_WithdrawMoreThanStaked() public {
+    function testWithdrawMoreThanStakedReverts() public {
         vm.prank(user1);
         staking.stake(500_000000);
 
@@ -98,13 +98,13 @@ contract StableCoinsStakingNegativeTest is Test {
         staking.withdraw(600_000000);
     }
 
-    function test_WithdrawWithoutStaking() public {
+    function testWithdrawWithoutStakingReverts() public {
         vm.expectRevert(abi.encodeWithSelector(NotEnoughStaked.selector, 0));
         vm.prank(user1);
         staking.withdraw(100_000000);
     }
 
-    function test_ClaimZeroRewards() public {
+    function testClaimZeroRewardsReverts() public {
         mockReward.setRewardAmount(0);
 
         vm.prank(user1);
@@ -115,19 +115,19 @@ contract StableCoinsStakingNegativeTest is Test {
         staking.claimRewards();
     }
 
-    function test_StakeMoreThanBalance() public {
+    function testStakeMoreThanBalanceReverts() public {
         vm.expectRevert(abi.encodeWithSelector(NotEnoughBalance.selector));
         vm.prank(user1);
         staking.stake(2000_000000); // User only has 1000_000000
     }
 
-    function test_StakeOnBehalfMoreThanBalance() public {
+    function testStakeOnBehalfMoreThanBalanceReverts() public {
         vm.expectRevert(abi.encodeWithSelector(NotEnoughBalance.selector));
         vm.prank(user1);
         staking.stakeOnBehalfOf(2000_000000, user2); // User only has 1000_000000
     }
 
-    function test_ZeroTotalStaked() public {
+    function testZeroTotalStakedReverts() public {
         // Test when totalStaked = 0
         uint256 result = staking.pendingRewards(user1);
         assertEq(result, 0);
@@ -138,7 +138,7 @@ contract StableCoinsStakingNegativeTest is Test {
         assertEq(result, 0);
     }
 
-    function test_UpdateRewardWithAddressZero() public {
+    function testUpdateRewardWithAddressZeroReverts() public {
         vm.prank(user1);
         staking.stake(100_000000);
 
