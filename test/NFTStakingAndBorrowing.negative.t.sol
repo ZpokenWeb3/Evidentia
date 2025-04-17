@@ -67,31 +67,31 @@ contract NFTStakingAndBorrowingNegativeTest is Test {
         bondNFT.setApprovalForAll(address(nftStaking), true);
     }
 
-    function test_stakeNFT_NFTNotWhitelisted() public {
+    function testStakeNFTNotWhitelistedNFTReverts() public {
         vm.prank(client1);
         vm.expectRevert(NFTStakingAndBorrowing.NFTNotWhitelisted.selector);
         nftStaking.stakeNFT(notWhitelistedNFT, 1, 1);
     }
 
-    function test_stakeNFT_InsufficientNFTBalance() public {
+    function testStakeNFTInsufficientNFTBalanceReverts() public {
         vm.prank(client1);
         vm.expectRevert(NFTStakingAndBorrowing.InsufficientNFTBalance.selector);
         nftStaking.stakeNFT(address(bondNFT), 1, 1); // client1 doesn't have token 1
     }
 
-    function test_unstakeNFT_NFTNotWhitelisted() public {
+    function testUnstakeNFTNotWhitelistedNFTReverts() public {
         vm.prank(client1);
         vm.expectRevert(NFTStakingAndBorrowing.NFTNotWhitelisted.selector);
         nftStaking.unstakeNFT(notWhitelistedNFT, 1, 1);
     }
 
-    function test_unstakeNFT_InsufficientNFTBalance() public {
+    function testUnstakeNFTInsufficientNFTBalanceReverts() public {
         vm.prank(client1);
         vm.expectRevert(NFTStakingAndBorrowing.InsufficientNFTBalance.selector);
         nftStaking.unstakeNFT(address(bondNFT), 2, 11); // Client1 has only 10 tokens
     }
 
-    function test_unstakeNFT_NotEnoughCollateral() public {
+    function testUnstakeNFTNotEnoughCollateralReverts() public {
         vm.prank(client1);
         nftStaking.stakeNFT(address(bondNFT), 2, 10);
 
@@ -112,7 +112,7 @@ contract NFTStakingAndBorrowingNegativeTest is Test {
         vm.stopPrank();
     }
 
-    function test_borrow_exceed_revert() public {
+    function testBorrowExceedReverts() public {
         vm.prank(client1);
         nftStaking.stakeNFT(address(bondNFT), 2, 5);
 
@@ -126,7 +126,7 @@ contract NFTStakingAndBorrowingNegativeTest is Test {
         vm.stopPrank();
     }
 
-    function test_repay_InsufficientBalanceToRepay() public {
+    function testRepayInsufficientBalanceToRepayReverts() public {
         vm.prank(client1);
         nftStaking.stakeNFT(address(bondNFT), 2, 10);
 
@@ -143,19 +143,19 @@ contract NFTStakingAndBorrowingNegativeTest is Test {
         vm.stopPrank();
     }
 
-    function test_liquidate_NFTNotWhitelisted() public {
+    function testLiquidateNotWhitelistedNFTReverts() public {
         vm.prank(client1);
         vm.expectRevert(NFTStakingAndBorrowing.NFTNotWhitelisted.selector);
         nftStaking.liquidate(notWhitelistedNFT, 1, client2);
     }
 
-    function test_liquidate_InsufficientNFTBalance() public {
+    function testLiquidateInsufficientNFTBalanceReverts() public {
         vm.prank(client1);
         vm.expectRevert(NFTStakingAndBorrowing.InsufficientNFTBalance.selector);
         nftStaking.liquidate(address(bondNFT), 1, client2); // client2 doesn't have token 1 staked
     }
 
-    function test_liquidate_TooEarlyToLiquidate() public {
+    function testLiquidateTooEarlyToLiquidateReverts() public {
         vm.prank(client1);
         nftStaking.stakeNFT(address(bondNFT), 2, 10);
 
@@ -173,7 +173,7 @@ contract NFTStakingAndBorrowingNegativeTest is Test {
         vm.stopPrank();
     }
 
-    function test_onlyOwner_functions() public {
+    function testOnlyOwnerFunctionsReverts() public {
         vm.prank(client1);
         vm.expectRevert();
         nftStaking.whitelistNFT(address(bondNFT), true);
@@ -195,19 +195,19 @@ contract NFTStakingAndBorrowingNegativeTest is Test {
         nftStaking.setStablesStakingAddress(address(1));
     }
 
-    function test_onlyStablesStaking_getRewards() public {
+    function testOnlyStablesStakingGetRewardsReverts() public {
         vm.prank(client1);
         vm.expectRevert(NFTStakingAndBorrowing.OnlyStableStakingContract.selector);
         nftStaking.getRewards();
     }
 
-    function test_zeroAddressStableStaking() public {
+    function testZeroAddressStableStakingReverts() public {
         vm.expectRevert(NFTStakingAndBorrowing.ZeroAddress.selector);
         vm.prank(owner);
         nftStaking.setStablesStakingAddress(address(0));
     }
 
-    function test_calculateMaxBorrowOverflow() public {
+    function testCalculateMaxBorrowOverflowReverts() public {
         vm.expectRevert(NFTStakingAndBorrowing.AmountOverflow.selector);
         nftStaking.calculateMaxBorrow(type(uint256).max / 10 ^ 18 + 1, 90, 1_000_000);
     }

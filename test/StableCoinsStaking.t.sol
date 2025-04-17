@@ -42,7 +42,7 @@ contract StakingStablesTest is Test {
         vm.stopPrank();
     }
 
-    function test_stake_stables() public {
+    function testStakeStables() public {
         owner = address(1);
         address client1 = address(2);
         address client2 = address(3);
@@ -116,7 +116,7 @@ contract StakingStablesTest is Test {
         assertEq(stakingStables.pendingRewards(client3), 2790515371);
     }
 
-    function test_rewards() public {
+    function testRewards() public {
         owner = address(1);
         address client1 = address(2);
         address client2 = address(3);
@@ -190,7 +190,7 @@ contract StakingStablesTest is Test {
         assertEq(stableBondCoins.balanceOf(client3), client3Rewards);
     }
 
-    function test_withdraw() public {
+    function testWithdraw() public {
         owner = address(1);
         address client1 = address(2);
         address client2 = address(3);
@@ -270,7 +270,7 @@ contract StakingStablesTest is Test {
         assertEq(staked, 0);
     }
 
-    function test_restake_rewards() public {
+    function testRestakeRewards() public {
         owner = address(1);
         address client1 = address(2);
         address client2 = address(3);
@@ -364,7 +364,7 @@ contract StakingStablesTest is Test {
         assertEq(staked, 10125390760);
     }
 
-    function test_stake_NFT_and_stables() public {
+    function testStakeNFTAndStables() public {
         owner = address(1);
         address client1 = address(2);
         address client2 = address(3);
@@ -428,7 +428,7 @@ contract StakingStablesTest is Test {
         assertEq(stakingStables.pendingRewards(client3), 2790515371);
     }
 
-    function test_stake_stables_from_NFT_staking() public {
+    function testStakeStablesFromNFTStaking() public {
         owner = address(1);
         address client1 = address(2);
         address client2 = address(3);

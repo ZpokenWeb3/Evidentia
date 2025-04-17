@@ -113,7 +113,7 @@ contract StableCoinsStakingEdgeTest is Test {
         stableBondCoins.approve(address(staking), type(uint256).max);
     }
 
-    function test_RewardDistributionRatio() public {
+    function testRewardDistributionRatio() public {
         // Test that rewards are properly distributed based on stake ratio
         vm.prank(user1);
         staking.stake(1_000000); // 1 token
@@ -139,7 +139,7 @@ contract StableCoinsStakingEdgeTest is Test {
         assertApproxEqRel(user1Rewards + user2Rewards, 1000_000000, 0.01e18);
     }
 
-    function test_SequentialStakeAndWithdraw() public {
+    function testSequentialStakeAndWithdraw() public {
         // Test stake, withdraw, stake again behavior
         vm.startPrank(user2);
 
@@ -180,7 +180,7 @@ contract StableCoinsStakingEdgeTest is Test {
         vm.stopPrank();
     }
 
-    function test_stakeTimestampUpdate() public {
+    function testStakeTimestampUpdate() public {
         // Test that stakeTimestamp is properly updated on stake and withdraw
 
         // Initial stake
@@ -212,7 +212,7 @@ contract StableCoinsStakingEdgeTest is Test {
         assertGt(timestamp3, timestamp2);
     }
 
-    function test_largeStakeAmount() public {
+    function testLargeStakeAmount() public {
         // Test with large but safe stake amounts
         vm.prank(user3);
         staking.stake(1000000_000000);
@@ -235,7 +235,7 @@ contract StableCoinsStakingEdgeTest is Test {
         assertEq(stakedAmount, 1000000_000000);
     }
 
-    function test_multipleUserStakeUnstake() public {
+    function testMultipleUserStakeUnstake() public {
         vm.prank(user1);
         staking.stake(1_000000);
 

@@ -59,7 +59,7 @@ contract StableCoinsStakingEventsTest is Test {
         stableBondCoins.approve(address(staking), type(uint256).max);
     }
 
-    function test_StakedEvent() public {
+    function testStakedEvent() public {
         uint256 stakeAmount = 100_000000;
 
         vm.expectEmit(true, false, false, true);
@@ -73,7 +73,7 @@ contract StableCoinsStakingEventsTest is Test {
         assertEq(staking.totalStaked(), stakeAmount);
     }
 
-    function test_StakedOnBehalfOfEvent() public {
+    function testStakedOnBehalfOfEvent() public {
         uint256 stakeAmount = 100_000000;
 
         vm.expectEmit(true, false, false, true);
@@ -87,7 +87,7 @@ contract StableCoinsStakingEventsTest is Test {
         assertEq(staking.totalStaked(), stakeAmount);
     }
 
-    function test_MultipleStakes() public {
+    function testMultipleStakes() public {
         vm.prank(user1);
         staking.stake(50_000000);
 
@@ -98,7 +98,7 @@ contract StableCoinsStakingEventsTest is Test {
         assertEq(stakedAmount, 80_000000);
     }
 
-    function test_WithdrawnEvent() public {
+    function testWithdrawnEvent() public {
         uint256 stakeAmount = 100_000000;
         uint256 withdrawAmount = 50_000000;
 
@@ -116,7 +116,7 @@ contract StableCoinsStakingEventsTest is Test {
         assertEq(staking.totalStaked(), stakeAmount - withdrawAmount);
     }
 
-    function test_FullWithdrawalEvent() public {
+    function testFullWithdrawalEvent() public {
         uint256 stakeAmount = 100_000000;
 
         vm.prank(user1);
@@ -133,7 +133,7 @@ contract StableCoinsStakingEventsTest is Test {
         assertEq(staking.totalStaked(), 0);
     }
 
-    function test_RewardClaimedNoRewardsError() public {
+    function testRewardClaimedNoRewardsError() public {
         uint256 stakeAmount = 100_000000;
 
         vm.prank(user1);
