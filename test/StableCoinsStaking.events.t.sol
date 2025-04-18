@@ -44,8 +44,7 @@ contract StableCoinsStakingEventsTest is Test {
         vm.startPrank(owner);
         stableBondCoins = StableBondCoins(
             UnsafeUpgrades.deployUUPSProxy(
-                address(new StableBondCoins()),
-                abi.encodeCall(stableBondCoins.initialize, (owner, owner))
+                address(new StableBondCoins()), abi.encodeCall(stableBondCoins.initialize, (owner, owner))
             )
         );
 

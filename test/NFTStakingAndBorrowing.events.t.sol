@@ -34,8 +34,7 @@ contract NFTStakingAndBorrowingEventsTest is Test {
         bondNFT = new BondNFT(owner, "https://example.com/{id}.json");
         stableBondCoins = StableBondCoins(
             UnsafeUpgrades.deployUUPSProxy(
-                address(new StableBondCoins()),
-                abi.encodeCall(stableBondCoins.initialize, (owner, owner))
+                address(new StableBondCoins()), abi.encodeCall(stableBondCoins.initialize, (owner, owner))
             )
         );
 

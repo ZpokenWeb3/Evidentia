@@ -19,8 +19,7 @@ contract StableBondCoinsTest is Test {
 
         stableBondCoins = StableBondCoins(
             UnsafeUpgrades.deployUUPSProxy(
-                address(new StableBondCoins()),
-                abi.encodeCall(stableBondCoins.initialize, (defaultAdmin, minter))
+                address(new StableBondCoins()), abi.encodeCall(stableBondCoins.initialize, (defaultAdmin, minter))
             )
         );
     }
