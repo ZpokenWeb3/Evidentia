@@ -75,10 +75,39 @@ curl -L [https://foundry.paradigm.xyz](https://foundry.paradigm.xyz) | bash
 foundryup
 ```
 
+### Foundry Documentation
+
+https://book.getfoundry.sh/
+
+### Add libs
+
+```bash
+forge install OpenZeppelin/openzeppelin-contracts --no-commit
+forge install OpenZeppelin/openzeppelin-contracts-upgradeable --no-commit
+forge install foundry-rs/forge-std --no-commit
+```
+
 ### Running Tests
 
 To run tests with increased verbosity (showing logs and traces):
 ```bash
-forge test -vvv
+forge test --ffi -vvv
 ```
 
+### Format
+
+```bash
+forge fmt
+```
+
+### Gas Snapshots
+
+```bash
+forge snapshot
+```
+
+### Anvil
+
+```bash
+anvil
+```

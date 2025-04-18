@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.20;
+pragma solidity ^0.8.22;
 
 import {Script} from "forge-std/Script.sol";
 import {BondNFT} from "../src/BondNFT.sol";
+import {Upgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 import {console} from "forge-std/console.sol";
 
 contract DeployNft is Script {
@@ -10,8 +11,16 @@ contract DeployNft is Script {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address owner = vm.envAddress("OWNER");
         vm.startBroadcast(deployerPrivateKey);
-        BondNFT basicNft = new BondNFT(owner, "https://example.com/{id}.json");
+
+        // Deploy the contract as a UUPS proxy with the initializer
+        address proxy = Upgrades.deployUUPSProxy(
+            "BondNFT.sol",
+            abi.encodeCall(BondNFT.initialize, (owner, "https://example.com/{id}.json"))
+        );
+        BondNFT basicNft = BondNFT(proxy);
+
         vm.stopBroadcast();
+        console.log("BondNFT deployed at:", address(basicNft));
         return basicNft;
     }
 }

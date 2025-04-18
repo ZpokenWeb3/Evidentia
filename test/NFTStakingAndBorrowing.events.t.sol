@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.20;
+pragma solidity >=0.8.22;
 
 import {Test, console} from "forge-std/Test.sol";
 import {NFTStakingAndBorrowing} from "../src/NFTStakingAndBorrowing.sol";
 import {StableBondCoins} from "../src/StableBondCoins.sol";
 import {BondNFT} from "../src/BondNFT.sol";
 import {StableCoinsStaking} from "../src/StableCoinsStaking.sol";
+import {Upgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 
 contract NFTStakingAndBorrowingEventsTest is Test {
     NFTStakingAndBorrowing public nftStaking;
@@ -30,7 +31,15 @@ contract NFTStakingAndBorrowingEventsTest is Test {
         client2 = address(3);
 
         vm.startPrank(owner);
-        bondNFT = new BondNFT(owner, "https://example.com/{id}.json");
+
+        // Deploy the contract as a proxy with the initializer
+        bondNFT = BondNFT(
+            Upgrades.deployUUPSProxy(
+                "BondNFT.sol",
+                abi.encodeCall(BondNFT.initialize, (owner, "https://example.com/{id}.json"))
+            )
+        );
+
         stableBondCoins = new StableBondCoins(owner, owner);
 
         nftStaking = new NFTStakingAndBorrowing(address(stableBondCoins));
