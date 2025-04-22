@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import {StableBondCoins} from "../src/StableBondCoins.sol";
 import {Test, console} from "forge-std/Test.sol";
+import {UnsafeUpgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 
 contract StableBondCoinsTest is Test {
     StableBondCoins public stableBondCoins;
@@ -16,8 +17,12 @@ contract StableBondCoinsTest is Test {
         defaultAdmin = address(1);
         minter = address(2);
 
-        stableBondCoins = new StableBondCoins();
-        stableBondCoins.initialize(defaultAdmin, minter);
+        stableBondCoins = StableBondCoins(
+            UnsafeUpgrades.deployUUPSProxy(
+                address(new StableBondCoins()),
+                abi.encodeCall(stableBondCoins.initialize, (defaultAdmin, minter))
+            )
+        );
     }
 
     function testConstructor() public view {
@@ -29,7 +34,7 @@ contract StableBondCoinsTest is Test {
         assertEq(stableBondCoins.hasRole(MINTER_ROLE, minter), true);
     }
 
-    function testNameSpace() public view {
+    function testNameSpace() public pure {
         assertEq(
             keccak256(abi.encode(uint256(keccak256("StableBondCoins.storage")) - 1)) & ~bytes32(uint256(0xff)),
             0xd617c1a7b49d27159d9fe0ce7de01c7130c8a8bb809755fe8b0df36a2bc07e00
