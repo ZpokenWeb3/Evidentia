@@ -82,9 +82,10 @@ https://book.getfoundry.sh/
 ### Add libs
 
 ```bash
-forge install OpenZeppelin/openzeppelin-contracts --no-commit
-forge install OpenZeppelin/openzeppelin-contracts-upgradeable --no-commit
 forge install foundry-rs/forge-std --no-commit
+forge install OpenZeppelin/openzeppelin-contracts --no-commit
+forge install OpenZeppelin/openzeppelin-foundry-upgrades --no-commit
+forge install OpenZeppelin/openzeppelin-contracts-upgradeable --no-commit
 ```
 
 ### Running Tests

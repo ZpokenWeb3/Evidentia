@@ -2,16 +2,15 @@
 src = "src"
 out = "out"
 libs = ["lib"]
-build_info = true
-solc = "0.8.22"
 evm_version = "cancun"
 ast = true
 extra_output = ["evm.bytecode", "evm.deployedBytecode", "abi", "metadata", "ir", "irOptimized", "storageLayout", "devdoc", "userdoc"]
 extra_output_files = ["metadata", "ir", "irOptimized", "storageLayout", "devdoc", "userdoc"]
 solc_version = "0.8.22"
+fs_permissions = [{ access = "read", path = "out" }]
 
 remappings = [
-  '@openzeppelin/contracts=lib/openzeppelin-contracts/contracts',
+  '@openzeppelin/contracts=lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts',
   '@openzeppelin/contracts-upgradeable=lib/openzeppelin-contracts-upgradeable/contracts',
   'openzeppelin-foundry-upgrades=lib/openzeppelin-foundry-upgrades/src',
   '@prb/math/src=lib/prb-math/src'
@@ -22,3 +21,6 @@ sepolia = "${SEPOLIA_RPC_URL}"
 
 [etherscan]
 sepolia = { key = "${ETHERSCAN_API_KEY}" }
+
+[profile.solidity]
+build_info = true
