@@ -6,7 +6,7 @@ import {NFTStakingAndBorrowing} from "../src/NFTStakingAndBorrowing.sol";
 import {StableBondCoins} from "../src/StableBondCoins.sol";
 import {StableCoinsStaking} from "../src/StableCoinsStaking.sol";
 import {BondNFT} from "../src/BondNFT.sol";
-import {Upgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
+import {UnsafeUpgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 
 contract StakingStablesTest is Test {
     NFTStakingAndBorrowing public nftStaking;
@@ -22,8 +22,8 @@ contract StakingStablesTest is Test {
 
         // Deploy the contract as a proxy with the initializer
         bondNFT = BondNFT(
-            Upgrades.deployUUPSProxy(
-                "BondNFT.sol",
+            UnsafeUpgrades.deployUUPSProxy(
+                address(new BondNFT()),
                 abi.encodeCall(BondNFT.initialize, (owner, "https://example.com/{id}.json"))
             )
         );

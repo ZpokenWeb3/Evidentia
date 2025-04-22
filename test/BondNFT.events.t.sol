@@ -3,7 +3,7 @@ pragma solidity >=0.8.22;
 
 import {Test, console} from "forge-std/Test.sol";
 import {BondNFT} from "../src/BondNFT.sol";
-import {Upgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
+import {UnsafeUpgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 
 contract BondNFTEventsTest is Test {
     BondNFT public bondNFT;
@@ -21,8 +21,8 @@ contract BondNFTEventsTest is Test {
         vm.startPrank(owner);
         // Deploy the contract as a proxy with the initializer
         bondNFT = BondNFT(
-            Upgrades.deployUUPSProxy(
-                "BondNFT.sol",
+            UnsafeUpgrades.deployUUPSProxy(
+                address(new BondNFT()),
                 abi.encodeCall(BondNFT.initialize, (owner, "https://example.com/{id}.json"))
             )
         );
