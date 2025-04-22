@@ -22,8 +22,7 @@ contract BondNFTEventsTest is Test {
         // Deploy the contract as a proxy with the initializer
         bondNFT = BondNFT(
             UnsafeUpgrades.deployUUPSProxy(
-                address(new BondNFT()),
-                abi.encodeCall(BondNFT.initialize, (owner, "https://example.com/{id}.json"))
+                address(new BondNFT()), abi.encodeCall(BondNFT.initialize, (owner, "https://example.com/{id}.json"))
             )
         );
 

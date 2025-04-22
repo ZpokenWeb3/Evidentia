@@ -4,7 +4,8 @@ pragma solidity ^0.8.22;
 
 import {ERC1155Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC1155/ERC1155Upgradeable.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import {ERC1155SupplyUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC1155/extensions/ERC1155SupplyUpgradeable.sol";
+import {ERC1155SupplyUpgradeable} from
+    "@openzeppelin/contracts-upgradeable/token/ERC1155/extensions/ERC1155SupplyUpgradeable.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
@@ -14,7 +15,14 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
  * @dev An upgradeable ERC1155 contract representing tokenized bonds with metadata and minting controls.
  * Inherits from OpenZeppelin's upgradeable ERC1155, Ownable, ERC1155Supply, and ReentrancyGuard contracts.
  */
-contract BondNFT is Initializable, ERC1155Upgradeable, OwnableUpgradeable, ERC1155SupplyUpgradeable, ReentrancyGuardUpgradeable, UUPSUpgradeable {
+contract BondNFT is
+    Initializable,
+    ERC1155Upgradeable,
+    OwnableUpgradeable,
+    ERC1155SupplyUpgradeable,
+    ReentrancyGuardUpgradeable,
+    UUPSUpgradeable
+{
     /**
      * @dev Struct to hold metadata for each bond type (token ID).
      * @param value The face value or principal amount of the bond.
@@ -37,30 +45,26 @@ contract BondNFT is Initializable, ERC1155Upgradeable, OwnableUpgradeable, ERC11
      */
     struct Layout {
         /**
-        * @dev Mapping from token ID to its Metadata struct.
-        */
+         * @dev Mapping from token ID to its Metadata struct.
+         */
         mapping(uint256 => Metadata) metadata;
-
         /**
-        * @dev Mapping to store the allowed mints per user per token ID.
-        * `allowedMints[user][id]` returns the total amount of tokens of `id` that `user` is allowed to mint.
-        */
+         * @dev Mapping to store the allowed mints per user per token ID.
+         * `allowedMints[user][id]` returns the total amount of tokens of `id` that `user` is allowed to mint.
+         */
         mapping(address => mapping(uint256 => uint256)) allowedMints;
-
         /**
-        * @dev Mapping to track how many mints have been used per user per token ID.
-        * `mintedPerUser[user][id]` returns the amount of tokens of `id` that `user` has already minted.
-        */
+         * @dev Mapping to track how many mints have been used per user per token ID.
+         * `mintedPerUser[user][id]` returns the amount of tokens of `id` that `user` has already minted.
+         */
         mapping(address => mapping(uint256 => uint256)) mintedPerUser;
-
         /**
-        * @dev The name of the token collection.
-        */
+         * @dev The name of the token collection.
+         */
         string name;
-
         /**
-        * @dev The symbol of the token collection.
-        */
+         * @dev The symbol of the token collection.
+         */
         string symbol;
     }
 
@@ -225,9 +229,9 @@ contract BondNFT is Initializable, ERC1155Upgradeable, OwnableUpgradeable, ERC11
     }
 
     /**
-    * @dev Authorizes an upgrade to a new implementation contract address. Only callable by the contract owner.
-    * @param newImplementation The address of the new implementation contract.
-    */
+     * @dev Authorizes an upgrade to a new implementation contract address. Only callable by the contract owner.
+     * @param newImplementation The address of the new implementation contract.
+     */
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     /**
@@ -254,11 +258,11 @@ contract BondNFT is Initializable, ERC1155Upgradeable, OwnableUpgradeable, ERC11
     }
 
     /**
-    * @dev Retrieves the total number of tokens of a specific ID that a user is allowed to mint.
-    * @param user The address of the user to query.
-    * @param id The token ID to query.
-    * @return The total number of tokens the user is allowed to mint for the specified ID.
-    */
+     * @dev Retrieves the total number of tokens of a specific ID that a user is allowed to mint.
+     * @param user The address of the user to query.
+     * @param id The token ID to query.
+     * @return The total number of tokens the user is allowed to mint for the specified ID.
+     */
     function allowedMints(address user, uint256 id) external view returns (uint256) {
         return _getStorage().allowedMints[user][id];
     }

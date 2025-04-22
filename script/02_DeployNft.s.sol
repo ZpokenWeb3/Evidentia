@@ -14,8 +14,7 @@ contract DeployNft is Script {
 
         // Deploy the contract as a UUPS proxy with the initializer
         address proxy = Upgrades.deployUUPSProxy(
-            "BondNFT.sol",
-            abi.encodeCall(BondNFT.initialize, (owner, "https://example.com/{id}.json"))
+            "BondNFT.sol", abi.encodeCall(BondNFT.initialize, (owner, "https://example.com/{id}.json"))
         );
         BondNFT basicNft = BondNFT(proxy);
 
