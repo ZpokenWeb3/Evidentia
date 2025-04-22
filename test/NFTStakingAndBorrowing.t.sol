@@ -24,7 +24,8 @@ contract NFTStakingAndBorrowingTest is Test {
         owner = address(1);
         vm.startPrank(owner);
         bondNFT = new BondNFT(owner, "https://example.com/{id}.json");
-        stableBondCoins = new StableBondCoins(owner, owner);
+        stableBondCoins = new StableBondCoins();
+        stableBondCoins.initialize(owner, owner);
 
         nftStaking = new NFTStakingAndBorrowing(address(stableBondCoins));
 

@@ -41,7 +41,8 @@ contract StableCoinsStakingEventsTest is Test {
         user2 = address(3);
 
         vm.startPrank(owner);
-        stableBondCoins = new StableBondCoins(owner, owner);
+        stableBondCoins = new StableBondCoins();
+        stableBondCoins.initialize(owner, owner);
 
         MockReward mockReward = new MockReward();
         staking = new StableCoinsStaking(address(stableBondCoins), address(mockReward));

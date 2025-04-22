@@ -88,7 +88,8 @@ contract StableCoinsStakingEdgeTest is Test {
         user3 = address(4);
 
         vm.startPrank(owner);
-        stableBondCoins = new StableBondCoins(owner, owner);
+        stableBondCoins = new StableBondCoins();
+        stableBondCoins.initialize(owner, owner);
 
         // Use our improved mock
         rewardMock = new EdgeRewardMock();

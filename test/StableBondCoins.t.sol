@@ -16,7 +16,8 @@ contract StableBondCoinsTest is Test {
         defaultAdmin = address(1);
         minter = address(2);
 
-        stableBondCoins = new StableBondCoins(defaultAdmin, minter);
+        stableBondCoins = new StableBondCoins();
+        stableBondCoins.initialize(defaultAdmin, minter);
     }
 
     function testConstructor() public view {
@@ -26,6 +27,13 @@ contract StableBondCoinsTest is Test {
 
         assertEq(stableBondCoins.hasRole(DEFAULT_ADMIN_ROLE, defaultAdmin), true);
         assertEq(stableBondCoins.hasRole(MINTER_ROLE, minter), true);
+    }
+
+    function testNameSpace() public view {
+        assertEq(
+            keccak256(abi.encode(uint256(keccak256("StableBondCoins.storage")) - 1)) & ~bytes32(uint256(0xff)),
+            0xd617c1a7b49d27159d9fe0ce7de01c7130c8a8bb809755fe8b0df36a2bc07e00
+        );
     }
 
     function testMint() public {
