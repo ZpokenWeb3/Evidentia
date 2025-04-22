@@ -36,7 +36,11 @@ contract NFTStakingAndBorrowingNegativeTest is Test {
             )
         );
 
-        stableBondCoins = new StableBondCoins(owner, owner);
+        stableBondCoins = StableBondCoins(
+            UnsafeUpgrades.deployUUPSProxy(
+                address(new StableBondCoins()), abi.encodeCall(stableBondCoins.initialize, (owner, owner))
+            )
+        );
 
         nftStaking = new NFTStakingAndBorrowing(address(stableBondCoins));
         stableStaking = new StableCoinsStaking(address(stableBondCoins), address(nftStaking));

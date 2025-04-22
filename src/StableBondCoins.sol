@@ -2,41 +2,70 @@
 // Compatible with OpenZeppelin Contracts ^5.0.0
 pragma solidity ^0.8.22;
 
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
-import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
+import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {ERC20PermitUpgradeable} from
+    "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 /**
  * @title StableBondCoins
- * @dev An ERC20 token contract with minting and burning capabilities controlled by AccessControl.
- * It also includes ERC20Permit functionality.
+ * @dev An upgradeable ERC20 token contract with minting and burning capabilities controlled by AccessControl.
+ * It includes ERC20Permit functionality and uses ERC7201 storage namespace and UUPS proxy pattern for upgradeability.
  */
-contract StableBondCoins is ERC20, AccessControl, ERC20Permit {
+contract StableBondCoins is ERC20Upgradeable, AccessControlUpgradeable, ERC20PermitUpgradeable, UUPSUpgradeable {
+    // keccak256(abi.encode(uint256(keccak256("StableBondCoins.storage")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant STORAGE_LOCATION = 0xd617c1a7b49d27159d9fe0ce7de01c7130c8a8bb809755fe8b0df36a2bc07e00;
+
     /**
      * @dev Role identifier for minters. Only addresses with this role can mint or burn tokens.
      */
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
     /**
-     * @dev Sets up the contract, assigning initial roles.
-     * @param defaultAdmin The address that will be granted the default admin role.
-     * @param minter The address that will be granted the minter role.
+     * @dev Storage struct for ERC7201 namespace.
      */
-    constructor(address defaultAdmin, address minter)
-        ERC20("Stable Bond Coins", "SBC")
-        ERC20Permit("Stable Bond Coins")
-    {
-        _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
-        _grantRole(MINTER_ROLE, minter);
+    struct StableBondCoinsStorage {
+        uint8 decimals;
     }
 
     /**
+     * @dev Retrieve the storage slot for the contract.
+     */
+    function _getStableBondCoinsStorage() private pure returns (StableBondCoinsStorage storage $) {
+        assembly {
+            $.slot := STORAGE_LOCATION
+        }
+    }
+
+    /**
+     * @dev Initialize the contract (replaces constructor).
+     * @param defaultAdmin The address that will be granted the default admin role.
+     * @param minter The address that will be granted the minter role.
+     */
+    function initialize(address defaultAdmin, address minter) external initializer {
+        __ERC20_init("Stable Bond Coins", "SBC");
+        __ERC20Permit_init("Stable Bond Coins");
+        __AccessControl_init();
+        __UUPSUpgradeable_init();
+
+        _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
+        _grantRole(MINTER_ROLE, minter);
+
+        StableBondCoinsStorage storage $ = _getStableBondCoinsStorage();
+        $.decimals = 6;
+    }
+
+    /**
+     * @dev Authorize upgrades (required for UUPS).
+     * Only callable by the admin (holder of DEFAULT_ADMIN_ROLE).
+     */
+    function _authorizeUpgrade(address newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
+
+    /**
      * @dev Creates `amount` tokens and assigns them to `to`, increasing the total supply.
-     * Emits a {Transfer} event with `from` set to the zero address.
      * Requirements:
      * - The caller must have the `MINTER_ROLE`.
-     * @param to The address that will receive the minted tokens.
-     * @param amount The amount of tokens to mint.
      */
     function mint(address to, uint256 amount) public onlyRole(MINTER_ROLE) {
         _mint(to, amount);
@@ -44,13 +73,10 @@ contract StableBondCoins is ERC20, AccessControl, ERC20Permit {
 
     /**
      * @dev Destroys `amount` tokens from `from`, reducing the total supply.
-     * Emits a {Transfer} event with `to` set to the zero address.
      * Requirements:
      * - The caller must have the `MINTER_ROLE`.
      * - `from` cannot be the zero address.
      * - `from` must have at least `amount` tokens.
-     * @param from The address whose tokens will be burned.
-     * @param amount The amount of tokens to burn.
      */
     function burn(address from, uint256 amount) public onlyRole(MINTER_ROLE) {
         _burn(from, amount);
@@ -58,9 +84,9 @@ contract StableBondCoins is ERC20, AccessControl, ERC20Permit {
 
     /**
      * @dev Returns the number of decimals used to get its user representation.
-     * @return The number of decimals (set to 6).
      */
     function decimals() public view virtual override returns (uint8) {
-        return 6;
+        StableBondCoinsStorage storage $ = _getStableBondCoinsStorage();
+        return $.decimals;
     }
 }
