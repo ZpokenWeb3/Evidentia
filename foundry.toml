@@ -9,13 +9,18 @@ extra_output_files = ["metadata", "ir", "irOptimized", "storageLayout", "devdoc"
 solc_version = "0.8.22"
 fs_permissions = [{ access = "read", path = "out" }]
 
-remappings = ['@openzeppelin/contracts=lib/openzeppelin-contracts/contracts',
-              '@prb/math/src=lib/prb-math/src',
-              '@openzeppelin/contracts/=lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/',
-              '@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/']
+remappings = [
+  '@openzeppelin/contracts=lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts',
+  '@openzeppelin/contracts-upgradeable=lib/openzeppelin-contracts-upgradeable/contracts',
+  'openzeppelin-foundry-upgrades=lib/openzeppelin-foundry-upgrades/src',
+  '@prb/math/src=lib/prb-math/src'
+]
 
 [rpc_endpoints]
 sepolia = "${SEPOLIA_RPC_URL}"
 
 [etherscan]
 sepolia = { key = "${ETHERSCAN_API_KEY}" }
+
+[profile.solidity]
+build_info = true

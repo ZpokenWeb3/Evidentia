@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.20;
+pragma solidity >=0.8.22;
 
 import {Test, console} from "forge-std/Test.sol";
 import {StableCoinsStaking} from "../src/StableCoinsStaking.sol";
 import {StableBondCoins} from "../src/StableBondCoins.sol";
 import {UnsafeUpgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
-
 
 contract EdgeRewardMock {
     uint256 private rewardAmount;
@@ -92,8 +91,7 @@ contract StableCoinsStakingEdgeTest is Test {
         vm.startPrank(owner);
         stableBondCoins = StableBondCoins(
             UnsafeUpgrades.deployUUPSProxy(
-                address(new StableBondCoins()),
-                abi.encodeCall(stableBondCoins.initialize, (owner, owner))
+                address(new StableBondCoins()), abi.encodeCall(stableBondCoins.initialize, (owner, owner))
             )
         );
 

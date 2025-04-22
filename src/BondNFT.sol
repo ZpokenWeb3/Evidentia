@@ -1,18 +1,20 @@
 // SPDX-License-Identifier: MIT
 // Compatible with OpenZeppelin Contracts ^5.0.0
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.22;
 
-import {ERC1155} from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {ERC1155Supply} from "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {ERC1155Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC1155/ERC1155Upgradeable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {ERC1155SupplyUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC1155/extensions/ERC1155SupplyUpgradeable.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 /**
  * @title BondNFT
- * @dev An ERC1155 contract representing tokenized bonds with metadata and minting controls.
- * Inherits from OpenZeppelin's ERC1155, Ownable, ERC1155Supply, and ReentrancyGuard contracts.
+ * @dev An upgradeable ERC1155 contract representing tokenized bonds with metadata and minting controls.
+ * Inherits from OpenZeppelin's upgradeable ERC1155, Ownable, ERC1155Supply, and ReentrancyGuard contracts.
  */
-contract BondNFT is ERC1155, Ownable, ERC1155Supply, ReentrancyGuard {
+contract BondNFT is Initializable, ERC1155Upgradeable, OwnableUpgradeable, ERC1155SupplyUpgradeable, ReentrancyGuardUpgradeable, UUPSUpgradeable {
     /**
      * @dev Struct to hold metadata for each bond type (token ID).
      * @param value The face value or principal amount of the bond.
@@ -30,6 +32,51 @@ contract BondNFT is ERC1155, Ownable, ERC1155Supply, ReentrancyGuard {
     }
 
     /**
+     * @custom:storage-location erc7201:bond.nft.storage
+     * @dev Struct to hold all storage variables to prevent storage collisions during upgrades.
+     */
+    struct Layout {
+        /**
+        * @dev Mapping from token ID to its Metadata struct.
+        */
+        mapping(uint256 => Metadata) metadata;
+
+        /**
+        * @dev Mapping to store the allowed mints per user per token ID.
+        * `allowedMints[user][id]` returns the total amount of tokens of `id` that `user` is allowed to mint.
+        */
+        mapping(address => mapping(uint256 => uint256)) allowedMints;
+
+        /**
+        * @dev Mapping to track how many mints have been used per user per token ID.
+        * `mintedPerUser[user][id]` returns the amount of tokens of `id` that `user` has already minted.
+        */
+        mapping(address => mapping(uint256 => uint256)) mintedPerUser;
+
+        /**
+        * @dev The name of the token collection.
+        */
+        string name;
+
+        /**
+        * @dev The symbol of the token collection.
+        */
+        string symbol;
+    }
+
+    // keccak256(abi.encode(uint256(keccak256("bond.nft.storage")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant STORAGE_LOCATION = 0x57deeb5d263ad500cb3646f0c17a9a963c02d1d301632922b135588e514fb000;
+
+    /**
+     * @dev Private function to retrieve storage layout.
+     */
+    function _getStorage() private pure returns (Layout storage $) {
+        assembly {
+            $.slot := STORAGE_LOCATION
+        }
+    }
+
+    /**
      * @dev Emitted when the mint allowance for a specific user and token ID is set or updated.
      * @param user The address of the user whose allowance is being set.
      * @param id The token ID for which the allowance is being set.
@@ -42,47 +89,31 @@ contract BondNFT is ERC1155, Ownable, ERC1155Supply, ReentrancyGuard {
      */
     error NftMintingNotAllowed();
     /**
-     * @dev Reverts when a user attempts to mint more tokens than their remaining allowance for a specific token ID.
+     * @dev Reverts when a user attempts to mint more tokens than their remaining allowance.
      * @param remaining The number of tokens the user is still allowed to mint.
      */
     error NftMintingLimitExceeded(uint256 remaining);
     /**
-     * @dev Reverts when a user attempts to burn more tokens than they own for a specific token ID.
+     * @dev Reverts when a user attempts to burn more tokens than they own.
      */
     error NftInsufficientBalanceToBurn();
 
     /**
-     * @dev Mapping from token ID to its Metadata struct.
-     */
-    mapping(uint256 => Metadata) public metadata;
-
-    /**
-     * @dev Mapping to store the allowed mints per user per token ID.
-     * `allowedMints[user][id]` returns the total amount of tokens of `id` that `user` is allowed to mint.
-     */
-    mapping(address => mapping(uint256 => uint256)) public allowedMints;
-
-    /**
-     * @dev Mapping to track how many mints have been used per user per token ID.
-     * `mintedPerUser[user][id]` returns the amount of tokens of `id` that `user` has already minted.
-     */
-    mapping(address => mapping(uint256 => uint256)) public mintedPerUser;
-
-    /**
-     * @dev The name of the token collection.
-     */
-    string public name = "BondNFT";
-    /**
-     * @dev The symbol of the token collection.
-     */
-    string public symbol = "BNFT";
-
-    /**
-     * @dev Contract constructor.
+     * @dev Initializes the contract. Replaces constructor for upgradeable contracts.
      * @param initialOwner The address that will initially own the contract.
      * @param _uri The base URI for token metadata.
      */
-    constructor(address initialOwner, string memory _uri) ERC1155(_uri) Ownable(initialOwner) {}
+    function initialize(address initialOwner, string memory _uri) external initializer {
+        __ERC1155_init(_uri);
+        __Ownable_init(initialOwner);
+        __ERC1155Supply_init();
+        __ReentrancyGuard_init();
+        __UUPSUpgradeable_init();
+
+        Layout storage $ = _getStorage();
+        $.name = "BondNFT";
+        $.symbol = "BNFT";
+    }
 
     /**
      * @dev Sets the base URI for token metadata.
@@ -100,7 +131,7 @@ contract BondNFT is ERC1155, Ownable, ERC1155Supply, ReentrancyGuard {
      * @param _metadata The Metadata struct containing the details.
      */
     function setMetaData(uint256 id, Metadata memory _metadata) external onlyOwner {
-        metadata[id] = _metadata;
+        _getStorage().metadata[id] = _metadata;
     }
 
     /**
@@ -109,7 +140,7 @@ contract BondNFT is ERC1155, Ownable, ERC1155Supply, ReentrancyGuard {
      * @return Metadata struct containing the bond details.
      */
     function getMetaData(uint256 id) external view returns (Metadata memory) {
-        return metadata[id];
+        return _getStorage().metadata[id];
     }
 
     /**
@@ -120,7 +151,8 @@ contract BondNFT is ERC1155, Ownable, ERC1155Supply, ReentrancyGuard {
      * @param allowedAmount The total number of tokens the user is allowed to mint for this ID.
      */
     function setAllowedMints(address user, uint256 id, uint256 allowedAmount) external onlyOwner {
-        allowedMints[user][id] = allowedAmount;
+        Layout storage $ = _getStorage();
+        $.allowedMints[user][id] = allowedAmount;
         emit MintAllowanceSet(user, id, allowedAmount);
     }
 
@@ -136,13 +168,14 @@ contract BondNFT is ERC1155, Ownable, ERC1155Supply, ReentrancyGuard {
      * @param data Additional data to pass to the mint function (optional).
      */
     function mint(uint256 id, uint256 amount, bytes memory data) public nonReentrant {
-        if (allowedMints[msg.sender][id] == 0) revert NftMintingNotAllowed();
-        if (mintedPerUser[msg.sender][id] + amount > allowedMints[msg.sender][id]) {
-            revert NftMintingLimitExceeded(allowedMints[msg.sender][id] - mintedPerUser[msg.sender][id]);
+        Layout storage $ = _getStorage();
+        if ($.allowedMints[msg.sender][id] == 0) revert NftMintingNotAllowed();
+        if ($.mintedPerUser[msg.sender][id] + amount > $.allowedMints[msg.sender][id]) {
+            revert NftMintingLimitExceeded($.allowedMints[msg.sender][id] - $.mintedPerUser[msg.sender][id]);
         }
 
         // Track the number of minted tokens per user for the given ID
-        mintedPerUser[msg.sender][id] += amount;
+        $.mintedPerUser[msg.sender][id] += amount;
         _mint(msg.sender, id, amount, data);
     }
 
@@ -158,19 +191,20 @@ contract BondNFT is ERC1155, Ownable, ERC1155Supply, ReentrancyGuard {
      * @param data Additional data to pass to the batch mint function (optional).
      */
     function mintBatch(uint256[] memory ids, uint256[] memory amounts, bytes memory data) public nonReentrant {
+        Layout storage $ = _getStorage();
         // Check allowances for all requested mints first
         for (uint256 i = 0; i < ids.length; i++) {
             uint256 id = ids[i];
             uint256 amount = amounts[i];
 
             // Ensure the user is allowed to mint the specified amount for each token ID
-            if (allowedMints[msg.sender][id] == 0) revert NftMintingNotAllowed();
-            if (mintedPerUser[msg.sender][id] + amount > allowedMints[msg.sender][id]) {
-                revert NftMintingLimitExceeded(allowedMints[msg.sender][id] - mintedPerUser[msg.sender][id]);
+            if ($.allowedMints[msg.sender][id] == 0) revert NftMintingNotAllowed();
+            if ($.mintedPerUser[msg.sender][id] + amount > $.allowedMints[msg.sender][id]) {
+                revert NftMintingLimitExceeded($.allowedMints[msg.sender][id] - $.mintedPerUser[msg.sender][id]);
             }
 
             // Update minted count for the user per token ID
-            mintedPerUser[msg.sender][id] += amount;
+            $.mintedPerUser[msg.sender][id] += amount;
         }
 
         // Proceed with the batch mint after all checks
@@ -191,13 +225,19 @@ contract BondNFT is ERC1155, Ownable, ERC1155Supply, ReentrancyGuard {
     }
 
     /**
-     * @dev Hook that is called before any token transfer, including minting and burning.
-     * Overrides the function from {ERC1155} and {ERC1155Supply}.
-     * @inheritdoc ERC1155Supply
+    * @dev Authorizes an upgrade to a new implementation contract address. Only callable by the contract owner.
+    * @param newImplementation The address of the new implementation contract.
+    */
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
+
+    /**
+     * @dev Hook called before any token transfer, including minting and burning.
+     * Overrides the function from {ERC1155Upgradeable} and {ERC1155SupplyUpgradeable}.
+     * @inheritdoc ERC1155SupplyUpgradeable
      */
     function _update(address from, address to, uint256[] memory ids, uint256[] memory values)
         internal
-        override(ERC1155, ERC1155Supply)
+        override(ERC1155Upgradeable, ERC1155SupplyUpgradeable)
     {
         super._update(from, to, ids, values);
     }
@@ -209,6 +249,31 @@ contract BondNFT is ERC1155, Ownable, ERC1155Supply, ReentrancyGuard {
      * @return The number of tokens the user can still mint for the specified ID.
      */
     function remainingMints(address user, uint256 id) external view returns (uint256) {
-        return allowedMints[user][id] - mintedPerUser[user][id];
+        Layout storage $ = _getStorage();
+        return $.allowedMints[user][id] - $.mintedPerUser[user][id];
+    }
+
+    /**
+    * @dev Retrieves the total number of tokens of a specific ID that a user is allowed to mint.
+    * @param user The address of the user to query.
+    * @param id The token ID to query.
+    * @return The total number of tokens the user is allowed to mint for the specified ID.
+    */
+    function allowedMints(address user, uint256 id) external view returns (uint256) {
+        return _getStorage().allowedMints[user][id];
+    }
+
+    /**
+     * @dev Returns the name of the token collection.
+     */
+    function name() external view returns (string memory) {
+        return _getStorage().name;
+    }
+
+    /**
+     * @dev Returns the symbol of the token collection.
+     */
+    function symbol() external view returns (string memory) {
+        return _getStorage().symbol;
     }
 }

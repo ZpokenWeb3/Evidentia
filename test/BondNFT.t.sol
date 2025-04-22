@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.22;
 
 import {Test, console} from "forge-std/Test.sol";
 import {BondNFT} from "../src/BondNFT.sol";
+import {UnsafeUpgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 
 contract BondNFTTest is Test {
     BondNFT public bondNFT;
@@ -14,8 +15,21 @@ contract BondNFTTest is Test {
         owner = address(this);
         account1 = address(1);
         account2 = address(2);
-        bondNFT = new BondNFT(owner, "https://example.com/{id}.json");
+        // Deploy the contract as a proxy with the initializer
+        bondNFT = BondNFT(
+            UnsafeUpgrades.deployUUPSProxy(
+                address(new BondNFT()),
+                abi.encodeCall(BondNFT.initialize, (owner, "https://example.com/{id}.json"))
+            )
+        );
         bondNFT.setAllowedMints(account1, 1, 10);
+    }
+
+    function testNameSpace() public pure {
+        assertEq(
+            keccak256(abi.encode(uint256(keccak256("bond.nft.storage")) - 1)) & ~bytes32(uint256(0xff)),
+            0x57deeb5d263ad500cb3646f0c17a9a963c02d1d301632922b135588e514fb000
+        );
     }
 
     function testInitialOwner() public view {
@@ -28,7 +42,7 @@ contract BondNFTTest is Test {
         assertEq(bondNFT.uri(1), newURI);
     }
 
-    function testSetMetaData() public {
+    function testSetMetaDataAndGetMetaData() public {
         BondNFT.Metadata memory metadata = BondNFT.Metadata({
             value: 100,
             couponValue: 5,
@@ -37,13 +51,12 @@ contract BondNFTTest is Test {
             ISIN: "US1234567890"
         });
         bondNFT.setMetaData(1, metadata);
-        (uint256 value, uint256 couponValue, uint256 issueTimestamp, uint256 expirationTimestamp, string memory ISIN) =
-            bondNFT.metadata(1);
-        assertEq(value, metadata.value);
-        assertEq(couponValue, metadata.couponValue);
-        assertEq(issueTimestamp, metadata.issueTimestamp);
-        assertEq(expirationTimestamp, metadata.expirationTimestamp);
-        assertEq(ISIN, metadata.ISIN);
+        BondNFT.Metadata memory retrievedMetadata = bondNFT.getMetaData(1);
+        assertEq(retrievedMetadata.value, metadata.value);
+        assertEq(retrievedMetadata.couponValue, metadata.couponValue);
+        assertEq(retrievedMetadata.issueTimestamp, metadata.issueTimestamp);
+        assertEq(retrievedMetadata.expirationTimestamp, metadata.expirationTimestamp);
+        assertEq(retrievedMetadata.ISIN, metadata.ISIN);
     }
 
     function testMint() public {
@@ -62,24 +75,6 @@ contract BondNFTTest is Test {
         vm.prank(account1);
         bondNFT.burn(id, amount);
         assertEq(bondNFT.balanceOf(account1, id), 0);
-    }
-
-    function testGetMetaData() public {
-        BondNFT.Metadata memory metadata = BondNFT.Metadata({
-            value: 100,
-            couponValue: 5,
-            issueTimestamp: block.timestamp,
-            expirationTimestamp: block.timestamp + 365 days,
-            ISIN: "US1234567890"
-        });
-        bondNFT.setMetaData(1, metadata);
-
-        BondNFT.Metadata memory retrievedMetadata = bondNFT.getMetaData(1);
-        assertEq(retrievedMetadata.value, metadata.value);
-        assertEq(retrievedMetadata.couponValue, metadata.couponValue);
-        assertEq(retrievedMetadata.issueTimestamp, metadata.issueTimestamp);
-        assertEq(retrievedMetadata.expirationTimestamp, metadata.expirationTimestamp);
-        assertEq(retrievedMetadata.ISIN, metadata.ISIN);
     }
 
     function testRemainingMints() public {

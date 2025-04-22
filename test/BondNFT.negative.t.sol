@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.22;
 
 import {Test, console} from "forge-std/Test.sol";
 import {BondNFT} from "../src/BondNFT.sol";
+import {UnsafeUpgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 
 contract BondNFTNegativeTest is Test {
     BondNFT public bondNFT;
@@ -17,7 +18,15 @@ contract BondNFTNegativeTest is Test {
         owner = address(this);
         account1 = address(1);
         account2 = address(2);
-        bondNFT = new BondNFT(owner, "https://example.com/{id}.json");
+
+        // Deploy the contract as a proxy with the initializer
+        bondNFT = BondNFT(
+            UnsafeUpgrades.deployUUPSProxy(
+                address(new BondNFT()),
+                abi.encodeCall(BondNFT.initialize, (owner, "https://example.com/{id}.json"))
+            )
+        );
+
         bondNFT.setAllowedMints(account1, 1, 10);
     }
 
