@@ -5,6 +5,7 @@ import {Test, console} from "forge-std/Test.sol";
 import {StableCoinsStaking} from "../src/StableCoinsStaking.sol";
 import {StableBondCoins} from "../src/StableBondCoins.sol";
 import {UnsafeUpgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
+import {EndpointV2Mock} from "@layerzerolabs/test-devtools-evm-foundry/contracts/Mocks/EndpointV2Mock.sol";
 
 contract EdgeRewardMock {
     uint256 private rewardAmount;
@@ -89,11 +90,14 @@ contract StableCoinsStakingEdgeTest is Test {
         user3 = address(4);
 
         vm.startPrank(owner);
-        stableBondCoins = StableBondCoins(
-            UnsafeUpgrades.deployUUPSProxy(
-                address(new StableBondCoins()), abi.encodeCall(stableBondCoins.initialize, (owner, owner))
-            )
-        );
+
+        // 1. Deploy a mock endpoint
+        EndpointV2Mock mock = new EndpointV2Mock(1, owner);
+
+        StableBondCoins impl = new StableBondCoins(address(mock));
+        bytes memory initData = abi.encodeCall(StableBondCoins.initialize, (owner, owner, owner));
+        address proxyAddr = UnsafeUpgrades.deployUUPSProxy(address(impl), initData);
+        stableBondCoins = StableBondCoins(proxyAddr);
 
         // Use our improved mock
         rewardMock = new EdgeRewardMock();

@@ -4,11 +4,14 @@ pragma solidity ^0.8.22;
 import {StableBondCoins} from "../src/StableBondCoins.sol";
 import {Test, console} from "forge-std/Test.sol";
 import {UnsafeUpgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
+import {EndpointV2Mock} from "@layerzerolabs/test-devtools-evm-foundry/contracts/Mocks/EndpointV2Mock.sol";
 
 contract StableBondCoinsTest is Test {
     StableBondCoins public stableBondCoins;
     address public defaultAdmin;
     address public minter;
+    address public delegate;
+    address public lzEndpoint;
 
     bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
@@ -16,12 +19,15 @@ contract StableBondCoinsTest is Test {
     function setUp() public {
         defaultAdmin = address(1);
         minter = address(2);
+        delegate = address(3);
 
-        stableBondCoins = StableBondCoins(
-            UnsafeUpgrades.deployUUPSProxy(
-                address(new StableBondCoins()), abi.encodeCall(stableBondCoins.initialize, (defaultAdmin, minter))
-            )
-        );
+        // 1. Deploy a mock endpoint
+        EndpointV2Mock mock = new EndpointV2Mock(1, address(this));
+
+        StableBondCoins impl = new StableBondCoins(address(mock));
+        bytes memory initData = abi.encodeCall(StableBondCoins.initialize, (defaultAdmin, minter, delegate));
+        address proxyAddr = UnsafeUpgrades.deployUUPSProxy(address(impl), initData);
+        stableBondCoins = StableBondCoins(proxyAddr);
     }
 
     function testConstructor() public view {
@@ -31,6 +37,7 @@ contract StableBondCoinsTest is Test {
 
         assertEq(stableBondCoins.hasRole(DEFAULT_ADMIN_ROLE, defaultAdmin), true);
         assertEq(stableBondCoins.hasRole(MINTER_ROLE, minter), true);
+        assertEq(stableBondCoins.owner(), delegate);
     }
 
     function testNameSpace() public pure {
@@ -41,7 +48,7 @@ contract StableBondCoinsTest is Test {
     }
 
     function testMint() public {
-        address recipient = address(3);
+        address recipient = address(5);
         uint256 amount = 100;
 
         vm.prank(minter);
@@ -51,7 +58,7 @@ contract StableBondCoinsTest is Test {
     }
 
     function testBurn() public {
-        address owner = address(3);
+        address owner = address(5);
         uint256 amount = 100;
 
         vm.prank(minter);
@@ -64,7 +71,7 @@ contract StableBondCoinsTest is Test {
     }
 
     function testOnlyMinterCanMint() public {
-        address recipient = address(3);
+        address recipient = address(5);
         uint256 amount = 100;
 
         vm.expectRevert();
@@ -72,7 +79,7 @@ contract StableBondCoinsTest is Test {
     }
 
     function testOnlyMinterCanBurn() public {
-        address owner = address(3);
+        address owner = address(5);
         uint256 amount = 100;
 
         vm.prank(minter);

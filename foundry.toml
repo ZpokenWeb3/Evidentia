@@ -13,7 +13,8 @@ remappings = [
   '@openzeppelin/contracts=lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts',
   '@openzeppelin/contracts-upgradeable=lib/openzeppelin-contracts-upgradeable/contracts',
   'openzeppelin-foundry-upgrades=lib/openzeppelin-foundry-upgrades/src',
-  '@prb/math/src=lib/prb-math/src'
+  '@prb/math/src=lib/prb-math/src',
+  '@layerzerolabs/=node_modules/@layerzerolabs/',
 ]
 
 [rpc_endpoints]

@@ -5,6 +5,7 @@ import {Test, console} from "forge-std/Test.sol";
 import {StableCoinsStaking} from "../src/StableCoinsStaking.sol";
 import {StableBondCoins} from "../src/StableBondCoins.sol";
 import {UnsafeUpgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
+import {EndpointV2Mock} from "@layerzerolabs/test-devtools-evm-foundry/contracts/Mocks/EndpointV2Mock.sol";
 
 // Mock for reward contract
 contract MockReward {
@@ -37,6 +38,7 @@ contract StableCoinsStakingNegativeTest is Test {
     address public owner;
     address public user1;
     address public user2;
+    address public lzEndpoint;
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
     // Custom errors
@@ -49,13 +51,17 @@ contract StableCoinsStakingNegativeTest is Test {
         owner = address(1);
         user1 = address(2);
         user2 = address(3);
+        lzEndpoint = address(4);
 
         vm.startPrank(owner);
-        stableBondCoins = StableBondCoins(
-            UnsafeUpgrades.deployUUPSProxy(
-                address(new StableBondCoins()), abi.encodeCall(stableBondCoins.initialize, (owner, owner))
-            )
-        );
+
+        // 1. Deploy a mock endpoint
+        EndpointV2Mock mock = new EndpointV2Mock(1, owner);
+
+        StableBondCoins impl = new StableBondCoins(address(mock));
+        bytes memory initData = abi.encodeCall(StableBondCoins.initialize, (owner, owner, owner));
+        address proxyAddr = UnsafeUpgrades.deployUUPSProxy(address(impl), initData);
+        stableBondCoins = StableBondCoins(proxyAddr);
 
         mockReward = new MockReward(0);
 
