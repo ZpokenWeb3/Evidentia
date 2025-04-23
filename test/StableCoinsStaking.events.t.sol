@@ -49,7 +49,13 @@ contract StableCoinsStakingEventsTest is Test {
         );
 
         MockReward mockReward = new MockReward();
-        staking = new StableCoinsStaking(address(stableBondCoins), address(mockReward));
+
+        staking = StableCoinsStaking(
+            UnsafeUpgrades.deployUUPSProxy(
+                address(new StableCoinsStaking()),
+                abi.encodeCall(staking.initialize, (address(stableBondCoins), address(mockReward), address(owner)))
+            )
+        );
 
         stableBondCoins.grantRole(MINTER_ROLE, owner);
 
@@ -73,7 +79,7 @@ contract StableCoinsStakingEventsTest is Test {
         vm.prank(user1);
         staking.stake(stakeAmount);
 
-        (uint256 stakedAmount,,,,) = staking.stakers(user1);
+        uint256 stakedAmount = staking.stakers(user1).stakedAmount;
         assertEq(stakedAmount, stakeAmount);
         assertEq(staking.totalStaked(), stakeAmount);
     }
@@ -87,7 +93,7 @@ contract StableCoinsStakingEventsTest is Test {
         vm.prank(user1);
         staking.stakeOnBehalfOf(stakeAmount, user2);
 
-        (uint256 stakedAmount,,,,) = staking.stakers(user2);
+        uint256 stakedAmount = staking.stakers(user2).stakedAmount;
         assertEq(stakedAmount, stakeAmount);
         assertEq(staking.totalStaked(), stakeAmount);
     }
@@ -99,7 +105,7 @@ contract StableCoinsStakingEventsTest is Test {
         vm.prank(user1);
         staking.stake(30_000000);
 
-        (uint256 stakedAmount,,,,) = staking.stakers(user1);
+        uint256 stakedAmount = staking.stakers(user1).stakedAmount;
         assertEq(stakedAmount, 80_000000);
     }
 
@@ -116,7 +122,7 @@ contract StableCoinsStakingEventsTest is Test {
         vm.prank(user1);
         staking.withdraw(withdrawAmount);
 
-        (uint256 stakedAmount,,,,) = staking.stakers(user1);
+        uint256 stakedAmount = staking.stakers(user1).stakedAmount;
         assertEq(stakedAmount, stakeAmount - withdrawAmount);
         assertEq(staking.totalStaked(), stakeAmount - withdrawAmount);
     }
@@ -133,7 +139,7 @@ contract StableCoinsStakingEventsTest is Test {
         vm.prank(user1);
         staking.withdraw(stakeAmount);
 
-        (uint256 stakedAmount,,,,) = staking.stakers(user1);
+        uint256 stakedAmount = staking.stakers(user1).stakedAmount;
         assertEq(stakedAmount, 0);
         assertEq(staking.totalStaked(), 0);
     }

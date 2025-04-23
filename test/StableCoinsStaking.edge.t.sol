@@ -97,7 +97,13 @@ contract StableCoinsStakingEdgeTest is Test {
 
         // Use our improved mock
         rewardMock = new EdgeRewardMock();
-        staking = new StableCoinsStaking(address(stableBondCoins), address(rewardMock));
+
+        staking = StableCoinsStaking(
+            UnsafeUpgrades.deployUUPSProxy(
+                address(new StableCoinsStaking()),
+                abi.encodeCall(staking.initialize, (address(stableBondCoins), address(rewardMock), address(owner)))
+            )
+        );
 
         stableBondCoins.grantRole(MINTER_ROLE, owner);
 
@@ -162,7 +168,7 @@ contract StableCoinsStakingEdgeTest is Test {
         staking.withdraw(250_000000);
 
         // Check staked amount
-        (uint256 stakedAmount,,,,) = staking.stakers(user2);
+        uint256 stakedAmount = staking.stakers(user2).stakedAmount;
         assertEq(stakedAmount, 250_000000);
 
         // Set second reward
@@ -173,7 +179,7 @@ contract StableCoinsStakingEdgeTest is Test {
         staking.stake(100_000000);
 
         // Verify staked amount
-        (stakedAmount,,,,) = staking.stakers(user2);
+        stakedAmount = staking.stakers(user2).stakedAmount;
         assertEq(stakedAmount, 350_000000);
 
         // Check that rewards are properly calculated across the transactions
@@ -193,7 +199,7 @@ contract StableCoinsStakingEdgeTest is Test {
         staking.stake(1_000000);
 
         // Check timestamp
-        (,,,, uint256 timestamp1) = staking.stakers(user1);
+        uint256 timestamp1 = staking.stakers(user1).stakeTimestamp;
         assertEq(timestamp1, block.timestamp);
 
         // Move time forward and stake again
@@ -202,7 +208,7 @@ contract StableCoinsStakingEdgeTest is Test {
         staking.stake(500000);
 
         // Check timestamp is updated
-        (,,,, uint256 timestamp2) = staking.stakers(user1);
+        uint256 timestamp2 = staking.stakers(user1).stakeTimestamp;
         assertEq(timestamp2, block.timestamp);
         assertGt(timestamp2, timestamp1);
 
@@ -212,7 +218,7 @@ contract StableCoinsStakingEdgeTest is Test {
         staking.withdraw(300000);
 
         // Check timestamp is updated again
-        (,,,, uint256 timestamp3) = staking.stakers(user1);
+        uint256 timestamp3 = staking.stakers(user1).stakeTimestamp;
         assertEq(timestamp3, block.timestamp);
         assertGt(timestamp3, timestamp2);
     }
@@ -236,7 +242,7 @@ contract StableCoinsStakingEdgeTest is Test {
         staking.claimRewards();
 
         // Check staked amount remains intact
-        (uint256 stakedAmount,,,,) = staking.stakers(user3);
+        uint256 stakedAmount = staking.stakers(user3).stakedAmount;
         assertEq(stakedAmount, 1000000_000000);
     }
 
@@ -267,7 +273,7 @@ contract StableCoinsStakingEdgeTest is Test {
         uint256 withdrawAmount = 500000;
         staking.withdraw(withdrawAmount);
 
-        (uint256 user1Staked,,,,) = staking.stakers(user1);
+        uint256 user1Staked = staking.stakers(user1).stakedAmount;
         assertEq(user1Staked, 1_000000 - withdrawAmount);
     }
 }

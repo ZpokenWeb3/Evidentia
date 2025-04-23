@@ -58,7 +58,13 @@ contract StableCoinsStakingNegativeTest is Test {
         );
 
         mockReward = new MockReward(0);
-        staking = new StableCoinsStaking(address(stableBondCoins), address(mockReward));
+
+        staking = StableCoinsStaking(
+            UnsafeUpgrades.deployUUPSProxy(
+                address(new StableCoinsStaking()),
+                abi.encodeCall(staking.initialize, (address(stableBondCoins), address(mockReward), address(owner)))
+            )
+        );
 
         stableBondCoins.grantRole(MINTER_ROLE, owner);
 

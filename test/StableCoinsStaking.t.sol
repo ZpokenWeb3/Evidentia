@@ -49,9 +49,23 @@ contract StakingStablesTest is Test {
         bondNFT.setMetaData(3, metadata);
         nftStaking.whitelistNFT(address(bondNFT), true);
 
-        stakingStables = new StableCoinsStaking(address(stableBondCoins), address(nftStaking));
+        stakingStables = StableCoinsStaking(
+            UnsafeUpgrades.deployUUPSProxy(
+                address(new StableCoinsStaking()),
+                abi.encodeCall(
+                    stakingStables.initialize, (address(stableBondCoins), address(nftStaking), address(owner))
+                )
+            )
+        );
         nftStaking.setStablesStakingAddress(address(stakingStables));
         vm.stopPrank();
+    }
+
+    function testNameSpace() public pure {
+        assertEq(
+            keccak256(abi.encode(uint256(keccak256("StableCoinsStaking.storage")) - 1)) & ~bytes32(uint256(0xff)),
+            0x5ad9b57132bffc89e46deaf23730f9173da95952e39a655cdb65df9a44414600
+        );
     }
 
     function testStakeStables() public {
@@ -87,7 +101,7 @@ contract StakingStablesTest is Test {
         vm.warp(30 days);
         vm.roll(2);
 
-        (uint256 staked,,,,) = stakingStables.stakers(client2);
+        uint256 staked = stakingStables.stakers(client2).stakedAmount;
         console.log("After 30 days...");
         console.log("Client2 staked : ", staked);
         console.log("Client2 rewards: ", stakingStables.pendingRewards(client2));
@@ -161,7 +175,7 @@ contract StakingStablesTest is Test {
         vm.warp(30 days);
         vm.roll(2);
 
-        (uint256 staked,,,,) = stakingStables.stakers(client2);
+        uint256 staked = stakingStables.stakers(client2).stakedAmount;
         console.log("After 30 days...");
         console.log("Client2 staked : ", staked);
         uint256 client2Rewards = stakingStables.pendingRewards(client2);
@@ -235,7 +249,7 @@ contract StakingStablesTest is Test {
         vm.warp(30 days);
         vm.roll(2);
 
-        (uint256 staked,,,,) = stakingStables.stakers(client2);
+        uint256 staked = stakingStables.stakers(client2).stakedAmount;
         console.log("After 30 days...");
         console.log("Client2 staked : ", staked);
         console.log("Client2 rewards: ", stakingStables.pendingRewards(client2));
@@ -278,7 +292,7 @@ contract StakingStablesTest is Test {
         console.log("Client2 rewards: ", stakingStables.pendingRewards(client2));
         console.log("Client3 rewards: ", stakingStables.pendingRewards(client3));
 
-        (staked,,,,) = stakingStables.stakers(client2);
+        staked = stakingStables.stakers(client2).stakedAmount;
         assertEq(staked, 0);
     }
 
@@ -315,7 +329,7 @@ contract StakingStablesTest is Test {
         vm.warp(30 days);
         vm.roll(2);
 
-        (uint256 staked,,,,) = stakingStables.stakers(client2);
+        uint256 staked = stakingStables.stakers(client2).stakedAmount;
         console.log("After 30 days...");
         console.log("Client2 staked : ", staked);
         console.log("Client2 rewards: ", stakingStables.pendingRewards(client2));
@@ -339,7 +353,7 @@ contract StakingStablesTest is Test {
         vm.warp(90 days);
         vm.roll(3);
 
-        (staked,,,,) = stakingStables.stakers(client2);
+        staked = stakingStables.stakers(client2).stakedAmount;
         console.log("After 90 days...");
         console.log("Client2 staked : ", staked);
         console.log("Client2 rewards: ", stakingStables.pendingRewards(client2));
@@ -353,7 +367,7 @@ contract StakingStablesTest is Test {
         vm.warp(180 days);
         vm.roll(4);
 
-        (staked,,,,) = stakingStables.stakers(client2);
+        staked = stakingStables.stakers(client2).stakedAmount;
         console.log("After 180 days...");
         console.log("Client2 staked : ", staked);
         console.log("Client2 rewards: ", stakingStables.pendingRewards(client2));
@@ -367,7 +381,7 @@ contract StakingStablesTest is Test {
         vm.warp(270 days);
         vm.roll(5);
 
-        (staked,,,,) = stakingStables.stakers(client2);
+        staked = stakingStables.stakers(client2).stakedAmount;
         console.log("After 270 days...");
         console.log("Client2 staked : ", staked);
         console.log("Client2 rewards: ", stakingStables.pendingRewards(client2));
@@ -404,7 +418,7 @@ contract StakingStablesTest is Test {
         vm.warp(30 days);
         vm.roll(2);
 
-        (uint256 staked,,,,) = stakingStables.stakers(client2);
+        uint256 staked = stakingStables.stakers(client2).stakedAmount;
         console.log("After 30 days...");
         console.log("Client2 staked : ", staked);
         console.log("Client2 rewards: ", stakingStables.pendingRewards(client2));
@@ -470,7 +484,7 @@ contract StakingStablesTest is Test {
         vm.warp(30 days);
         vm.roll(2);
 
-        (uint256 staked,,,,) = stakingStables.stakers(client2);
+        uint256 staked = stakingStables.stakers(client2).stakedAmount;
         console.log("After 30 days...");
         console.log("Client2 staked : ", staked);
         console.log("Client2 rewards: ", stakingStables.pendingRewards(client2));

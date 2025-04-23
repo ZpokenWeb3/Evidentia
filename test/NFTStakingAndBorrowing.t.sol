@@ -634,7 +634,8 @@ contract NFTStakingAndBorrowingTest is Test {
 
     function testGetRewardAmount() public {
         vm.startPrank(owner);
-        StableCoinsStaking stableStaking = new StableCoinsStaking(address(stableBondCoins), address(nftStaking));
+        StableCoinsStaking stableStaking = new StableCoinsStaking();
+        stableStaking.initialize(address(stableBondCoins), address(nftStaking), address(owner));
         nftStaking.setStablesStakingAddress(address(stableStaking));
         vm.stopPrank();
 
@@ -685,7 +686,8 @@ contract NFTStakingAndBorrowingTest is Test {
 
     function testStakeNFTAndStables() public {
         vm.startPrank(owner);
-        StableCoinsStaking stableStaking = new StableCoinsStaking(address(stableBondCoins), address(nftStaking));
+        StableCoinsStaking stableStaking = new StableCoinsStaking();
+        stableStaking.initialize(address(stableBondCoins), address(nftStaking), address(owner));
         nftStaking.setStablesStakingAddress(address(stableStaking));
         vm.stopPrank();
 
@@ -695,7 +697,7 @@ contract NFTStakingAndBorrowingTest is Test {
         stableBondCoins.approve(address(nftStaking), type(uint256).max);
         nftStaking.stakeNFTandStables(address(bondNFT), 1, 5);
 
-        (uint256 stakedAmount,,,,) = stableStaking.stakers(owner);
+        uint256 stakedAmount = stableStaking.stakers(owner).stakedAmount;
         assertGt(stakedAmount, 0, "Staked amount should be > 0");
 
         vm.stopPrank();
@@ -703,7 +705,8 @@ contract NFTStakingAndBorrowingTest is Test {
 
     function testStakeStablesWithAmount() public {
         vm.startPrank(owner);
-        StableCoinsStaking stableStaking = new StableCoinsStaking(address(stableBondCoins), address(nftStaking));
+        StableCoinsStaking stableStaking = new StableCoinsStaking();
+        stableStaking.initialize(address(stableBondCoins), address(nftStaking), address(owner));
         nftStaking.setStablesStakingAddress(address(stableStaking));
         vm.stopPrank();
 
@@ -715,7 +718,7 @@ contract NFTStakingAndBorrowingTest is Test {
         uint256 stakeAmount = 1000_000000;
         nftStaking.stakeStables(stakeAmount);
 
-        (uint256 stakedAmount,,,,) = stableStaking.stakers(owner);
+        uint256 stakedAmount = stableStaking.stakers(owner).stakedAmount;
         assertEq(stakedAmount, stakeAmount);
 
         vm.stopPrank();
@@ -990,7 +993,8 @@ contract NFTStakingAndBorrowingTest is Test {
 
     function testGetRewardsWithZeroReward() public {
         vm.startPrank(owner);
-        StableCoinsStaking stableStaking = new StableCoinsStaking(address(stableBondCoins), address(nftStaking));
+        StableCoinsStaking stableStaking = new StableCoinsStaking();
+        stableStaking.initialize(address(stableBondCoins), address(nftStaking), address(owner));
         nftStaking.setStablesStakingAddress(address(stableStaking));
 
         nftStaking.stakeNFT(address(bondNFT), 1, 1);
@@ -1009,7 +1013,8 @@ contract NFTStakingAndBorrowingTest is Test {
 
     function testGetRewardsAfterMultipleCalls() public {
         vm.startPrank(owner);
-        StableCoinsStaking stableStaking = new StableCoinsStaking(address(stableBondCoins), address(nftStaking));
+        StableCoinsStaking stableStaking = new StableCoinsStaking();
+        stableStaking.initialize(address(stableBondCoins), address(nftStaking), address(owner));
         nftStaking.setStablesStakingAddress(address(stableStaking));
 
         // Stake and borrow to accumulate debt
@@ -1044,7 +1049,8 @@ contract NFTStakingAndBorrowingTest is Test {
         StableCoinsStaking stableStaking;
 
         vm.startPrank(owner);
-        stableStaking = new StableCoinsStaking(address(stableBondCoins), address(nftStaking));
+        stableStaking = new StableCoinsStaking();
+        stableStaking.initialize(address(stableBondCoins), address(nftStaking), address(owner));
         nftStaking.setStablesStakingAddress(address(stableStaking));
 
         nftStaking.stakeNFT(address(bondNFT), 1, 5);
@@ -1166,7 +1172,8 @@ contract NFTStakingAndBorrowingTest is Test {
 
     function testStakeStablesExceedLimit() public {
         vm.startPrank(owner);
-        StableCoinsStaking stableStaking = new StableCoinsStaking(address(stableBondCoins), address(nftStaking));
+        StableCoinsStaking stableStaking = new StableCoinsStaking();
+        stableStaking.initialize(address(stableBondCoins), address(nftStaking), address(owner));
         nftStaking.setStablesStakingAddress(address(stableStaking));
 
         nftStaking.stakeNFT(address(bondNFT), 1, 1);

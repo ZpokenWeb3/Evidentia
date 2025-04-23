@@ -11,8 +11,9 @@ contract DeployStablesStaking is Script {
         address stableCoinsAddress = vm.envAddress("STABLES_ADDRESS");
         address nftStakingAddress = vm.envAddress("NFT_STAKING_ADDRESS");
         vm.startBroadcast(deployerPrivateKey);
-        StableCoinsStaking stablesStaking = new StableCoinsStaking(stableCoinsAddress, nftStakingAddress);
+        // StableCoinsStaking stableStaking = new StableCoinsStaking();
+        // stableStaking.initialize(address(stableBondCoins), address(nftStaking), address(owner));
         vm.stopBroadcast();
-        return stablesStaking;
+        // return stablesStaking;
     }
 }

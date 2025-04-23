@@ -166,11 +166,12 @@ contract NFTStakingAndBorrowingEventsTest is Test {
     }
 
     function testStakeNFTandStablesEvents() public {
-        address stablesStaking = address(new StableCoinsStaking(address(stableBondCoins), address(nftStaking)));
+        StableCoinsStaking stablesStaking = new StableCoinsStaking();
+        stablesStaking.initialize(address(stableBondCoins), address(nftStaking), address(owner));
 
         vm.startPrank(owner);
-        nftStaking.setStablesStakingAddress(stablesStaking);
-        stableBondCoins.grantRole(MINTER_ROLE, stablesStaking);
+        nftStaking.setStablesStakingAddress(address(stablesStaking));
+        stableBondCoins.grantRole(MINTER_ROLE, address(stablesStaking));
         vm.stopPrank();
 
         vm.expectEmit(true, true, true, true);
