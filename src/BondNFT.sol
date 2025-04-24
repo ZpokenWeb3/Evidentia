@@ -74,7 +74,7 @@ contract BondNFT is
     /**
      * @dev Private function to retrieve storage layout.
      */
-    function _getStorage() private pure returns (Layout storage $) {
+    function _getStorage() internal pure returns (Layout storage $) {
         assembly {
             $.slot := STORAGE_LOCATION
         }

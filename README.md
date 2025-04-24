@@ -14,7 +14,6 @@ This protocol creates a decentralized finance (DeFi) ecosystem centered around t
 4. **Earn Yield via Staking**  
    SBC holders can stake their tokens in the `StableCoinsStaking` contract to earn rewards from interest revenue.
 
-
 ## Key Features
 
 * **Tokenized Bonds (ERC1155):** Utilizes the `BondNFT` contract (ERC1155 standard) to represent bonds with specific metadata (value, coupon, timestamps, ISIN).
@@ -37,6 +36,14 @@ This protocol creates a decentralized finance (DeFi) ecosystem centered around t
 * `balanceOf(address account, uint256 id)` / `balanceOfBatch(...)`: Checks token balances.
 * `safeTransferFrom(...)` / `safeBatchTransferFrom(...)`: Transfers NFTs.
 * `totalSupply(uint256 id)`: Checks the total supply of a specific bond NFT ID.
+
+### `BondNFTV2` (ERC1155, Testing Only)
+
+* **Purpose**: This contract is a test-only version of `BondNFT`, used to simulate and verify the upgrade process for the UUPS proxy. It extends `BondNFT` with additional functionality for testing purposes, such as updating the token name and verifying the implementation version.
+* **Key Functions**:
+  * `updateName(string memory newName)`: Allows the owner to update the token collection name (for testing state changes after upgrades). 
+  * `version()`: Returns `"V2"` to confirm the upgraded implementation is active.
+* **Note**: `BondNFTV2` is not intended for production deployment.
 
 ### `StableBondCoins` (ERC20)
 
