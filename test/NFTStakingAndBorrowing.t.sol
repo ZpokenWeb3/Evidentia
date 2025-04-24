@@ -7,15 +7,19 @@ import {StableBondCoins} from "../src/StableBondCoins.sol";
 import {BondNFT} from "../src/BondNFT.sol";
 import {StableCoinsStaking} from "../src/StableCoinsStaking.sol";
 import {UnsafeUpgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
+import {WadRayMath} from '../src/WadRayMath.sol';
+import {MathUtils} from "../src/MathUtils.sol";
 
 contract NFTStakingAndBorrowingTest is Test {
+    using WadRayMath for uint256;
+
     NFTStakingAndBorrowing public nftStaking;
     BondNFT public bondNFT;
     StableBondCoins public stableBondCoins;
     address public owner;
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
-    uint256 internal constant YEAR_IN_SECONDS = 31536000; // 365 days
+    uint256 internal constant YEAR_IN_SECONDS = 365 days; // 365 days
     uint256 internal constant START_TIME = 1706745600;
     uint256 internal constant UNIT = 1e18;
     uint256 internal constant BIPS = 1e4;
@@ -765,6 +769,91 @@ contract NFTStakingAndBorrowingTest is Test {
         }
 
         assertGt(debt / 3e16, diff);
+    }
+
+    /**
+     * @dev Function to calculate the interest using a compounded interest rate formula
+     * To avoid expensive exponentiation, the calculation is performed using a binomial approximation:
+     *
+     *  (1+x)^n = 1+n*x+[n/2*(n-1)]*x^2+[n/6*(n-1)*(n-2)*x^3...
+     *
+     * The approximation slightly underpays liquidity providers and undercharges borrowers, with the advantage of great
+     * gas cost reductions. The whitepaper contains reference to the approximation and a table showing the margin of
+     * error per different time periods
+     *
+     * @param rate The interest rate, in ray
+     * @param lastUpdateTimestamp The timestamp of the last update of the interest
+     * @return The interest rate compounded during the timeDelta, in ray
+     */
+    function calculateCompoundedInterest(
+        uint256 rate,
+        uint40 lastUpdateTimestamp,
+        uint256 currentTimestamp
+    ) internal pure returns (uint256) {
+        //solium-disable-next-line
+        uint256 exp = currentTimestamp - uint256(lastUpdateTimestamp);
+
+        if (exp == 0) {
+        return WadRayMath.RAY;
+        }
+
+        uint256 expMinusOne;
+        uint256 expMinusTwo;
+        uint256 basePowerTwo;
+        uint256 basePowerThree;
+        unchecked {
+        expMinusOne = exp - 1;
+
+        expMinusTwo = exp > 2 ? exp - 2 : 0;
+
+        basePowerTwo = rate.rayMul(rate) / (YEAR_IN_SECONDS * YEAR_IN_SECONDS);
+        basePowerThree = basePowerTwo.rayMul(rate) / YEAR_IN_SECONDS;
+        }
+
+        uint256 secondTerm = exp * expMinusOne * basePowerTwo;
+        unchecked {
+        secondTerm /= 2;
+        }
+        uint256 thirdTerm = exp * expMinusOne * expMinusTwo * basePowerThree;
+        unchecked {
+        thirdTerm /= 6;
+        }
+
+        return WadRayMath.RAY + (rate * exp) / YEAR_IN_SECONDS + secondTerm + thirdTerm;
+    }
+
+    function testFuzzDebtRay1Year(uint64 x) public view {
+        uint256 x256 = (uint256(x) + uint256(2)) * 1e18;
+        uint256 debt = (x256.wadToRay()).rayMul(calculateCompoundedInterest(PROTOCOL_YIELD.wadToRay(), uint40(START_TIME), uint40(START_TIME + YEAR_IN_SECONDS)));
+        debt = debt.rayToWad();
+        console.log("Borrow: ", x256);
+        console.log("Debt  : ", debt);
+        console.log("Year  : ", (x256 + x256 * PROTOCOL_YIELD / UNIT) );
+        uint256 diff = 0;
+        if ((x256 + x256 * PROTOCOL_YIELD / UNIT) >= debt) {
+            diff = (x256 + x256 * PROTOCOL_YIELD / UNIT) - debt;
+        } else {
+            diff = debt - (x256 + x256 * PROTOCOL_YIELD / UNIT);
+        }
+
+        assertGt(debt / 1e2, diff);
+    }
+
+    function testFuzzDebtRay2Year(uint64 x) public view {
+        uint256 x256 = (uint256(x) + uint256(2)) * 1e18;
+        uint256 debt = (x256.wadToRay()).rayMul(calculateCompoundedInterest(PROTOCOL_YIELD.wadToRay(), uint40(START_TIME), uint40(START_TIME + 2 * YEAR_IN_SECONDS)));
+        debt = debt.rayToWad();
+        console.log("Borrow: ", x256);
+        console.log("Debt  : ", debt);
+        console.log("Year  : ", (x256 + x256 * PROTOCOL_YIELD / UNIT) );
+        uint256 diff = 0;
+        if ((x256 + x256 * PROTOCOL_YIELD / UNIT) >= debt) {
+            diff = (x256 + x256 * PROTOCOL_YIELD / UNIT) - debt;
+        } else {
+            diff = debt - (x256 + x256 * PROTOCOL_YIELD / UNIT);
+        }
+
+        assertGt(debt / 1e2, diff);
     }
 
     function testFuzzDebt2Years(uint128 x) public view {
