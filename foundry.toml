@@ -10,18 +10,28 @@ solc_version = "0.8.22"
 fs_permissions = [{ access = "read", path = "out" }]
 
 remappings = [
-  '@openzeppelin/contracts=lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts',
-  '@openzeppelin/contracts-upgradeable=lib/openzeppelin-contracts-upgradeable/contracts',
-  'openzeppelin-foundry-upgrades=lib/openzeppelin-foundry-upgrades/src',
-  '@prb/math/src=lib/prb-math/src',
-  '@layerzerolabs/lz-evm-messagelib-v2=lib/devtools/packages/oft-evm/node_modules/@layerzerolabs/lz-evm-messagelib-v2',
-  '@layerzerolabs/lz-evm-protocol-v2=lib/devtools/packages/oft-evm/node_modules/@layerzerolabs/lz-evm-protocol-v2',
-  '@layerzerolabs/oapp-evm=lib/devtools/packages/oapp-evm',
-  '@layerzerolabs/oapp-evm-upgradeable=lib/devtools/packages/oapp-evm-upgradeable',
-  '@layerzerolabs/oft-evm=lib/devtools/packages/oft-evm',
-  '@layerzerolabs/oft-evm-upgradeable=lib/devtools/packages/oft-evm-upgradeable',
-  '@layerzerolabs/test-devtools-evm-foundry=lib/devtools/packages/test-devtools-evm-foundry',
+  # OpenZeppelin
+  "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts",
+  "@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts",
+
+  # PRB Math
+  "@prb/math/src=lib/prb-math/src",
+
+  # OFT / OApp (Upgradeable & Core)
+  "@layerzerolabs/oft-evm/=lib/devtools/packages/oft-evm",
+  "@layerzerolabs/oft-evm-upgradeable/=lib/devtools/packages/oft-evm-upgradeable",
+  "@layerzerolabs/oapp-evm/=lib/devtools/packages/oapp-evm",
+  "@layerzerolabs/oapp-evm-upgradeable/=lib/devtools/packages/oapp-evm-upgradeable",
+
+  # LayerZero Protocol v2
+  "@layerzerolabs/lz-evm-protocol-v2/=lib/LayerZero-v2/packages/layerzero-v2/evm/protocol",
+  "@layerzerolabs/lz-evm-messagelib-v2/=lib/LayerZero-v2/packages/layerzero-v2/evm/messagelib",
+
+  # Testing helpers
+  "@layerzerolabs/test-devtools-evm-foundry/=lib/devtools/packages/test-devtools-evm-foundry",
+
 ]
+
 
 [rpc_endpoints]
 sepolia = "${SEPOLIA_RPC_URL}"
@@ -31,3 +41,10 @@ sepolia = { key = "${ETHERSCAN_API_KEY}" }
 
 [profile.solidity]
 build_info = true
+
+[profile.fast]
+via_ir = false
+optimizer = false
+ast = false
+extra_output = []
+extra_output_files = []
