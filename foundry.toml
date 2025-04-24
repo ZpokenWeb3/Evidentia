@@ -14,7 +14,13 @@ remappings = [
   '@openzeppelin/contracts-upgradeable=lib/openzeppelin-contracts-upgradeable/contracts',
   'openzeppelin-foundry-upgrades=lib/openzeppelin-foundry-upgrades/src',
   '@prb/math/src=lib/prb-math/src',
-  '@layerzerolabs/=node_modules/@layerzerolabs/',
+  '@layerzerolabs/lz-evm-messagelib-v2=lib/devtools/packages/oft-evm/node_modules/@layerzerolabs/lz-evm-messagelib-v2',
+  '@layerzerolabs/lz-evm-protocol-v2=lib/devtools/packages/oft-evm/node_modules/@layerzerolabs/lz-evm-protocol-v2',
+  '@layerzerolabs/oapp-evm=lib/devtools/packages/oapp-evm',
+  '@layerzerolabs/oapp-evm-upgradeable=lib/devtools/packages/oapp-evm-upgradeable',
+  '@layerzerolabs/oft-evm=lib/devtools/packages/oft-evm',
+  '@layerzerolabs/oft-evm-upgradeable=lib/devtools/packages/oft-evm-upgradeable',
+  '@layerzerolabs/test-devtools-evm-foundry=lib/devtools/packages/test-devtools-evm-foundry',
 ]
 
 [rpc_endpoints]
