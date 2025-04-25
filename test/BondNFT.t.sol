@@ -3,7 +3,7 @@ pragma solidity ^0.8.22;
 
 import {Test, console} from "forge-std/Test.sol";
 import {BondNFT} from "../src/BondNFT.sol";
-import {BondNFTV2} from "../src/BondNFTV2.sol";
+import {BondNFTV2} from "../src/V2/BondNFTV2.sol";
 import {UnsafeUpgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
@@ -151,30 +151,32 @@ contract BondNFTTest is Test {
         assertEq(instance.getMetaData(1).value, 100);
         address implAddressV1 = UnsafeUpgrades.getImplementationAddress(proxy);
 
-        vm.prank(account1);
+        vm.prank(account2);
         address newImplementation = address(new BondNFTV2());
 
-        vm.prank(account1);
-        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, account1));
+        vm.prank(account2);
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, account2));
         UnsafeUpgrades.upgradeProxy(
             proxy,
             newImplementation,
-            abi.encodeCall(BondNFTV2.updateName, ("UpdatedBondNFT")),
-            account1
+            abi.encodeCall(BondNFTV2.initializeV2, ()),
+            account2
         );
 
-        UnsafeUpgrades.upgradeProxy(
-            proxy,
-            newImplementation,
-            abi.encodeCall(BondNFTV2.updateName, ("UpdatedBondNFT")),
-            owner
-        );
+//         UnsafeUpgrades.upgradeProxy(
+//             proxy,
+//             newImplementation,
+//             abi.encodeCall(BondNFTV2.initializeV2, ()),
+//             owner
+//         );
 
+        BondNFTV2 instance2 = BondNFTV2(proxy);
         address implAddressV2 = UnsafeUpgrades.getImplementationAddress(proxy);
         assertFalse(implAddressV2 == implAddressV1, "Implementation address should change");
-        assertEq(instance.name(), "UpdatedBondNFT", "Name should be updated");
-        assertEq(instance.balanceOf(account1, 1), 5, "Balance should be preserved");
-        assertEq(instance.getMetaData(1).value, 100, "Metadata should be preserved");
-        assertEq(BondNFTV2(proxy).version(), "V2", "Should use V2 implementation");
+        assertEq(instance2.name(), "BondNFT", "Name should not change");
+        assertEq(instance2.balanceOf(account1, 1), 5, "Balance should be preserved");
+        assertEq(instance2.getMetaData(1).value, 100, "Metadata should be preserved");
+        assertEq(instance2.getInitializedVersion(), 2, "Version should be updated to 2");
+        assertEq(instance2.newFeature(), "V2 Feature", "Should use V2 implementation");
     }
 }

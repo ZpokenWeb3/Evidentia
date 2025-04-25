@@ -65,7 +65,7 @@ contract NFTStakingAndBorrowingTest is Test {
         owner = address(1);
         vm.prank(owner);
         nftStaking.stakeNFT(address(bondNFT), 1, 10);
-        console.log(address(this));
+        console.log("address(this):", address(this));
         assertEq(stableBondCoins.balanceOf(address(nftStaking)), 9975_000000);
 
         NFTStakingAndBorrowing.TotalStats memory totalStats = nftStaking.getTotalStats();

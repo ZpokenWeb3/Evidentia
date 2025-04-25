@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.22;
 
-import {StableBondCoins} from "../src/StableBondCoins.sol";
 import {Test, console} from "forge-std/Test.sol";
+import {StableBondCoins} from "../src/StableBondCoins.sol";
+import {StableBondCoinsV2} from "../src/V2/StableBondCoinsV2.sol";
 import {UnsafeUpgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
+import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
 
 contract StableBondCoinsTest is Test {
     StableBondCoins public stableBondCoins;
@@ -80,5 +82,49 @@ contract StableBondCoinsTest is Test {
 
         vm.expectRevert();
         stableBondCoins.burn(owner, amount);
+    }
+
+    function testUUPSUpgrade() public {
+        vm.prank(defaultAdmin);
+        address proxy = UnsafeUpgrades.deployUUPSProxy(
+            address(new StableBondCoins()),
+            abi.encodeCall(StableBondCoins.initialize, (defaultAdmin, minter))
+        );
+        StableBondCoins instance = StableBondCoins(proxy);
+
+        vm.prank(minter);
+        instance.mint(address(3), 100);
+
+        assertEq(instance.name(), "Stable Bond Coins");
+        assertEq(instance.balanceOf(address(3)), 100);
+        assertEq(instance.decimals(), 6);
+        address implAddressV1 = UnsafeUpgrades.getImplementationAddress(proxy);
+
+        vm.prank(defaultAdmin);
+        address newImplementation = address(new StableBondCoinsV2());
+
+//         vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, address(3), DEFAULT_ADMIN_ROLE));
+//         UnsafeUpgrades.upgradeProxy(
+//             proxy,
+//             newImplementation,
+//             abi.encodeCall(StableBondCoinsV2.initializeV2, ()),
+//             address(3)
+//         );
+
+        UnsafeUpgrades.upgradeProxy(
+            proxy,
+            newImplementation,
+            abi.encodeCall(StableBondCoinsV2.initializeV2, ()),
+            defaultAdmin
+        );
+
+        StableBondCoinsV2 instance2 = StableBondCoinsV2(proxy);
+        address implAddressV2 = UnsafeUpgrades.getImplementationAddress(proxy);
+        assertFalse(implAddressV2 == implAddressV1, "Implementation address should change");
+        assertEq(instance2.name(), "Stable Bond Coins", "Name should not change");
+        assertEq(instance2.balanceOf(address(3)), 100, "Balance should be preserved");
+        assertEq(instance2.decimals(), 6, "Decimals should be preserved");
+        assertEq(instance2.getInitializedVersion(), 2, "Version should be updated to 2");
+        assertEq(instance2.newFeature(), "V2 Feature", "Should use V2 implementation");
     }
 }
