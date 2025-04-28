@@ -39,11 +39,12 @@ This protocol creates a decentralized finance (DeFi) ecosystem centered around t
 
 ### `BondNFTV2` (ERC1155, Testing Only)
 
-* **Purpose**: This contract is a test-only version of `BondNFT`, used to simulate and verify the upgrade process for the UUPS proxy. It extends `BondNFT` with additional functionality for testing purposes, such as updating the token name and verifying the implementation version.
+* **Purpose**: This contract is a test-only version of `BondNFT`, used to simulate and verify the UUPS proxy upgrade process. It extends `BondNFT` with additional functionality for testing purposes and is not intended for production deployment.
 * **Key Functions**:
-  * `updateName(string memory newName)`: Allows the owner to update the token collection name (for testing state changes after upgrades). 
-  * `version()`: Returns `"V2"` to confirm the upgraded implementation is active.
-* **Note**: `BondNFTV2` is not intended for production deployment.
+  * `initializeV2()`: Reinitializes the contract to version 2, ensuring safe upgrades.
+  * `newFeature()`: Returns `"V2 Feature"` to confirm the upgraded implementation is active.
+  * `getInitializedVersion()`: Returns the current initialized version (`2`) of the contract.
+* **Note**: `BondNFTV2` is used solely for testing the upgradeability of the `BondNFT` contract and should not be deployed in production.
 
 ### `StableBondCoins` (ERC20)
 
@@ -52,6 +53,15 @@ This protocol creates a decentralized finance (DeFi) ecosystem centered around t
 * `transfer(address to, uint256 value)` / `transferFrom(...)`: Standard ERC20 token transfers.
 * `approve(address spender, uint256 value)`: Standard ERC20 allowance.
 * `permit(address owner, address spender, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s)`: Gasless approvals (EIP-2612).
+
+### `StableBondCoinsV2` (ERC20, Testing Only)
+
+* **Purpose**: This contract is a test-only version of `StableBondCoins`, used to simulate and verify the UUPS proxy upgrade process. It extends `StableBondCoins` with additional functionality for testing purposes and is not intended for production deployment.
+* **Key Functions**:
+  * `initializeV2()`: Reinitializes the contract to version 2, ensuring safe upgrades.
+  * `newFeature()`: Returns `"V2 Feature"` to confirm the upgraded implementation is active.
+  * `getInitializedVersion()`: Returns the current initialized version (`2`) of the contract.
+* **Note**: `StableBondCoinsV2` is used solely for testing the upgradeability of the `StableBondCoins` contract and should not be deployed in production.
 
 ### `NFTStakingAndBorrowing`
 
@@ -69,6 +79,15 @@ This protocol creates a decentralized finance (DeFi) ecosystem centered around t
 * `claimRewards()`: Claims accrued rewards earned from staking.
 * `earned(address _staker)`: Calculates current unclaimed rewards for a staker.
 * `pendingRewards(address _staker)`: Views pending rewards without triggering state changes.
+
+### `StableCoinsStakingV2` (Testing Only)
+
+* **Purpose**: This contract is a test-only version of `StableCoinsStaking`, used to simulate and verify the UUPS proxy upgrade process. It extends `StableCoinsStaking` with additional functionality for testing purposes and is not intended for production deployment.
+* **Key Functions**:
+  * `initializeV2()`: Reinitializes the contract to version 2, ensuring safe upgrades.
+  * `newFeature()`: Returns `"V2 Feature"` to confirm the upgraded implementation is active.
+  * `getInitializedVersion()`: Returns the current initialized version (`2`) of the contract.
+* **Note**: `StableCoinsStakingV2` is used solely for testing the upgradeability of the `StableCoinsStaking` contract and should not be deployed in production.
 
 ## Development & Testing (Foundry)
 

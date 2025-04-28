@@ -5,8 +5,10 @@ import {Test, console} from "forge-std/Test.sol";
 import {NFTStakingAndBorrowing} from "../src/NFTStakingAndBorrowing.sol";
 import {StableBondCoins} from "../src/StableBondCoins.sol";
 import {StableCoinsStaking} from "../src/StableCoinsStaking.sol";
+import {StableCoinsStakingV2} from "../src/V2/StableCoinsStakingV2.sol";
 import {BondNFT} from "../src/BondNFT.sol";
 import {UnsafeUpgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
+import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
 
 contract StakingStablesTest is Test {
     NFTStakingAndBorrowing public nftStaking;
@@ -519,5 +521,64 @@ contract StakingStablesTest is Test {
 
         assertEq(stakingStables.pendingRewards(client2), 1715707503);
         assertEq(stakingStables.pendingRewards(client3), 2790515371);
+    }
+
+    function testUUPSUpgrade() public {
+        address defaultAdmin = owner;
+
+        vm.prank(defaultAdmin);
+        address proxy = UnsafeUpgrades.deployUUPSProxy(
+            address(new StableCoinsStaking()),
+            abi.encodeCall(
+                StableCoinsStaking.initialize, (address(stableBondCoins), address(nftStaking), defaultAdmin)
+            )
+        );
+        StableCoinsStaking stakingStables = StableCoinsStaking(proxy);
+
+        address client2 = address(2);
+        vm.startPrank(defaultAdmin);
+        bondNFT.setAllowedMints(client2, 2, 10);
+        vm.stopPrank();
+
+        vm.startPrank(client2);
+        bondNFT.mint(2, 10, "");
+        bondNFT.setApprovalForAll(address(nftStaking), true);
+        nftStaking.stakeNFT(address(bondNFT), 2, 10);
+        nftStaking.borrow(0);
+        stableBondCoins.approve(address(stakingStables), UINT256_MAX);
+        uint256 amount = stableBondCoins.balanceOf(client2);
+        stakingStables.stake(amount);
+        vm.stopPrank();
+
+        uint256 stakedAmount = stakingStables.stakers(client2).stakedAmount;
+        assertEq(stakedAmount, amount, "Staked amount should match");
+        address implAddressV1 = UnsafeUpgrades.getImplementationAddress(proxy);
+
+        vm.prank(defaultAdmin);
+        address newImplementation = address(new StableCoinsStakingV2());
+
+//         address unauthorizedUser = address(3);
+//         vm.prank(unauthorizedUser);
+//         vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, unauthorizedUser, 0));
+//         UnsafeUpgrades.upgradeProxy(
+//             proxy,
+//             newImplementation,
+//             abi.encodeCall(StableCoinsStakingV2.initializeV2, ()),
+//             unauthorizedUser
+//         );
+
+        UnsafeUpgrades.upgradeProxy(
+            proxy,
+            newImplementation,
+            abi.encodeCall(StableCoinsStakingV2.initializeV2, ()),
+            defaultAdmin
+        );
+
+        StableCoinsStakingV2 stakingStablesV2 = StableCoinsStakingV2(proxy);
+        address implAddressV2 = UnsafeUpgrades.getImplementationAddress(proxy);
+        assertFalse(implAddressV2 == implAddressV1, "Implementation address should change");
+        assertEq(stakingStablesV2.stakers(client2).stakedAmount, stakedAmount, "Staked amount should be preserved");
+        assertEq(stakingStablesV2.getInitializedVersion(), 2, "Version should be updated to 2");
+        assertEq(stakingStablesV2.newFeature(), "V2 Feature", "Should use V2 implementation");
     }
 }
