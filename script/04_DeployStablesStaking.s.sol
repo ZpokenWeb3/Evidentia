@@ -17,10 +17,7 @@ contract DeployStablesStaking is Script {
 
         address proxy = Upgrades.deployUUPSProxy(
             "StableCoinsStaking.sol",
-            abi.encodeCall(
-                StableCoinsStaking.initialize,
-                (stableCoinsAddress, nftStakingAddress, owner)
-            )
+            abi.encodeCall(StableCoinsStaking.initialize, (stableCoinsAddress, nftStakingAddress, owner))
         );
 
         StableCoinsStaking stableStaking = StableCoinsStaking(proxy);
