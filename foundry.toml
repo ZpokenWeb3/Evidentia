@@ -41,9 +41,11 @@ remappings = [
 
 [rpc_endpoints]
 sepolia = "${SEPOLIA_RPC_URL}"
+fuji = "${FUJI_RPC_URL}"
 
 [etherscan]
 sepolia = { key = "${ETHERSCAN_API_KEY}" }
+fuji = { key = "${ETHERSCAN_API_KEY}" }
 
 [profile.solidity]
 build_info = true
