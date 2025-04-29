@@ -49,7 +49,12 @@ jobs:
           forge install GNSPS/solidity-bytes-utils
           forge install LayerZero-Labs/solidity-examples
           forge install LayerZero-Labs/LayerZero
-          forge install LayerZero-Labs/devtools
+          
+      - name: Clone and initialize devtools with submodules
+        run: |
+          rm -rf lib/devtools
+          git clone --recursive https://github.com/LayerZero-Labs/devtools.git lib/devtools
+          cd lib/devtools && git submodule update --init --recursive
 
       - name: Run Forge fmt
         run: |
