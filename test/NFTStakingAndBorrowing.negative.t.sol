@@ -46,7 +46,12 @@ contract NFTStakingAndBorrowingNegativeTest is Test {
         address proxyAddr = UnsafeUpgrades.deployUUPSProxy(address(impl), initData);
         stableBondCoins = StableBondCoins(proxyAddr);
 
-        nftStaking = new NFTStakingAndBorrowing(address(stableBondCoins));
+        nftStaking = NFTStakingAndBorrowing(
+            UnsafeUpgrades.deployUUPSProxy(
+                address(new NFTStakingAndBorrowing()),
+                abi.encodeCall(NFTStakingAndBorrowing.initialize, (address(stableBondCoins)))
+            )
+        );
 
         stableStaking = StableCoinsStaking(
             UnsafeUpgrades.deployUUPSProxy(

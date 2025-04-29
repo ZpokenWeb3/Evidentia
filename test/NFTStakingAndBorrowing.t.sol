@@ -43,7 +43,12 @@ contract NFTStakingAndBorrowingTest is Test {
         address proxyAddr = UnsafeUpgrades.deployUUPSProxy(address(impl), initData);
         stableBondCoins = StableBondCoins(proxyAddr);
 
-        nftStaking = new NFTStakingAndBorrowing(address(stableBondCoins));
+        nftStaking = NFTStakingAndBorrowing(
+            UnsafeUpgrades.deployUUPSProxy(
+                address(new NFTStakingAndBorrowing()),
+                abi.encodeCall(NFTStakingAndBorrowing.initialize, (address(stableBondCoins)))
+            )
+        );
 
         stableBondCoins.grantRole(MINTER_ROLE, address(nftStaking));
         BondNFT.Metadata memory metadata = BondNFT.Metadata({
@@ -1119,9 +1124,9 @@ contract NFTStakingAndBorrowingTest is Test {
         uint256 initialLiquidationTimeWindow = 45 days;
 
         // Check initial values
-        assertEq(nftStaking.protocolYield(), initialProtocolYield * 1e18 / 1e4);
-        assertEq(nftStaking.safetyFee(), initialSafetyFee * 1e18 / 1e4);
-        assertEq(nftStaking.liquidationTimeWindow(), initialLiquidationTimeWindow);
+        assertEq(nftStaking.getProtocolYield(), initialProtocolYield * 1e18 / 1e4);
+        assertEq(nftStaking.getSafetyFee(), initialSafetyFee * 1e18 / 1e4);
+        assertEq(nftStaking.getLiquidationTimeWindow(), initialLiquidationTimeWindow);
 
         // Change values
         uint256 newProtocolYield = 1000; // 10% in BPS
@@ -1133,9 +1138,9 @@ contract NFTStakingAndBorrowingTest is Test {
         nftStaking.setLiquidationTimeWindow(newLiquidationTimeWindow);
 
         // Check updated values
-        assertEq(nftStaking.protocolYield(), newProtocolYield * 1e18 / 1e4);
-        assertEq(nftStaking.safetyFee(), newSafetyFee * 1e18 / 1e4);
-        assertEq(nftStaking.liquidationTimeWindow(), newLiquidationTimeWindow);
+        assertEq(nftStaking.getProtocolYield(), newProtocolYield * 1e18 / 1e4);
+        assertEq(nftStaking.getSafetyFee(), newSafetyFee * 1e18 / 1e4);
+        assertEq(nftStaking.getLiquidationTimeWindow(), newLiquidationTimeWindow);
 
         vm.stopPrank();
     }
@@ -1192,5 +1197,12 @@ contract NFTStakingAndBorrowingTest is Test {
         nftStaking.stakeStables(excessiveAmount);
 
         vm.stopPrank();
+    }
+
+    function testNameSpace() public pure {
+        assertEq(
+            keccak256(abi.encode(uint256(keccak256("nft.staking.and.borrowing.storage")) - 1)) & ~bytes32(uint256(0xff)),
+            0x9a8eb021283f43dd2cabdbb84bb028df4a714b0bdf8b9bbf43c63e73140ef000
+        );
     }
 }
