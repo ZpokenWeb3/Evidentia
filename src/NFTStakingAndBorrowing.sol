@@ -2,7 +2,8 @@
 pragma solidity >=0.8.22;
 
 import {IBondNFT} from "./Interfaces/IBondNFT.sol";
-import {ERC1155HolderUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC1155/utils/ERC1155HolderUpgradeable.sol";
+import {ERC1155HolderUpgradeable} from
+    "@openzeppelin/contracts-upgradeable/token/ERC1155/utils/ERC1155HolderUpgradeable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {UD60x18, ud} from "@prb/math/src/UD60x18.sol";
@@ -38,7 +39,12 @@ interface IMintableERC20 is IERC20 {
  * @dev This contract is designed to work with the BondNFT contract and a StableBondCoins contract where this contract has the MINTER_ROLE.
  * Uses OpenZeppelin contracts for ERC1155Holder, Ownable, ReentrancyGuard. Uses PRBMath for fixed-point arithmetic.
  */
-contract NFTStakingAndBorrowing is ERC1155HolderUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable, UUPSUpgradeable {
+contract NFTStakingAndBorrowing is
+    ERC1155HolderUpgradeable,
+    OwnableUpgradeable,
+    ReentrancyGuardUpgradeable,
+    UUPSUpgradeable
+{
     // Storage layout following ERC-7201 to prevent collisions
     struct Layout {
         /// @dev Global statistics for the protocol.
@@ -362,8 +368,9 @@ contract NFTStakingAndBorrowing is ERC1155HolderUpgradeable, OwnableUpgradeable,
         if (getUserStats(userAddress).debt == 0) {
             return nominalAvailable; // No debt, can borrow full nominal amount
         } else {
-            uint256 debt =
-                calculateDebt(getUserStats(userAddress).debt, getUserStats(userAddress).debtUpdateTimestamp, block.timestamp);
+            uint256 debt = calculateDebt(
+                getUserStats(userAddress).debt, getUserStats(userAddress).debtUpdateTimestamp, block.timestamp
+            );
             // Return difference if positive, otherwise 0
             return nominalAvailable > debt ? nominalAvailable - debt : 0;
         }
@@ -686,17 +693,13 @@ contract NFTStakingAndBorrowing is ERC1155HolderUpgradeable, OwnableUpgradeable,
         // Calculate accrued interest on debt
         if ($.userStats[userAddress].debt != 0) {
             $.userStats[userAddress].debt = calculateDebt(
-                $.userStats[userAddress].debt,
-                $.userStats[userAddress].debtUpdateTimestamp,
-                block.timestamp
+                $.userStats[userAddress].debt, $.userStats[userAddress].debtUpdateTimestamp, block.timestamp
             );
         }
         // Calculate growth of nominal available (acts like negative debt compounding)
         if ($.userStats[userAddress].nominalAvailable != 0) {
             $.userStats[userAddress].nominalAvailable = calculateDebt(
-                $.userStats[userAddress].nominalAvailable,
-                $.userStats[userAddress].debtUpdateTimestamp,
-                block.timestamp
+                $.userStats[userAddress].nominalAvailable, $.userStats[userAddress].debtUpdateTimestamp, block.timestamp
             );
         }
         // Update timestamp
@@ -715,11 +718,7 @@ contract NFTStakingAndBorrowing is ERC1155HolderUpgradeable, OwnableUpgradeable,
 
         // Calculate accrued interest on total debt
         if ($.totalStats.debt != 0) {
-            $.totalStats.debt = calculateDebt(
-                $.totalStats.debt,
-                $.totalStats.debtUpdateTimestamp,
-                block.timestamp
-            );
+            $.totalStats.debt = calculateDebt($.totalStats.debt, $.totalStats.debtUpdateTimestamp, block.timestamp);
         }
         // Update timestamp
         $.totalStats.debtUpdateTimestamp = block.timestamp;
@@ -786,9 +785,9 @@ contract NFTStakingAndBorrowing is ERC1155HolderUpgradeable, OwnableUpgradeable,
      * 2. Debt >= Max Borrow at Liquidation: Liquidator pays `maxPositionBorrow` amount of stablecoins
      *    (transferred from liquidator to this contract), receives the *entire* NFT amount.
      *    User's debt is reduced by the paid amount.
-     * 3. Debt < Max Borrow at Liquidation: 
+     * 3. Debt < Max Borrow at Liquidation:
      *    Calculates the NFT amount (`amountToLiquidate`) needed to cover the `positionOwner`'s entire debt.
-     *    Liquidator pays stablecoins equal to the borrowing power (`liquidationPayment`) 
+     *    Liquidator pays stablecoins equal to the borrowing power (`liquidationPayment`)
      *    of `amountToLiquidate` (transferred from liquidator to this contract).
      *    The `positionOwner`'s debt is cleared.
      *    The liquidator receives `amountToLiquidate` NFTs.
