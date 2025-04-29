@@ -2,7 +2,7 @@
 pragma solidity ^0.8.22;
 
 import {Script} from "forge-std/Script.sol";
-import {StableBondCoins} from "../src/StableBondCoins.sol";
+import {StableBondCoins} from "../../src/StableBondCoins.sol";
 import {console} from "forge-std/console.sol";
 
 /**

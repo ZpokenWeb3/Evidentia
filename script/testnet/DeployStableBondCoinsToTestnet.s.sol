@@ -3,7 +3,7 @@ pragma solidity ^0.8.22;
 
 import {Script} from "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
-import {StableBondCoins} from "../src/StableBondCoins.sol";
+import {StableBondCoins} from "../../src/StableBondCoins.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 /**
