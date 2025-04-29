@@ -93,7 +93,7 @@ contract StableCoinsStaking is ReentrancyGuardUpgradeable, UUPSUpgradeable, Acce
     }
 
     /**
-     * @dev Initialize the contract (replaces constructor).
+     * @dev Initializes the contract (replaces constructor).
      * @param _stakingToken The address of the ERC20 token to be used for staking.
      * @param _externalRewardContract The address of the contract providing external rewards.
      * @param admin The address that will be granted the admin role for upgrades.

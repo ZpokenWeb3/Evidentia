@@ -35,7 +35,12 @@ contract StakingStablesTest is Test {
             )
         );
 
-        nftStaking = new NFTStakingAndBorrowing(address(stableBondCoins));
+        nftStaking = NFTStakingAndBorrowing(
+            UnsafeUpgrades.deployUUPSProxy(
+                address(new NFTStakingAndBorrowing()),
+                abi.encodeCall(NFTStakingAndBorrowing.initialize, (address(stableBondCoins)))
+            )
+        );
 
         stableBondCoins.grantRole(MINTER_ROLE, address(nftStaking));
         BondNFT.Metadata memory metadata = BondNFT.Metadata({

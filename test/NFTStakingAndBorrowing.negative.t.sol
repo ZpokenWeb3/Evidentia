@@ -41,7 +41,12 @@ contract NFTStakingAndBorrowingNegativeTest is Test {
             )
         );
 
-        nftStaking = new NFTStakingAndBorrowing(address(stableBondCoins));
+        nftStaking = NFTStakingAndBorrowing(
+            UnsafeUpgrades.deployUUPSProxy(
+                address(new NFTStakingAndBorrowing()),
+                abi.encodeCall(NFTStakingAndBorrowing.initialize, (address(stableBondCoins)))
+            )
+        );
 
         stableStaking = StableCoinsStaking(
             UnsafeUpgrades.deployUUPSProxy(
@@ -229,6 +234,6 @@ contract NFTStakingAndBorrowingNegativeTest is Test {
 
     function testCalculateMaxBorrowOverflowReverts() public {
         vm.expectRevert(NFTStakingAndBorrowing.AmountOverflow.selector);
-        nftStaking.calculateMaxBorrow(type(uint256).max / 10 ^ 18 + 1, 90, 1_000_000);
+        nftStaking.calculateMaxBorrow(type(uint256).max / 10 ** 18 + 1, 90, 1_000_000);
     }
 }
