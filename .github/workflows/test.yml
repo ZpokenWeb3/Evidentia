@@ -22,7 +22,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: false
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
@@ -33,13 +33,18 @@ jobs:
         run: |
           forge --version
 
-      - name: Install OpenZeppelin Contracts
+      - name: Install dependencies with Forge
         run: |
-          forge install OpenZeppelin/openzeppelin-contracts 
-
-      - name: Install PaulRBerg prb-math
-        run: |
+          forge install foundry-rs/forge-std
           forge install PaulRBerg/prb-math
+          forge install OpenZeppelin/openzeppelin-contracts
+          forge install OpenZeppelin/openzeppelin-contracts-upgradeable
+          forge install OpenZeppelin/openzeppelin-foundry-upgrades
+          forge install LayerZero-Labs/layerzero-v2
+          forge install GNSPS/solidity-bytes-utils
+          forge install LayerZero-Labs/solidity-examples
+          forge install LayerZero-Labs/LayerZero
+          forge install LayerZero-Labs/devtools
 
       - name: Run Forge fmt
         run: |
