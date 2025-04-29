@@ -11,7 +11,7 @@ contract DeployNftStaking is Script {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address stableCoinsAddress = vm.envAddress("STABLES_ADDRESS");
         vm.startBroadcast(deployerPrivateKey);
-        
+
         // Deploy the contract as a proxy with the initializer
         NFTStakingAndBorrowing nftStaking = NFTStakingAndBorrowing(
             UnsafeUpgrades.deployUUPSProxy(
@@ -19,7 +19,7 @@ contract DeployNftStaking is Script {
                 abi.encodeCall(NFTStakingAndBorrowing.initialize, (stableCoinsAddress))
             )
         );
-        
+
         vm.stopBroadcast();
         return nftStaking;
     }
