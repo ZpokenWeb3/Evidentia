@@ -33,6 +33,11 @@ jobs:
         run: |
           forge --version
 
+      - name: Clean lib directory
+        run: |
+          rm -rf lib
+          mkdir -p lib
+
       - name: Install dependencies with Forge
         run: |
           forge install foundry-rs/forge-std
