@@ -26,6 +26,12 @@ remappings = [
   # LayerZero Protocol v2
   "@layerzerolabs/lz-evm-protocol-v2/=lib/layerzero-v2/packages/layerzero-v2/evm/protocol",
   "@layerzerolabs/lz-evm-messagelib-v2/=lib/layerzero-v2/packages/layerzero-v2/evm/messagelib",
+  
+  # LayerZero Protocol v1
+  "@layerzerolabs/lz-evm-v1-0.7/=lib/LayerZero",
+  
+  # Solidity Bytes Utils
+  "solidity-bytes-utils/=lib/solidity-bytes-utils",
 
   # Testing helpers
   "@layerzerolabs/test-devtools-evm-foundry/=lib/devtools/packages/test-devtools-evm-foundry",
