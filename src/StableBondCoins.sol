@@ -39,7 +39,7 @@ contract StableBondCoins is ERC20Upgradeable, AccessControlUpgradeable, ERC20Per
     }
 
     /**
-     * @dev Initialize the contract (replaces constructor).
+     * @dev Initializes the contract (replaces constructor).
      * @param defaultAdmin The address that will be granted the default admin role.
      * @param minter The address that will be granted the minter role.
      */
