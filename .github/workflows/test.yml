@@ -33,46 +33,14 @@ jobs:
         run: |
           forge --version
 
-      - name: Install Dependencies
+      - name: Install OpenZeppelin Contracts
         run: |
           forge install OpenZeppelin/openzeppelin-contracts 
-          forge install OpenZeppelin/openzeppelin-contracts-upgradeable
-          forge install OpenZeppelin/openzeppelin-foundry-upgrades
-          forge install PaulRBerg/prb-math
-          # Explicitly install LayerZero dependencies
-          forge install LayerZero-Labs/devtools
-          forge install LayerZero-Labs/layerzero-v2
-          # Print installation status
-          echo "Checking for EndpointV2Mock.sol:"
-          find lib -name "EndpointV2Mock.sol" || echo "EndpointV2Mock.sol not found"
-          echo "Devtools structure:"
-          find lib/devtools -type d | sort
-          echo "Layerzero-v2 structure:"
-          find lib/layerzero-v2 -type d | sort | head -n 20
 
-      - name: Copy Mock Files Manually (Fallback)
+      - name: Install PaulRBerg prb-math
         run: |
-          # Create directories if they don't exist
-          mkdir -p lib/devtools/packages/test-devtools-evm-foundry/contracts/Mocks
-          
-          # Creating a minimal EndpointV2Mock.sol if it doesn't exist
-          if [ ! -f lib/devtools/packages/test-devtools-evm-foundry/contracts/Mocks/EndpointV2Mock.sol ]; then
-            echo "// SPDX-License-Identifier: LZBL-1.2
-            pragma solidity ^0.8.20;
-            
-            import { Ownable } from \"@openzeppelin/contracts/access/Ownable.sol\";
-            
-            contract EndpointV2Mock is Ownable {
-                uint32 public immutable eid;
-                
-                constructor(uint32 _eid, address _owner) Ownable(_owner) {
-                    eid = _eid;
-                }
-            }" > lib/devtools/packages/test-devtools-evm-foundry/contracts/Mocks/EndpointV2Mock.sol
-            
-            echo "Created minimal EndpointV2Mock.sol"
-          fi
-          
+          forge install PaulRBerg/prb-math
+
       - name: Run Forge fmt
         run: |
           forge fmt --check
