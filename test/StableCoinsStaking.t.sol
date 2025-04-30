@@ -536,7 +536,7 @@ contract StakingStablesTest is Test {
             address(new StableCoinsStaking()),
             abi.encodeCall(StableCoinsStaking.initialize, (address(stableBondCoins), address(nftStaking), defaultAdmin))
         );
-        StableCoinsStaking stakingStables = StableCoinsStaking(proxy);
+        StableCoinsStaking instance = StableCoinsStaking(proxy);
 
         address client2 = address(2);
         vm.startPrank(defaultAdmin);
@@ -548,12 +548,12 @@ contract StakingStablesTest is Test {
         bondNFT.setApprovalForAll(address(nftStaking), true);
         nftStaking.stakeNFT(address(bondNFT), 2, 10);
         nftStaking.borrow(0);
-        stableBondCoins.approve(address(stakingStables), UINT256_MAX);
+        stableBondCoins.approve(address(instance), UINT256_MAX);
         uint256 amount = stableBondCoins.balanceOf(client2);
-        stakingStables.stake(amount);
+        instance.stake(amount);
         vm.stopPrank();
 
-        uint256 stakedAmount = stakingStables.stakers(client2).stakedAmount;
+        uint256 stakedAmount = instance.stakers(client2).stakedAmount;
         assertEq(stakedAmount, amount, "Staked amount should match");
         address implAddressV1 = UnsafeUpgrades.getImplementationAddress(proxy);
 
@@ -574,11 +574,11 @@ contract StakingStablesTest is Test {
             proxy, newImplementation, abi.encodeCall(StableCoinsStakingV2.initializeV2, ()), defaultAdmin
         );
 
-        StableCoinsStakingV2 stakingStablesV2 = StableCoinsStakingV2(proxy);
+        StableCoinsStakingV2 instance2 = StableCoinsStakingV2(proxy);
         address implAddressV2 = UnsafeUpgrades.getImplementationAddress(proxy);
         assertFalse(implAddressV2 == implAddressV1, "Implementation address should change");
-        assertEq(stakingStablesV2.stakers(client2).stakedAmount, stakedAmount, "Staked amount should be preserved");
-        assertEq(stakingStablesV2.getInitializedVersion(), 2, "Version should be updated to 2");
-        assertEq(stakingStablesV2.newFeature(), "V2 Feature", "Should use V2 implementation");
+        assertEq(instance2.stakers(client2).stakedAmount, stakedAmount, "Staked amount should be preserved");
+        assertEq(instance2.getInitializedVersion(), 2, "Version should be updated to 2");
+        assertEq(instance2.newFeature(), "V2 Feature", "Should use V2 implementation");
     }
 }
