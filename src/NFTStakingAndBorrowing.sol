@@ -874,7 +874,7 @@ contract NFTStakingAndBorrowing is
             $.stableToken.transfer(positionOwner, liquidationPayment - currentDebt);
             IBondNFT(nftAddress).safeTransferFrom(address(this), msg.sender, tokenId, amountToLiquidate, "");
             IBondNFT(nftAddress).safeTransferFrom(address(this), positionOwner, tokenId, amount - amountToLiquidate, "");
-            $.stableToken.burn(address(this), positionValue);
+            $.stableToken.burn(address(this), liquidatedValue);
         }
 
         emit Liquidated(positionOwner, msg.sender, nftAddress, tokenId, amount);
