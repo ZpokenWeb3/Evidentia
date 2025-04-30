@@ -847,6 +847,7 @@ contract NFTStakingAndBorrowing is
             $.stableToken.burn(address(this), positionValue);
 
             emit Liquidated(positionOwner, msg.sender, nftAddress, tokenId, amount);
+            return;
         } else {
             // Case 3: Position has debt less than max borrow at this point - part or all of NFTs goes to the liquidator
             //         Liquidator pays (maxBorrow - debt) to the position owner
@@ -875,10 +876,11 @@ contract NFTStakingAndBorrowing is
             IBondNFT(nftAddress).safeTransferFrom(address(this), msg.sender, tokenId, amountToLiquidate, "");
             IBondNFT(nftAddress).safeTransferFrom(address(this), positionOwner, tokenId, amount - amountToLiquidate, "");
             $.stableToken.burn(address(this), liquidatedValue);
-        }
 
-        emit Liquidated(positionOwner, msg.sender, nftAddress, tokenId, amount);
-        return;
+            // Emit event with the actual amount of NFTs liquidated
+            emit Liquidated(positionOwner, msg.sender, nftAddress, tokenId, amountToLiquidate);
+            return;
+        }
     }
 
     /**
