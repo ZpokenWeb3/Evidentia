@@ -3,7 +3,9 @@ pragma solidity ^0.8.22;
 
 import {Test, console} from "forge-std/Test.sol";
 import {BondNFT} from "../src/BondNFT.sol";
+import {BondNFTV2} from "../src/V2/BondNFTV2.sol";
 import {UnsafeUpgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 contract BondNFTTest is Test {
     BondNFT public bondNFT;
@@ -122,5 +124,52 @@ contract BondNFTTest is Test {
         // Check mintedPerUser values are updated
         assertEq(bondNFT.remainingMints(account1, 1), 5);
         assertEq(bondNFT.remainingMints(account1, 2), 5);
+    }
+
+    function testUUPSUpgrade() public {
+        address proxy = UnsafeUpgrades.deployUUPSProxy(
+            address(new BondNFT()), abi.encodeCall(BondNFT.initialize, (owner, "https://example.com/{id}.json"))
+        );
+        BondNFT instance = BondNFT(proxy);
+
+        BondNFT.Metadata memory metadata = BondNFT.Metadata({
+            value: 100,
+            couponValue: 5,
+            issueTimestamp: block.timestamp,
+            expirationTimestamp: block.timestamp + 365 days,
+            ISIN: "US1234567890"
+        });
+        instance.setMetaData(1, metadata);
+        instance.setAllowedMints(account1, 1, 10);
+
+        vm.prank(account1);
+        instance.mint(1, 5, "");
+
+        assertEq(instance.name(), "BondNFT");
+        assertEq(instance.balanceOf(account1, 1), 5);
+        assertEq(instance.getMetaData(1).value, 100);
+        address implAddressV1 = UnsafeUpgrades.getImplementationAddress(proxy);
+
+        address newImplementation = address(new BondNFTV2());
+
+        //         vm.prank(account2);
+        //         vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, account2));
+        //         UnsafeUpgrades.upgradeProxy(
+        //             proxy,
+        //             newImplementation,
+        //             abi.encodeCall(BondNFTV2.initializeV2, ()),
+        //             account2
+        //         );
+
+        UnsafeUpgrades.upgradeProxy(proxy, newImplementation, abi.encodeCall(BondNFTV2.initializeV2, ()), owner);
+
+        BondNFTV2 instance2 = BondNFTV2(proxy);
+        address implAddressV2 = UnsafeUpgrades.getImplementationAddress(proxy);
+        assertFalse(implAddressV2 == implAddressV1, "Implementation address should change");
+        assertEq(instance2.name(), "BondNFT", "Name should not change");
+        assertEq(instance2.balanceOf(account1, 1), 5, "Balance should be preserved");
+        assertEq(instance2.getMetaData(1).value, 100, "Metadata should be preserved");
+        assertEq(instance2.getInitializedVersion(), 2, "Version should be updated to 2");
+        assertEq(instance2.newFeature(), "V2 Feature", "Should use V2 implementation");
     }
 }
