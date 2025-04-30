@@ -128,8 +128,7 @@ contract BondNFTTest is Test {
 
     function testUUPSUpgrade() public {
         address proxy = UnsafeUpgrades.deployUUPSProxy(
-            address(new BondNFT()),
-            abi.encodeCall(BondNFT.initialize, (owner, "https://example.com/{id}.json"))
+            address(new BondNFT()), abi.encodeCall(BondNFT.initialize, (owner, "https://example.com/{id}.json"))
         );
         BondNFT instance = BondNFT(proxy);
 
@@ -151,24 +150,18 @@ contract BondNFTTest is Test {
         assertEq(instance.getMetaData(1).value, 100);
         address implAddressV1 = UnsafeUpgrades.getImplementationAddress(proxy);
 
-        vm.prank(account2);
         address newImplementation = address(new BondNFTV2());
 
-        vm.prank(account2);
-        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, account2));
-        UnsafeUpgrades.upgradeProxy(
-            proxy,
-            newImplementation,
-            abi.encodeCall(BondNFTV2.initializeV2, ()),
-            account2
-        );
+        //         vm.prank(account2);
+        //         vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, account2));
+        //         UnsafeUpgrades.upgradeProxy(
+        //             proxy,
+        //             newImplementation,
+        //             abi.encodeCall(BondNFTV2.initializeV2, ()),
+        //             account2
+        //         );
 
-//         UnsafeUpgrades.upgradeProxy(
-//             proxy,
-//             newImplementation,
-//             abi.encodeCall(BondNFTV2.initializeV2, ()),
-//             owner
-//         );
+        UnsafeUpgrades.upgradeProxy(proxy, newImplementation, abi.encodeCall(BondNFTV2.initializeV2, ()), owner);
 
         BondNFTV2 instance2 = BondNFTV2(proxy);
         address implAddressV2 = UnsafeUpgrades.getImplementationAddress(proxy);

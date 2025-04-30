@@ -9,7 +9,7 @@ import {StableBondCoins} from "../StableBondCoins.sol";
  * It extends StableBondCoins with additional functionality for testing and is not intended for production.
  */
 contract StableBondCoinsV2 is StableBondCoins {
-    function initializeV2() external reinitializer(2) { }
+    function initializeV2() external reinitializer(2) {}
 
     function newFeature() external pure returns (string memory) {
         return "V2 Feature";

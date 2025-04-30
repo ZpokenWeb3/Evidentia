@@ -534,9 +534,7 @@ contract StakingStablesTest is Test {
         vm.prank(defaultAdmin);
         address proxy = UnsafeUpgrades.deployUUPSProxy(
             address(new StableCoinsStaking()),
-            abi.encodeCall(
-                StableCoinsStaking.initialize, (address(stableBondCoins), address(nftStaking), defaultAdmin)
-            )
+            abi.encodeCall(StableCoinsStaking.initialize, (address(stableBondCoins), address(nftStaking), defaultAdmin))
         );
         StableCoinsStaking stakingStables = StableCoinsStaking(proxy);
 
@@ -562,21 +560,18 @@ contract StakingStablesTest is Test {
         vm.prank(defaultAdmin);
         address newImplementation = address(new StableCoinsStakingV2());
 
-//         address unauthorizedUser = address(3);
-//         vm.prank(unauthorizedUser);
-//         vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, unauthorizedUser, 0));
-//         UnsafeUpgrades.upgradeProxy(
-//             proxy,
-//             newImplementation,
-//             abi.encodeCall(StableCoinsStakingV2.initializeV2, ()),
-//             unauthorizedUser
-//         );
+        //         address unauthorizedUser = address(3);
+        //         vm.prank(unauthorizedUser);
+        //         vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, unauthorizedUser, 0));
+        //         UnsafeUpgrades.upgradeProxy(
+        //             proxy,
+        //             newImplementation,
+        //             abi.encodeCall(StableCoinsStakingV2.initializeV2, ()),
+        //             unauthorizedUser
+        //         );
 
         UnsafeUpgrades.upgradeProxy(
-            proxy,
-            newImplementation,
-            abi.encodeCall(StableCoinsStakingV2.initializeV2, ()),
-            defaultAdmin
+            proxy, newImplementation, abi.encodeCall(StableCoinsStakingV2.initializeV2, ()), defaultAdmin
         );
 
         StableCoinsStakingV2 stakingStablesV2 = StableCoinsStakingV2(proxy);

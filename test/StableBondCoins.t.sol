@@ -87,8 +87,7 @@ contract StableBondCoinsTest is Test {
     function testUUPSUpgrade() public {
         vm.prank(defaultAdmin);
         address proxy = UnsafeUpgrades.deployUUPSProxy(
-            address(new StableBondCoins()),
-            abi.encodeCall(StableBondCoins.initialize, (defaultAdmin, minter))
+            address(new StableBondCoins()), abi.encodeCall(StableBondCoins.initialize, (defaultAdmin, minter))
         );
         StableBondCoins instance = StableBondCoins(proxy);
 
@@ -103,19 +102,16 @@ contract StableBondCoinsTest is Test {
         vm.prank(defaultAdmin);
         address newImplementation = address(new StableBondCoinsV2());
 
-//         vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, address(3), DEFAULT_ADMIN_ROLE));
-//         UnsafeUpgrades.upgradeProxy(
-//             proxy,
-//             newImplementation,
-//             abi.encodeCall(StableBondCoinsV2.initializeV2, ()),
-//             address(3)
-//         );
+        //         vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, address(3), DEFAULT_ADMIN_ROLE));
+        //         UnsafeUpgrades.upgradeProxy(
+        //             proxy,
+        //             newImplementation,
+        //             abi.encodeCall(StableBondCoinsV2.initializeV2, ()),
+        //             address(3)
+        //         );
 
         UnsafeUpgrades.upgradeProxy(
-            proxy,
-            newImplementation,
-            abi.encodeCall(StableBondCoinsV2.initializeV2, ()),
-            defaultAdmin
+            proxy, newImplementation, abi.encodeCall(StableBondCoinsV2.initializeV2, ()), defaultAdmin
         );
 
         StableBondCoinsV2 instance2 = StableBondCoinsV2(proxy);

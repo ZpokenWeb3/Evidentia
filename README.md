@@ -72,6 +72,15 @@ This protocol creates a decentralized finance (DeFi) ecosystem centered around t
 * `claimRewards()`: Claims rewards generated from borrowing interest.
 * `getUserNFTBalance(address user, address nftAddress, uint256 tokenId)`: Checks a user's staked NFT balance.
 
+### `NFTStakingAndBorrowingV2` (Testing Only)
+
+* **Purpose**: This contract is a test-only version of `NFTStakingAndBorrowing`, used to simulate and verify the UUPS proxy upgrade process. It extends `NFTStakingAndBorrowing` with additional functionality for testing purposes and is not intended for production deployment.
+* **Key Functions**:
+  * `initializeV2()`: Reinitializes the contract to version 2, ensuring safe upgrades.
+  * `newFeature()`: Returns `"V2 Feature"` to confirm the upgraded implementation is active.
+  * `getInitializedVersion()`: Returns the current initialized version (`2`) of the contract.
+* **Note**: `NFTStakingAndBorrowingV2` is used solely for testing the upgradeability of the `NFTStakingAndBorrowing` contract and should not be deployed in production.
+
 ### `StableCoinsStaking`
 
 * `stake(uint256 _amount)`: Deposits `stakingToken` into the contract.
