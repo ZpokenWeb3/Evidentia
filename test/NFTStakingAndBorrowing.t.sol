@@ -457,11 +457,11 @@ contract NFTStakingAndBorrowingTest is Test {
         assertEq(bondNFT.balanceOf(client2, 2), 5);
         assertEq(bondNFT.balanceOf(address(nftStaking), 2), 0);
 
-        // Check internal mapping state
+        // Check internal mapping state - userNFTs should be 0 as all NFTs are removed from staking
         assertEq(
             nftStaking.getUserNFTBalance(client1, address(bondNFT), 2),
-            5,
-            "userNFTs balance incorrect after liquidation"
+            0,
+            "userNFTs balance should be 0 after liquidation as all NFTs are removed from staking"
         );
 
         assertEq(stableBondCoins.balanceOf(client1), 4453_125000);
@@ -619,11 +619,11 @@ contract NFTStakingAndBorrowingTest is Test {
         assertEq(bondNFT.balanceOf(client2, 2), expectedNFTToLiquidator, "Liquidator should receive proportional NFTs");
         assertEq(bondNFT.balanceOf(address(nftStaking), 2), 0, "Contract should have no NFTs left");
 
-        // Check internal mapping state
+        // Check internal mapping state - userNFTs should be 0 as all NFTs are removed from staking
         assertEq(
             nftStaking.getUserNFTBalance(client1, address(bondNFT), 2),
-            expectedNFTToOwner,
-            "userNFTs balance incorrect after liquidation"
+            0,
+            "userNFTs balance should be 0 after liquidation as all NFTs are removed from staking"
         );
 
         // Verify that client1 received excess payment (liquidationPayment - debt)
@@ -641,7 +641,8 @@ contract NFTStakingAndBorrowingTest is Test {
 
     /**
      * @notice Test to specifically verify the token burning behavior during partial liquidation (Case 3).
-     * This test ensures that only the value of the liquidated NFTs is burned, not the entire position value.
+     * This test ensures that the entire position value is burned, not just the value of the liquidated NFTs.
+     * This is because all NFTs are removed from staking (some go to liquidator, some to owner).
      */
     function testLiquidateCase03TokenBurning() public {
         owner = address(1);
@@ -712,9 +713,9 @@ contract NFTStakingAndBorrowingTest is Test {
         uint256 totalSupplyAfter = stableBondCoins.totalSupply();
         uint256 tokensBurned = totalSupplyBefore - totalSupplyAfter;
 
-        // Verify token burning behavior - this checks our fix works correctly
-        assertEq(tokensBurned, liquidatedValue, "Only the value of liquidated NFTs should be burned");
-        assertLt(tokensBurned, totalPositionValue, "Burned amount should be less than total position value");
+        // Verify token burning behavior - we burn the total position value
+        assertEq(tokensBurned, totalPositionValue, "The total position value should be burned");
+        assertGt(tokensBurned, liquidatedValue, "Burned amount should be greater than just liquidated value");
     }
 
     function testGetRewardAmount() public {

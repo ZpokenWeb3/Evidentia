@@ -8,6 +8,7 @@ extra_output = ["evm.bytecode", "evm.deployedBytecode", "abi", "metadata", "ir",
 extra_output_files = ["metadata", "ir", "irOptimized", "storageLayout", "devdoc", "userdoc"]
 solc_version = "0.8.22"
 fs_permissions = [{ access = "read", path = "out" }]
+ffi = true
 
 remappings = [
   '@openzeppelin/contracts=lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts',

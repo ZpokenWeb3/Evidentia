@@ -268,9 +268,9 @@ contract NFTStakingAndBorrowingEventsTest is Test {
     }
 
     /**
-     * @notice Test for Case 3 (partial liquidation) event emission
-     * This test verifies that the Liquidated event is emitted with the correct amount of NFTs
-     * when a position is partially liquidated (debt < maxBorrow)
+     * @notice Test for Case 3 (partial liquidation) event emission when some NFTs are returned to owner
+     * This test verifies that both Liquidated and NFTUnstaked events are emitted correctly
+     * when a position is partially liquidated and some NFTs are returned to the owner
      */
     function testLiquidateCase3Event() public {
         owner = address(1);
@@ -324,9 +324,19 @@ contract NFTStakingAndBorrowingEventsTest is Test {
         // Calculate how many NFTs will be liquidated
         uint256 expectedNFTToLiquidator = (currentDebt * 10 / maxBorrow) + (currentDebt * 10 % maxBorrow == 0 ? 0 : 1);
 
-        // Expect the Liquidated event with the correct amount of NFTs being liquidated
+        // Calculate remaining NFTs
+        uint256 remainingNFTs = 10 - expectedNFTToLiquidator;
+
+        // Ensure this test case has remaining NFTs to return to owner
+        assertGt(remainingNFTs, 0, "This test requires remaining NFTs to test both events");
+
+        // Expect the Liquidated event first (now that we've changed the order in the contract)
         vm.expectEmit(true, true, true, true);
         emit Liquidated(localClient1, localClient2, address(bondNFT), 1, expectedNFTToLiquidator);
+
+        // Then expect the NFTUnstaked event for NFTs returned to the owner
+        vm.expectEmit(true, true, true, true);
+        emit NFTUnstaked(localClient1, address(bondNFT), 1, remainingNFTs);
 
         vm.prank(localClient2);
         nftStaking.liquidate(address(bondNFT), 1, localClient1);
@@ -340,5 +350,83 @@ contract NFTStakingAndBorrowingEventsTest is Test {
             10 - expectedNFTToLiquidator,
             "Original owner should receive remaining NFTs"
         );
+    }
+
+    /**
+     * @notice Test for Case 3 (partial liquidation) event emission when all NFTs go to liquidator
+     * This test verifies that only the Liquidated event is emitted (no NFTUnstaked event)
+     * when a position is partially liquidated but all NFTs go to the liquidator
+     */
+    function testLiquidateCase3EventAllNFTsToLiquidator() public {
+        owner = address(1);
+        address localClient1 = address(2);
+        address localClient2 = address(3);
+
+        vm.startPrank(owner);
+        bondNFT.setAllowedMints(localClient1, 1, 10);
+        bondNFT.setAllowedMints(localClient2, 2, 20);
+        vm.stopPrank();
+
+        // Client1 mints and stakes NFTs
+        vm.prank(localClient1);
+        bondNFT.mint(1, 10, "");
+        vm.prank(localClient1);
+        bondNFT.setApprovalForAll(address(nftStaking), true);
+
+        vm.startPrank(localClient1);
+        nftStaking.stakeNFT(address(bondNFT), 1, 10);
+
+        // Borrow an amount that will result in debt close to maxBorrow
+        // This will cause all NFTs to go to liquidator when liquidated
+        uint256 maxBorrowAmount = nftStaking.userAvailableToBorrow(localClient1);
+        uint256 borrowAmount = maxBorrowAmount * 9 / 10; // Borrow 90% of available amount
+        nftStaking.borrow(borrowAmount);
+        vm.stopPrank();
+
+        // Client2 prepares for liquidation
+        vm.prank(localClient2);
+        bondNFT.mint(2, 20, "");
+        vm.prank(localClient2);
+        bondNFT.setApprovalForAll(address(nftStaking), true);
+
+        vm.startPrank(localClient2);
+        nftStaking.stakeNFT(address(bondNFT), 2, 20);
+        nftStaking.borrow(nftStaking.userAvailableToBorrow(localClient2));
+        stableBondCoins.approve(address(nftStaking), type(uint256).max);
+        vm.stopPrank();
+
+        // Fast forward time to approach expiration
+        vm.warp(365 days - 40 days);
+        vm.roll(2);
+
+        // Calculate how many NFTs will be liquidated
+        NFTStakingAndBorrowing.UserStats memory userStats = nftStaking.getUserStats(localClient1);
+        uint256 currentDebt = userStats.debt;
+        BondNFT.Metadata memory metadata = bondNFT.getMetaData(1);
+        uint256 maxBorrow =
+            nftStaking.calculateMaxBorrow(userStats.staked, block.timestamp, metadata.expirationTimestamp);
+
+        // Verify this is Case 3 (partial liquidation)
+        assertLt(currentDebt, maxBorrow, "This should be a partial liquidation (Case 3)");
+
+        // Calculate how many NFTs will be liquidated
+        uint256 expectedNFTToLiquidator = (currentDebt * 10 / maxBorrow) + (currentDebt * 10 % maxBorrow == 0 ? 0 : 1);
+
+        // Calculate remaining NFTs
+        uint256 remainingNFTs = 10 - expectedNFTToLiquidator;
+
+        // Ensure this test case has NO remaining NFTs to return to owner
+        assertEq(remainingNFTs, 0, "This test requires all NFTs to go to liquidator");
+
+        // Expect only the Liquidated event (no NFTUnstaked event)
+        vm.expectEmit(true, true, true, true);
+        emit Liquidated(localClient1, localClient2, address(bondNFT), 1, 10);
+
+        vm.prank(localClient2);
+        nftStaking.liquidate(address(bondNFT), 1, localClient1);
+
+        // Verify the result of liquidation
+        assertEq(bondNFT.balanceOf(localClient2, 1), 10, "Liquidator should receive all NFTs");
+        assertEq(bondNFT.balanceOf(localClient1, 1), 0, "Original owner should receive no NFTs");
     }
 }
