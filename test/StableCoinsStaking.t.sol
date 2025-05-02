@@ -8,7 +8,7 @@ import {StableCoinsStaking} from "../src/StableCoinsStaking.sol";
 import {StableCoinsStakingV2} from "../src/V2/StableCoinsStakingV2.sol";
 import {BondNFT} from "../src/BondNFT.sol";
 import {UnsafeUpgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
-import {EndpointV2Mock} from "@layerzerolabs/test-devtools-evm-foundry/contracts/Mocks/EndpointV2Mock.sol";
+import {EndpointV2Mock} from "@layerzerolabs/test-devtools-evm-foundry/contracts/mocks/EndpointV2Mock.sol";
 import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
 
 contract StakingStablesTest is Test {

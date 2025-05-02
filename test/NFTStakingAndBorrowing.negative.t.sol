@@ -7,7 +7,7 @@ import {StableBondCoins} from "../src/StableBondCoins.sol";
 import {BondNFT} from "../src/BondNFT.sol";
 import {StableCoinsStaking} from "../src/StableCoinsStaking.sol";
 import {UnsafeUpgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
-import {EndpointV2Mock} from "@layerzerolabs/test-devtools-evm-foundry/contracts/Mocks/EndpointV2Mock.sol";
+import {EndpointV2Mock} from "@layerzerolabs/test-devtools-evm-foundry/contracts/mocks/EndpointV2Mock.sol";
 
 contract NFTStakingAndBorrowingNegativeTest is Test {
     NFTStakingAndBorrowing public nftStaking;
