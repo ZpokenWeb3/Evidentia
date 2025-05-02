@@ -36,14 +36,17 @@ jobs:
         with:
           node-version: '18'    # pin a version instead of using .nvmrc
           cache: 'pnpm'
+          cache-dependency-path: '**/pnpm-lock.yaml'
 
       - name: Install DevTools dependencies
-        working-directory: lib/devtools
-        run: pnpm install --frozen-lockfile
+        run: |
+          cd lib/devtools
+          pnpm install --frozen-lockfile
 
       - name: Build DevTools packages
-        working-directory: lib/devtools
-        run: pnpm build
+        run: |
+          cd lib/devtools
+          pnpm build
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
