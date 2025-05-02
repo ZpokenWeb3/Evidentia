@@ -25,11 +25,27 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Initialize and update all submodules
-        run: |
-          git submodule update --init --recursive
-          cd lib/devtools && git submodule update --init --recursive || true
-          cd ../layerzero-v2 && git submodule update --init --recursive || true
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: 'pnpm'
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Install DevTools dependencies
+        working-directory: lib/devtools
+        run: pnpm install --frozen-lockfile
+
+      - name: Build DevTools packages
+        working-directory: lib/devtools
+        run: pnpm build
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
