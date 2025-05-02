@@ -4,7 +4,7 @@ pragma solidity ^0.8.22;
 import {Test, console} from "forge-std/Test.sol";
 import {StableBondCoins} from "../src/StableBondCoins.sol";
 import {StableBondCoinsV2} from "../src/V2/StableBondCoinsV2.sol";
-import {UnsafeUpgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
+import {Upgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
 
 contract StableBondCoinsTest is Test {
@@ -20,8 +20,8 @@ contract StableBondCoinsTest is Test {
         minter = address(2);
 
         stableBondCoins = StableBondCoins(
-            UnsafeUpgrades.deployUUPSProxy(
-                address(new StableBondCoins()), abi.encodeCall(stableBondCoins.initialize, (defaultAdmin, minter))
+            Upgrades.deployUUPSProxy(
+                "StableBondCoins.sol", abi.encodeCall(stableBondCoins.initialize, (defaultAdmin, minter))
             )
         );
     }
@@ -86,8 +86,8 @@ contract StableBondCoinsTest is Test {
 
     function testUUPSUpgrade() public {
         vm.prank(defaultAdmin);
-        address proxy = UnsafeUpgrades.deployUUPSProxy(
-            address(new StableBondCoins()), abi.encodeCall(StableBondCoins.initialize, (defaultAdmin, minter))
+        address proxy = Upgrades.deployUUPSProxy(
+            "StableBondCoins.sol", abi.encodeCall(StableBondCoins.initialize, (defaultAdmin, minter))
         );
         StableBondCoins instance = StableBondCoins(proxy);
 
@@ -97,25 +97,25 @@ contract StableBondCoinsTest is Test {
         assertEq(instance.name(), "Stable Bond Coins");
         assertEq(instance.balanceOf(address(3)), 100);
         assertEq(instance.decimals(), 6);
-        address implAddressV1 = UnsafeUpgrades.getImplementationAddress(proxy);
-
-        vm.prank(defaultAdmin);
-        address newImplementation = address(new StableBondCoinsV2());
+        address implAddressV1 = Upgrades.getImplementationAddress(proxy);
 
         //         vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, address(3), DEFAULT_ADMIN_ROLE));
-        //         UnsafeUpgrades.upgradeProxy(
+        //         Upgrades.upgradeProxy(
         //             proxy,
-        //             newImplementation,
+        //             "StableBondCoinsV2.sol",
         //             abi.encodeCall(StableBondCoinsV2.initializeV2, ()),
         //             address(3)
         //         );
 
-        UnsafeUpgrades.upgradeProxy(
-            proxy, newImplementation, abi.encodeCall(StableBondCoinsV2.initializeV2, ()), defaultAdmin
+        Upgrades.upgradeProxy(
+            proxy, 
+            "StableBondCoinsV2.sol", 
+            abi.encodeCall(StableBondCoinsV2.initializeV2, ()),
+            defaultAdmin
         );
 
         StableBondCoinsV2 instance2 = StableBondCoinsV2(proxy);
-        address implAddressV2 = UnsafeUpgrades.getImplementationAddress(proxy);
+        address implAddressV2 = Upgrades.getImplementationAddress(proxy);
         assertFalse(implAddressV2 == implAddressV1, "Implementation address should change");
         assertEq(instance2.name(), "Stable Bond Coins", "Name should not change");
         assertEq(instance2.balanceOf(address(3)), 100, "Balance should be preserved");

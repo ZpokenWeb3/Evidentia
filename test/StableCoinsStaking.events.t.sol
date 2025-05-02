@@ -4,7 +4,7 @@ pragma solidity >=0.8.22;
 import {Test, console, Vm} from "forge-std/Test.sol";
 import {StableCoinsStaking} from "../src/StableCoinsStaking.sol";
 import {StableBondCoins} from "../src/StableBondCoins.sol";
-import {UnsafeUpgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
+import {Upgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 
 // Simple mock contract for tests
 contract MockReward {
@@ -43,16 +43,16 @@ contract StableCoinsStakingEventsTest is Test {
 
         vm.startPrank(owner);
         stableBondCoins = StableBondCoins(
-            UnsafeUpgrades.deployUUPSProxy(
-                address(new StableBondCoins()), abi.encodeCall(stableBondCoins.initialize, (owner, owner))
+            Upgrades.deployUUPSProxy(
+                "StableBondCoins.sol:StableBondCoins", abi.encodeCall(stableBondCoins.initialize, (owner, owner))
             )
         );
 
         MockReward mockReward = new MockReward();
 
         staking = StableCoinsStaking(
-            UnsafeUpgrades.deployUUPSProxy(
-                address(new StableCoinsStaking()),
+            Upgrades.deployUUPSProxy(
+                "StableCoinsStaking.sol:StableCoinsStaking",
                 abi.encodeCall(staking.initialize, (address(stableBondCoins), address(mockReward), address(owner)))
             )
         );
