@@ -22,7 +22,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: false
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'    # pin a version instead of using .nvmrc
+          cache: 'pnpm'
+          cache-dependency-path: '**/pnpm-lock.yaml'
+
+      - name: Install DevTools dependencies
+        run: |
+          cd lib/devtools
+          pnpm install --frozen-lockfile
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
@@ -32,30 +51,7 @@ jobs:
       - name: Show Forge version
         run: |
           forge --version
-
-      - name: Clean lib directory
-        run: |
-          rm -rf lib
-          mkdir -p lib
-
-      - name: Install dependencies with Forge
-        run: |
-          forge install foundry-rs/forge-std
-          forge install PaulRBerg/prb-math
-          forge install OpenZeppelin/openzeppelin-contracts
-          forge install OpenZeppelin/openzeppelin-contracts-upgradeable
-          forge install OpenZeppelin/openzeppelin-foundry-upgrades
-          forge install LayerZero-Labs/layerzero-v2
-          forge install GNSPS/solidity-bytes-utils
-          forge install LayerZero-Labs/solidity-examples
-          forge install LayerZero-Labs/LayerZero
           
-      - name: Clone and initialize devtools with submodules
-        run: |
-          rm -rf lib/devtools
-          git clone --recursive https://github.com/LayerZero-Labs/devtools.git lib/devtools
-          cd lib/devtools && git submodule update --init --recursive
-
       - name: Run Forge fmt
         run: |
           forge fmt --check

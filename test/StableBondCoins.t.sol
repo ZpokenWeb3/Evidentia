@@ -10,6 +10,7 @@ import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol"
 
 contract StableBondCoinsTest is Test {
     StableBondCoins public stableBondCoins;
+    EndpointV2Mock endpointMock;
     address public defaultAdmin;
     address public minter;
     address public delegate;
@@ -24,9 +25,9 @@ contract StableBondCoinsTest is Test {
         delegate = address(3);
 
         // 1. Deploy a mock endpoint
-        EndpointV2Mock mock = new EndpointV2Mock(1, address(this));
+        endpointMock = new EndpointV2Mock(1, address(this));
 
-        StableBondCoins impl = new StableBondCoins(address(mock));
+        StableBondCoins impl = new StableBondCoins(address(endpointMock));
         bytes memory initData = abi.encodeCall(StableBondCoins.initialize, (defaultAdmin, minter, delegate));
         address proxyAddr = UnsafeUpgrades.deployUUPSProxy(address(impl), initData);
         stableBondCoins = StableBondCoins(proxyAddr);
@@ -94,7 +95,8 @@ contract StableBondCoinsTest is Test {
     function testUUPSUpgrade() public {
         vm.prank(defaultAdmin);
         address proxy = UnsafeUpgrades.deployUUPSProxy(
-            address(new StableBondCoins()), abi.encodeCall(StableBondCoins.initialize, (defaultAdmin, minter))
+            address(new StableBondCoins(address(endpointMock))),
+            abi.encodeCall(StableBondCoins.initialize, (defaultAdmin, minter, defaultAdmin))
         );
         StableBondCoins instance = StableBondCoins(proxy);
 
@@ -107,7 +109,7 @@ contract StableBondCoinsTest is Test {
         address implAddressV1 = UnsafeUpgrades.getImplementationAddress(proxy);
 
         vm.prank(defaultAdmin);
-        address newImplementation = address(new StableBondCoinsV2());
+        address newImplementation = address(new StableBondCoinsV2(address(endpointMock)));
 
         //         vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, address(3), DEFAULT_ADMIN_ROLE));
         //         UnsafeUpgrades.upgradeProxy(
