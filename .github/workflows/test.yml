@@ -43,11 +43,6 @@ jobs:
           cd lib/devtools
           pnpm install --frozen-lockfile
 
-      - name: Build DevTools packages
-        run: |
-          cd lib/devtools
-          pnpm build
-
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
