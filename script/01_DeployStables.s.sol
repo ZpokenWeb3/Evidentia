@@ -9,15 +9,13 @@ import {Upgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 contract DeployStables is Script {
     function run() external returns (StableBondCoins) {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        address owner = vm.envAddress("OWNER");
-        address minter = vm.envAddress("MINTER");
+        address owner = vm.envAddress("STABLE_BOND_COINS_OWNER_ADDRESS");
+        address minter = vm.envAddress("MINTER_ADDRESS");
 
         vm.startBroadcast(deployerPrivateKey);
 
-        address proxy = Upgrades.deployUUPSProxy(
-            "StableBondCoins.sol",
-            abi.encodeCall(StableBondCoins.initialize, (owner, minter))
-        );
+        address proxy =
+            Upgrades.deployUUPSProxy("StableBondCoins.sol", abi.encodeCall(StableBondCoins.initialize, (owner, minter)));
 
         StableBondCoins stablesContract = StableBondCoins(proxy);
 

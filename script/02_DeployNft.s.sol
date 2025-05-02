@@ -9,7 +9,7 @@ import {console} from "forge-std/console.sol";
 contract DeployNft is Script {
     function run() external returns (BondNFT) {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        address owner = vm.envAddress("OWNER");
+        address owner = vm.envAddress("BOND_NFT_OWNER_ADDRESS");
         vm.startBroadcast(deployerPrivateKey);
 
         // Deploy the contract as a UUPS proxy with the initializer

@@ -11,7 +11,7 @@ contract DeployStablesStaking is Script {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address stableCoinsAddress = vm.envAddress("STABLES_ADDRESS");
         address nftStakingAddress = vm.envAddress("NFT_STAKING_ADDRESS");
-        address owner = vm.envAddress("OWNER_ADDRESS");
+        address owner = vm.envAddress("STABLE_COINS_STAKING_OWNER_ADDRESS");
 
         vm.startBroadcast(deployerPrivateKey);
 
