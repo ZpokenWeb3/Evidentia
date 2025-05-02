@@ -10,6 +10,8 @@ import {StableBondCoins} from "../StableBondCoins.sol";
  * It extends StableBondCoins with additional functionality for testing and is not intended for production.
  */
 contract StableBondCoinsV2 is StableBondCoins {
+    constructor(address _lzEndpoint) StableBondCoins(_lzEndpoint) {}
+
     function initializeV2() external reinitializer(2) {}
 
     function newFeature() external pure returns (string memory) {

@@ -196,9 +196,6 @@ contract StableBondCoinsOFTTest is TestHelperOz5 {
         // Test configuration change with new owner
         vm.startPrank(newDelegate);
 
-        // Configure new enforced option as example
-        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(300000, 0);
-
         // Setup delegate in the endpoint
         srcStableBondCoins.setDelegate(address(1234));
 
