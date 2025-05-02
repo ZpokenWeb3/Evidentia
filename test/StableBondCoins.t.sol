@@ -5,7 +5,7 @@ import {Test, console} from "forge-std/Test.sol";
 import {StableBondCoins} from "../src/StableBondCoins.sol";
 import {StableBondCoinsV2} from "../src/V2/StableBondCoinsV2.sol";
 import {UnsafeUpgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
-import {EndpointV2Mock} from "@layerzerolabs/test-devtools-evm-foundry/contracts/Mocks/EndpointV2Mock.sol";
+import {EndpointV2Mock} from "@layerzerolabs/test-devtools-evm-foundry/contracts/mocks/EndpointV2Mock.sol";
 import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
 
 contract StableBondCoinsTest is Test {
