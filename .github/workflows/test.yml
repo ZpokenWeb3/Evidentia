@@ -25,19 +25,17 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+          run_install: false
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'    # pin a version instead of using .nvmrc
           cache: 'pnpm'
-
-      - name: Enable Corepack
-        run: corepack enable
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          run_install: false
 
       - name: Install DevTools dependencies
         working-directory: lib/devtools
