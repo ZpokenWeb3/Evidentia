@@ -3,6 +3,7 @@ pragma solidity ^0.8.22;
 
 import {StableBondCoins} from "../StableBondCoins.sol";
 
+/// @custom:oz-upgrades-from StableBondCoins
 /**
  * @title StableBondCoinsV2
  * @dev This contract is a test-only version of StableBondCoins, used to simulate and verify the UUPS proxy upgrade process.

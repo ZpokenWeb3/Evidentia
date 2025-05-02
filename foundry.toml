@@ -8,6 +8,8 @@ extra_output = ["evm.bytecode", "evm.deployedBytecode", "abi", "metadata", "ir",
 extra_output_files = ["metadata", "ir", "irOptimized", "storageLayout", "devdoc", "userdoc"]
 solc_version = "0.8.22"
 fs_permissions = [{ access = "read", path = "out" }]
+ffi = true
+build_info = true
 
 remappings = [
   '@openzeppelin/contracts=lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts',
@@ -22,5 +24,3 @@ sepolia = "${SEPOLIA_RPC_URL}"
 [etherscan]
 sepolia = { key = "${ETHERSCAN_API_KEY}" }
 
-[profile.solidity]
-build_info = true

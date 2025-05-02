@@ -3,6 +3,7 @@ pragma solidity ^0.8.22;
 
 import {BondNFT} from "../BondNFT.sol";
 
+/// @custom:oz-upgrades-from BondNFT
 /**
  * @title BondNFTV2
  * @dev This contract is a test-only version of BondNFT, used to simulate and verify the UUPS proxy upgrade process.

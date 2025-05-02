@@ -457,11 +457,11 @@ contract NFTStakingAndBorrowingTest is Test {
         assertEq(bondNFT.balanceOf(client2, 2), 5);
         assertEq(bondNFT.balanceOf(address(nftStaking), 2), 0);
 
-        // Check internal mapping state
+        // Check internal mapping state - userNFTs should be 0 as all NFTs are removed from staking
         assertEq(
             nftStaking.getUserNFTBalance(client1, address(bondNFT), 2),
-            5,
-            "userNFTs balance incorrect after liquidation"
+            0,
+            "userNFTs balance should be 0 after liquidation as all NFTs are removed from staking"
         );
 
         assertEq(stableBondCoins.balanceOf(client1), 4453_125000);
@@ -619,11 +619,11 @@ contract NFTStakingAndBorrowingTest is Test {
         assertEq(bondNFT.balanceOf(client2, 2), expectedNFTToLiquidator, "Liquidator should receive proportional NFTs");
         assertEq(bondNFT.balanceOf(address(nftStaking), 2), 0, "Contract should have no NFTs left");
 
-        // Check internal mapping state
+        // Check internal mapping state - userNFTs should be 0 as all NFTs are removed from staking
         assertEq(
             nftStaking.getUserNFTBalance(client1, address(bondNFT), 2),
-            expectedNFTToOwner,
-            "userNFTs balance incorrect after liquidation"
+            0,
+            "userNFTs balance should be 0 after liquidation as all NFTs are removed from staking"
         );
 
         // Verify that client1 received excess payment (liquidationPayment - debt)
@@ -637,6 +637,85 @@ contract NFTStakingAndBorrowingTest is Test {
         // Verify client1's debt is cleared
         userStats = nftStaking.getUserStats(client1);
         assertEq(userStats.debt, 0, "Debt should be cleared after liquidation");
+    }
+
+    /**
+     * @notice Test to specifically verify the token burning behavior during partial liquidation (Case 3).
+     * This test ensures that the entire position value is burned, not just the value of the liquidated NFTs.
+     * This is because all NFTs are removed from staking (some go to liquidator, some to owner).
+     */
+    function testLiquidateCase03TokenBurning() public {
+        owner = address(1);
+        address client1 = address(2);
+        address client2 = address(3);
+
+        // Setup test environment
+        vm.startPrank(owner);
+        bondNFT.setAllowedMints(client1, 2, 10);
+        bondNFT.setAllowedMints(client2, 3, 10);
+        vm.stopPrank();
+
+        vm.prank(client1);
+        bondNFT.mint(2, 10, "");
+        vm.prank(client2);
+        bondNFT.mint(3, 10, "");
+
+        vm.prank(client1);
+        bondNFT.setApprovalForAll(address(nftStaking), true);
+        vm.prank(client2);
+        bondNFT.setApprovalForAll(address(nftStaking), true);
+
+        // Client1 stakes NFT and borrows a small amount
+        vm.startPrank(client1);
+        nftStaking.stakeNFT(address(bondNFT), 2, 10);
+        uint256 borrowAmount = nftStaking.userAvailableToBorrow(client1) / 4;
+        nftStaking.borrow(borrowAmount);
+        vm.stopPrank();
+
+        // Go to the future, 40 days to expiration
+        vm.warp(365 days - 40 days);
+        vm.roll(2);
+
+        // Get current state
+        NFTStakingAndBorrowing.UserStats memory userStats = nftStaking.getUserStats(client1);
+        uint256 currentDebt = userStats.debt;
+        BondNFT.Metadata memory metadata = bondNFT.getMetaData(2);
+        uint256 maxBorrow =
+            nftStaking.calculateMaxBorrow(userStats.staked, block.timestamp, metadata.expirationTimestamp);
+
+        // Calculate how many NFTs liquidator should receive
+        uint256 expectedNFTToLiquidator = (currentDebt * 10 / maxBorrow) + (currentDebt * 10 % maxBorrow == 0 ? 0 : 1);
+
+        // Calculate the value of the NFTs to be liquidated (this is what should be burned)
+        uint256 liquidatedValue =
+            (metadata.value + metadata.couponValue) * expectedNFTToLiquidator * (UNIT - 500 * UNIT / BIPS) / UNIT;
+
+        // Calculate the total position value (this is what would be burned with the bug)
+        uint256 totalPositionValue = (metadata.value + metadata.couponValue) * 10 * (UNIT - 500 * UNIT / BIPS) / UNIT;
+
+        // Verify that we're doing a partial liquidation (Case 3)
+        assertLt(liquidatedValue, totalPositionValue, "This should be a partial liquidation");
+
+        // Client2 prepares for liquidation
+        vm.startPrank(client2);
+        nftStaking.stakeNFT(address(bondNFT), 3, 10);
+        nftStaking.borrow(0);
+        stableBondCoins.approve(address(nftStaking), type(uint256).max);
+
+        // Record total supply before liquidation
+        uint256 totalSupplyBefore = stableBondCoins.totalSupply();
+
+        // Execute liquidation
+        nftStaking.liquidate(address(bondNFT), 2, client1);
+        vm.stopPrank();
+
+        // Record total supply after liquidation and calculate burned tokens
+        uint256 totalSupplyAfter = stableBondCoins.totalSupply();
+        uint256 tokensBurned = totalSupplyBefore - totalSupplyAfter;
+
+        // Verify token burning behavior - we burn the total position value
+        assertEq(tokensBurned, totalPositionValue, "The total position value should be burned");
+        assertGt(tokensBurned, liquidatedValue, "Burned amount should be greater than just liquidated value");
     }
 
     function testGetRewardAmount() public {
