@@ -8,6 +8,7 @@ import {StableCoinsStaking} from "../src/StableCoinsStaking.sol";
 import {StableCoinsStakingV2} from "../src/V2/StableCoinsStakingV2.sol";
 import {BondNFT} from "../src/BondNFT.sol";
 import {UnsafeUpgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
+import {EndpointV2Mock} from "@layerzerolabs/test-devtools-evm-foundry/contracts/Mocks/EndpointV2Mock.sol";
 import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
 
 contract StakingStablesTest is Test {
@@ -16,10 +17,12 @@ contract StakingStablesTest is Test {
     StableBondCoins public stableBondCoins;
     StableCoinsStaking public stakingStables;
     address public owner;
+    address public lzEndpoint;
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
     function setUp() public {
         owner = address(1);
+        lzEndpoint = address(100);
         vm.startPrank(owner);
 
         // Deploy the contract as a proxy with the initializer
@@ -29,11 +32,13 @@ contract StakingStablesTest is Test {
             )
         );
 
-        stableBondCoins = StableBondCoins(
-            UnsafeUpgrades.deployUUPSProxy(
-                address(new StableBondCoins()), abi.encodeCall(stableBondCoins.initialize, (owner, owner))
-            )
-        );
+        // 1. Deploy a mock endpoint
+        EndpointV2Mock mock = new EndpointV2Mock(1, owner);
+
+        StableBondCoins impl = new StableBondCoins(address(mock));
+        bytes memory initData = abi.encodeCall(StableBondCoins.initialize, (owner, owner, owner));
+        address proxyAddr = UnsafeUpgrades.deployUUPSProxy(address(impl), initData);
+        stableBondCoins = StableBondCoins(proxyAddr);
 
         nftStaking = NFTStakingAndBorrowing(
             UnsafeUpgrades.deployUUPSProxy(
