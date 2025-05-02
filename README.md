@@ -14,7 +14,6 @@ This protocol creates a decentralized finance (DeFi) ecosystem centered around t
 4. **Earn Yield via Staking**  
    SBC holders can stake their tokens in the `StableCoinsStaking` contract to earn rewards from interest revenue.
 
-
 ## Key Features
 
 * **Tokenized Bonds (ERC1155):** Utilizes the `BondNFT` contract (ERC1155 standard) to represent bonds with specific metadata (value, coupon, timestamps, ISIN).
@@ -38,6 +37,15 @@ This protocol creates a decentralized finance (DeFi) ecosystem centered around t
 * `safeTransferFrom(...)` / `safeBatchTransferFrom(...)`: Transfers NFTs.
 * `totalSupply(uint256 id)`: Checks the total supply of a specific bond NFT ID.
 
+### `BondNFTV2` (ERC1155, Testing Only)
+
+* **Purpose**: This contract is a test-only version of `BondNFT`, used to simulate and verify the UUPS proxy upgrade process. It extends `BondNFT` with additional functionality for testing purposes and is not intended for production deployment.
+* **Key Functions**:
+  * `initializeV2()`: Reinitializes the contract to version 2, ensuring safe upgrades.
+  * `newFeature()`: Returns `"V2 Feature"` to confirm the upgraded implementation is active.
+  * `getInitializedVersion()`: Returns the current initialized version (`2`) of the contract.
+* **Note**: `BondNFTV2` is used solely for testing the upgradeability of the `BondNFT` contract and should not be deployed in production.
+
 ### `StableBondCoins` (ERC20)
 
 * `mint(address to, uint256 amount)`: Creates new SBC tokens (Requires `MINTER_ROLE`).
@@ -45,6 +53,15 @@ This protocol creates a decentralized finance (DeFi) ecosystem centered around t
 * `transfer(address to, uint256 value)` / `transferFrom(...)`: Standard ERC20 token transfers.
 * `approve(address spender, uint256 value)`: Standard ERC20 allowance.
 * `permit(address owner, address spender, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s)`: Gasless approvals (EIP-2612).
+
+### `StableBondCoinsV2` (ERC20, Testing Only)
+
+* **Purpose**: This contract is a test-only version of `StableBondCoins`, used to simulate and verify the UUPS proxy upgrade process. It extends `StableBondCoins` with additional functionality for testing purposes and is not intended for production deployment.
+* **Key Functions**:
+  * `initializeV2()`: Reinitializes the contract to version 2, ensuring safe upgrades.
+  * `newFeature()`: Returns `"V2 Feature"` to confirm the upgraded implementation is active.
+  * `getInitializedVersion()`: Returns the current initialized version (`2`) of the contract.
+* **Note**: `StableBondCoinsV2` is used solely for testing the upgradeability of the `StableBondCoins` contract and should not be deployed in production.
 
 ### `NFTStakingAndBorrowing`
 
@@ -55,6 +72,15 @@ This protocol creates a decentralized finance (DeFi) ecosystem centered around t
 * `claimRewards()`: Claims rewards generated from borrowing interest.
 * `getUserNFTBalance(address user, address nftAddress, uint256 tokenId)`: Checks a user's staked NFT balance.
 
+### `NFTStakingAndBorrowingV2` (Testing Only)
+
+* **Purpose**: This contract is a test-only version of `NFTStakingAndBorrowing`, used to simulate and verify the UUPS proxy upgrade process. It extends `NFTStakingAndBorrowing` with additional functionality for testing purposes and is not intended for production deployment.
+* **Key Functions**:
+  * `initializeV2()`: Reinitializes the contract to version 2, ensuring safe upgrades.
+  * `newFeature()`: Returns `"V2 Feature"` to confirm the upgraded implementation is active.
+  * `getInitializedVersion()`: Returns the current initialized version (`2`) of the contract.
+* **Note**: `NFTStakingAndBorrowingV2` is used solely for testing the upgradeability of the `NFTStakingAndBorrowing` contract and should not be deployed in production.
+
 ### `StableCoinsStaking`
 
 * `stake(uint256 _amount)`: Deposits `stakingToken` into the contract.
@@ -62,6 +88,15 @@ This protocol creates a decentralized finance (DeFi) ecosystem centered around t
 * `claimRewards()`: Claims accrued rewards earned from staking.
 * `earned(address _staker)`: Calculates current unclaimed rewards for a staker.
 * `pendingRewards(address _staker)`: Views pending rewards without triggering state changes.
+
+### `StableCoinsStakingV2` (Testing Only)
+
+* **Purpose**: This contract is a test-only version of `StableCoinsStaking`, used to simulate and verify the UUPS proxy upgrade process. It extends `StableCoinsStaking` with additional functionality for testing purposes and is not intended for production deployment.
+* **Key Functions**:
+  * `initializeV2()`: Reinitializes the contract to version 2, ensuring safe upgrades.
+  * `newFeature()`: Returns `"V2 Feature"` to confirm the upgraded implementation is active.
+  * `getInitializedVersion()`: Returns the current initialized version (`2`) of the contract.
+* **Note**: `StableCoinsStakingV2` is used solely for testing the upgradeability of the `StableCoinsStaking` contract and should not be deployed in production.
 
 ## Development & Testing (Foundry)
 

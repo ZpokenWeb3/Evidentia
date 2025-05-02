@@ -239,6 +239,6 @@ contract NFTStakingAndBorrowingNegativeTest is Test {
 
     function testCalculateMaxBorrowOverflowReverts() public {
         vm.expectRevert(NFTStakingAndBorrowing.AmountOverflow.selector);
-        nftStaking.calculateMaxBorrow(type(uint256).max / 10 ^ 18 + 1, 90, 1_000_000);
+        nftStaking.calculateMaxBorrow(type(uint256).max / 10 ** 18 + 1, 90, 1_000_000);
     }
 }
