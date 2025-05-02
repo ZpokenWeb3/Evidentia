@@ -32,30 +32,7 @@ jobs:
       - name: Show Forge version
         run: |
           forge --version
-
-      - name: Clean lib directory
-        run: |
-          rm -rf lib
-          mkdir -p lib
-
-      - name: Install dependencies with Forge
-        run: |
-          forge install foundry-rs/forge-std
-          forge install PaulRBerg/prb-math
-          forge install OpenZeppelin/openzeppelin-contracts
-          forge install OpenZeppelin/openzeppelin-contracts-upgradeable
-          forge install OpenZeppelin/openzeppelin-foundry-upgrades
-          forge install LayerZero-Labs/layerzero-v2
-          forge install GNSPS/solidity-bytes-utils
-          forge install LayerZero-Labs/solidity-examples
-          forge install LayerZero-Labs/LayerZero
           
-      - name: Clone and initialize devtools with submodules
-        run: |
-          rm -rf lib/devtools
-          git clone --recursive https://github.com/LayerZero-Labs/devtools.git lib/devtools
-          cd lib/devtools && git submodule update --init --recursive
-
       - name: Run Forge fmt
         run: |
           forge fmt --check
