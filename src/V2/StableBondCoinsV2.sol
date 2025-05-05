@@ -14,10 +14,11 @@ contract StableBondCoinsV2 is StableBondCoins {
 
     /// @custom:oz-upgrades-validate-as-initializer
     function initializeV2() external reinitializer(2) {
-        __ERC20_init("Stable Bond Coins", "SBC");
+        __OFT_init("Stable Bond Coins", "SBC", owner());
         __ERC20Permit_init("Stable Bond Coins");
         __AccessControl_init();
         __UUPSUpgradeable_init();
+        __Ownable_init(owner());
     }
 
     function newFeature() external pure returns (string memory) {
