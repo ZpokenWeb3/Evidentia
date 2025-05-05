@@ -623,7 +623,8 @@ contract NFTStakingAndBorrowingTest is Test {
         assertEq(
             nftStaking.getUserNFTBalance(client1, address(bondNFT), 2),
             0,
-            "userNFTs balance should be 0 after liquidation as all NFTs are removed from staking" );
+            "userNFTs balance should be 0 after liquidation as all NFTs are removed from staking"
+        );
 
         // Verify that client1 received excess payment (liquidationPayment - debt)
         assertGt(
@@ -1312,8 +1313,8 @@ contract NFTStakingAndBorrowingTest is Test {
 
         // Upgrade to V2
         Upgrades.upgradeProxy(
-            proxy, 
-            "NFTStakingAndBorrowingV2.sol:NFTStakingAndBorrowingV2", 
+            proxy,
+            "NFTStakingAndBorrowingV2.sol:NFTStakingAndBorrowingV2",
             abi.encodeCall(NFTStakingAndBorrowingV2.initializeV2, ()),
             owner
         );

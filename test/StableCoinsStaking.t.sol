@@ -568,8 +568,8 @@ contract StakingStablesTest is Test {
         //         );
 
         Upgrades.upgradeProxy(
-            proxy, 
-            "StableCoinsStakingV2.sol:StableCoinsStakingV2", 
+            proxy,
+            "StableCoinsStakingV2.sol:StableCoinsStakingV2",
             abi.encodeCall(StableCoinsStakingV2.initializeV2, ()),
             defaultAdmin
         );

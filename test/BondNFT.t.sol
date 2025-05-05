@@ -159,12 +159,7 @@ contract BondNFTTest is Test {
         //             account2
         //         );
 
-        Upgrades.upgradeProxy(
-            proxy,
-            "BondNFTV2.sol",
-            abi.encodeCall(BondNFTV2.initializeV2, ()),
-            owner
-        );
+        Upgrades.upgradeProxy(proxy, "BondNFTV2.sol", abi.encodeCall(BondNFTV2.initializeV2, ()), owner);
 
         BondNFTV2 instance2 = BondNFTV2(proxy);
         address implAddressV2 = Upgrades.getImplementationAddress(proxy);

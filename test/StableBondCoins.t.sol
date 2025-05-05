@@ -108,10 +108,7 @@ contract StableBondCoinsTest is Test {
         //         );
 
         Upgrades.upgradeProxy(
-            proxy, 
-            "StableBondCoinsV2.sol", 
-            abi.encodeCall(StableBondCoinsV2.initializeV2, ()),
-            defaultAdmin
+            proxy, "StableBondCoinsV2.sol", abi.encodeCall(StableBondCoinsV2.initializeV2, ()), defaultAdmin
         );
 
         StableBondCoinsV2 instance2 = StableBondCoinsV2(proxy);
