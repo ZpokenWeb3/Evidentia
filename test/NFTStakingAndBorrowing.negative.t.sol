@@ -6,7 +6,7 @@ import {NFTStakingAndBorrowing} from "../src/NFTStakingAndBorrowing.sol";
 import {StableBondCoins} from "../src/StableBondCoins.sol";
 import {BondNFT} from "../src/BondNFT.sol";
 import {StableCoinsStaking} from "../src/StableCoinsStaking.sol";
-import {UnsafeUpgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
+import {Upgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 
 contract NFTStakingAndBorrowingNegativeTest is Test {
     NFTStakingAndBorrowing public nftStaking;
@@ -30,27 +30,27 @@ contract NFTStakingAndBorrowingNegativeTest is Test {
 
         // Deploy the contract as a proxy with the initializer
         bondNFT = BondNFT(
-            UnsafeUpgrades.deployUUPSProxy(
-                address(new BondNFT()), abi.encodeCall(BondNFT.initialize, (owner, "https://example.com/{id}.json"))
+            Upgrades.deployUUPSProxy(
+                "BondNFT.sol:BondNFT", abi.encodeCall(BondNFT.initialize, (owner, "https://example.com/{id}.json"))
             )
         );
 
         stableBondCoins = StableBondCoins(
-            UnsafeUpgrades.deployUUPSProxy(
-                address(new StableBondCoins()), abi.encodeCall(stableBondCoins.initialize, (owner, owner))
+            Upgrades.deployUUPSProxy(
+                "StableBondCoins.sol:StableBondCoins", abi.encodeCall(stableBondCoins.initialize, (owner, owner))
             )
         );
 
         nftStaking = NFTStakingAndBorrowing(
-            UnsafeUpgrades.deployUUPSProxy(
-                address(new NFTStakingAndBorrowing()),
+            Upgrades.deployUUPSProxy(
+                "NFTStakingAndBorrowing.sol:NFTStakingAndBorrowing",
                 abi.encodeCall(NFTStakingAndBorrowing.initialize, (address(stableBondCoins)))
             )
         );
 
         stableStaking = StableCoinsStaking(
-            UnsafeUpgrades.deployUUPSProxy(
-                address(new StableCoinsStaking()),
+            Upgrades.deployUUPSProxy(
+                "StableCoinsStaking.sol:StableCoinsStaking",
                 abi.encodeCall(
                     stableStaking.initialize, (address(stableBondCoins), address(nftStaking), address(owner))
                 )

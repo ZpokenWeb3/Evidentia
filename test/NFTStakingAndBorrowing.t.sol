@@ -7,7 +7,7 @@ import {NFTStakingAndBorrowingV2} from "../src/V2/NFTStakingAndBorrowingV2.sol";
 import {StableBondCoins} from "../src/StableBondCoins.sol";
 import {BondNFT} from "../src/BondNFT.sol";
 import {StableCoinsStaking} from "../src/StableCoinsStaking.sol";
-import {UnsafeUpgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
+import {Upgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 contract NFTStakingAndBorrowingTest is Test {
@@ -29,20 +29,20 @@ contract NFTStakingAndBorrowingTest is Test {
 
         // Deploy the contract as a proxy with the initializer
         bondNFT = BondNFT(
-            UnsafeUpgrades.deployUUPSProxy(
-                address(new BondNFT()), abi.encodeCall(BondNFT.initialize, (owner, "https://example.com/{id}.json"))
+            Upgrades.deployUUPSProxy(
+                "BondNFT.sol:BondNFT", abi.encodeCall(BondNFT.initialize, (owner, "https://example.com/{id}.json"))
             )
         );
 
         stableBondCoins = StableBondCoins(
-            UnsafeUpgrades.deployUUPSProxy(
-                address(new StableBondCoins()), abi.encodeCall(stableBondCoins.initialize, (owner, owner))
+            Upgrades.deployUUPSProxy(
+                "StableBondCoins.sol:StableBondCoins", abi.encodeCall(stableBondCoins.initialize, (owner, owner))
             )
         );
 
         nftStaking = NFTStakingAndBorrowing(
-            UnsafeUpgrades.deployUUPSProxy(
-                address(new NFTStakingAndBorrowing()),
+            Upgrades.deployUUPSProxy(
+                "NFTStakingAndBorrowing.sol:NFTStakingAndBorrowing",
                 abi.encodeCall(NFTStakingAndBorrowing.initialize, (address(stableBondCoins)))
             )
         );
@@ -1284,8 +1284,8 @@ contract NFTStakingAndBorrowingTest is Test {
 
     function testUUPSUpgrade() public {
         // Deploy initial proxy
-        address proxy = UnsafeUpgrades.deployUUPSProxy(
-            address(new NFTStakingAndBorrowing()),
+        address proxy = Upgrades.deployUUPSProxy(
+            "NFTStakingAndBorrowing.sol:NFTStakingAndBorrowing",
             abi.encodeCall(NFTStakingAndBorrowing.initialize, (address(stableBondCoins)))
         );
         NFTStakingAndBorrowing instance = NFTStakingAndBorrowing(proxy);
@@ -1309,17 +1309,19 @@ contract NFTStakingAndBorrowingTest is Test {
         assertEq(instance.getTotalStats().staked, 9975_000000, "Initial staked amount incorrect");
         assertEq(instance.getUserStats(owner).borrowed, 500_000000, "Initial borrowed amount incorrect");
         assertEq(bondNFT.balanceOf(address(instance), 1), 10, "Initial NFT balance incorrect");
-        address implAddressV1 = UnsafeUpgrades.getImplementationAddress(proxy);
+        address implAddressV1 = Upgrades.getImplementationAddress(proxy);
 
         // Upgrade to V2
-        address newImplementation = address(new NFTStakingAndBorrowingV2());
-        UnsafeUpgrades.upgradeProxy(
-            proxy, newImplementation, abi.encodeCall(NFTStakingAndBorrowingV2.initializeV2, ()), owner
+        Upgrades.upgradeProxy(
+            proxy,
+            "NFTStakingAndBorrowingV2.sol:NFTStakingAndBorrowingV2",
+            abi.encodeCall(NFTStakingAndBorrowingV2.initializeV2, ()),
+            owner
         );
 
         // Verify state after upgrade
         NFTStakingAndBorrowingV2 instance2 = NFTStakingAndBorrowingV2(proxy);
-        address implAddressV2 = UnsafeUpgrades.getImplementationAddress(proxy);
+        address implAddressV2 = Upgrades.getImplementationAddress(proxy);
         assertFalse(implAddressV2 == implAddressV1, "Implementation address should change");
         assertEq(instance2.getTotalStats().staked, 9975_000000, "Staked amount should be preserved");
         assertEq(instance2.getUserStats(owner).borrowed, 500_000000, "Borrowed amount should be preserved");

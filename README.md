@@ -127,7 +127,7 @@ forge install OpenZeppelin/openzeppelin-contracts-upgradeable --no-commit
 
 To run tests with increased verbosity (showing logs and traces):
 ```bash
-forge test --ffi -vvv
+forge test -vvv
 ```
 
 ### Format

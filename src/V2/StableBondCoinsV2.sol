@@ -3,14 +3,20 @@ pragma solidity ^0.8.22;
 
 import {StableBondCoins} from "../StableBondCoins.sol";
 
-/// @custom:oz-upgrades-from StableBondCoins
 /**
  * @title StableBondCoinsV2
  * @dev This contract is a test-only version of StableBondCoins, used to simulate and verify the UUPS proxy upgrade process.
  * It extends StableBondCoins with additional functionality for testing and is not intended for production.
  */
+/// @custom:oz-upgrades-from StableBondCoins
 contract StableBondCoinsV2 is StableBondCoins {
-    function initializeV2() external reinitializer(2) {}
+    /// @custom:oz-upgrades-validate-as-initializer
+    function initializeV2() external reinitializer(2) {
+        __ERC20_init("Stable Bond Coins", "SBC");
+        __ERC20Permit_init("Stable Bond Coins");
+        __AccessControl_init();
+        __UUPSUpgradeable_init();
+    }
 
     function newFeature() external pure returns (string memory) {
         return "V2 Feature";
