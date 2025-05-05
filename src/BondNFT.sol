@@ -89,6 +89,19 @@ contract BondNFT is
     event MintAllowanceSet(address user, uint256 id, uint256 allowedAmount);
 
     /**
+     * @dev Emitted when the metadata for a specific token ID is updated.
+     * @param id The token ID for which the metadata is being updated.
+     * @param value The face value or principal amount of the bond.
+     * @param couponValue The value of the coupon payment.
+     * @param issueTimestamp The timestamp when the bond was issued.
+     * @param expirationTimestamp The timestamp when the bond expires or matures.
+     * @param ISIN International Securities Identification Number for the bond.
+     */
+    event MetadataUpdated(
+        uint256 id, uint256 value, uint256 couponValue, uint256 issueTimestamp, uint256 expirationTimestamp, string ISIN
+    );
+
+    /**
      * @dev Reverts when a user attempts to mint a token ID they are not allowed to mint (allowance is 0).
      */
     error NftMintingNotAllowed();
@@ -136,6 +149,14 @@ contract BondNFT is
      */
     function setMetaData(uint256 id, Metadata memory _metadata) external onlyOwner {
         _getStorage().metadata[id] = _metadata;
+        emit MetadataUpdated(
+            id,
+            _metadata.value,
+            _metadata.couponValue,
+            _metadata.issueTimestamp,
+            _metadata.expirationTimestamp,
+            _metadata.ISIN
+        );
     }
 
     /**
