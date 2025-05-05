@@ -10,6 +10,7 @@ import {StableBondCoins} from "../StableBondCoins.sol";
  */
 /// @custom:oz-upgrades-from StableBondCoins
 contract StableBondCoinsV2 is StableBondCoins {
+    /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(address _lzEndpoint) StableBondCoins(_lzEndpoint) {}
 
     /// @custom:oz-upgrades-validate-as-initializer
@@ -17,8 +18,8 @@ contract StableBondCoinsV2 is StableBondCoins {
         __OFT_init("Stable Bond Coins", "SBC", owner());
         __ERC20Permit_init("Stable Bond Coins");
         __AccessControl_init();
-        __UUPSUpgradeable_init();
         __Ownable_init(owner());
+        __UUPSUpgradeable_init();
     }
 
     function newFeature() external pure returns (string memory) {

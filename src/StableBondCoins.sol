@@ -26,6 +26,7 @@ contract StableBondCoins is OFTUpgradeable, AccessControlUpgradeable, ERC20Permi
      * @dev Constructor that disables initializers
      * @param _lzEndpoint The LayerZero endpoint address
      */
+    /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(address _lzEndpoint) OFTUpgradeable(_lzEndpoint) {
         _disableInitializers();
     }
@@ -40,8 +41,8 @@ contract StableBondCoins is OFTUpgradeable, AccessControlUpgradeable, ERC20Permi
         __OFT_init("Stable Bond Coins", "SBC", delegate);
         __ERC20Permit_init("Stable Bond Coins");
         __AccessControl_init();
-        __UUPSUpgradeable_init();
         __Ownable_init(delegate);
+        __UUPSUpgradeable_init();
 
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
         _grantRole(MINTER_ROLE, minter);
