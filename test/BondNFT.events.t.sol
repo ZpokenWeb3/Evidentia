@@ -12,6 +12,9 @@ contract BondNFTEventsTest is Test {
     address public user2;
 
     event MintAllowanceSet(address user, uint256 id, uint256 allowedAmount);
+    event MetadataUpdated(
+        uint256 id, uint256 value, uint256 couponValue, uint256 issueTimestamp, uint256 expirationTimestamp, string ISIN
+    );
 
     function setUp() public {
         owner = address(1);
@@ -98,5 +101,30 @@ contract BondNFTEventsTest is Test {
         bondNFT.setAllowedMints(user1, 1, 0);
 
         assertEq(bondNFT.allowedMints(user1, 1), 0);
+    }
+
+    function testSetMetadata() public {
+        vm.startPrank(owner);
+        BondNFT.Metadata memory metadata = BondNFT.Metadata({
+            value: 1000_000000,
+            couponValue: 50_000000,
+            issueTimestamp: 1,
+            expirationTimestamp: 1 + 31536000,
+            ISIN: "US1234567890"
+        });
+
+        vm.expectEmit(true, true, true, true);
+        emit MetadataUpdated(
+            1,
+            metadata.value,
+            metadata.couponValue,
+            metadata.issueTimestamp,
+            metadata.expirationTimestamp,
+            metadata.ISIN
+        );
+
+        bondNFT.setMetaData(1, metadata);
+
+        vm.stopPrank();
     }
 }
