@@ -23,6 +23,25 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
+          fetch-depth: 0
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'    # pin a version instead of using .nvmrc
+          cache: 'pnpm'
+          cache-dependency-path: '**/pnpm-lock.yaml'
+
+      - name: Install DevTools dependencies
+        run: |
+          cd lib/devtools
+          pnpm install --frozen-lockfile
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
@@ -32,15 +51,7 @@ jobs:
       - name: Show Forge version
         run: |
           forge --version
-
-      - name: Install OpenZeppelin Contracts
-        run: |
-          forge install OpenZeppelin/openzeppelin-contracts 
-
-      - name: Install PaulRBerg prb-math
-        run: |
-          forge install PaulRBerg/prb-math
-
+          
       - name: Run Forge fmt
         run: |
           forge fmt --check
@@ -48,7 +59,7 @@ jobs:
 
       - name: Run Forge build with warnings as errors
         run: |
-          forge build --sizes --optimize --optimizer-runs 200 --deny-warnings
+          forge build --sizes --optimize --optimizer-runs 1000 --deny-warnings
         id: build
 
       - name: Run Forge tests with warnings as errors

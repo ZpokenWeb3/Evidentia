@@ -5,12 +5,16 @@ import {Test, console} from "forge-std/Test.sol";
 import {StableBondCoins} from "../src/StableBondCoins.sol";
 import {StableBondCoinsV2} from "../src/V2/StableBondCoinsV2.sol";
 import {Upgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
+import {Options} from "openzeppelin-foundry-upgrades/Options.sol";
+import {EndpointV2Mock} from "@layerzerolabs/test-devtools-evm-foundry/contracts/mocks/EndpointV2Mock.sol";
 import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
 
 contract StableBondCoinsTest is Test {
     StableBondCoins public stableBondCoins;
+    EndpointV2Mock lzEndpointMock;
     address public defaultAdmin;
     address public minter;
+    address public delegate;
 
     bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
@@ -18,10 +22,19 @@ contract StableBondCoinsTest is Test {
     function setUp() public {
         defaultAdmin = address(1);
         minter = address(2);
+        delegate = address(3);
+
+        // Deploy a mock endpoint
+        lzEndpointMock = new EndpointV2Mock(1, address(this));
+
+        Options memory opts;
+        opts.constructorData = abi.encode(address(lzEndpointMock));
 
         stableBondCoins = StableBondCoins(
             Upgrades.deployUUPSProxy(
-                "StableBondCoins.sol", abi.encodeCall(stableBondCoins.initialize, (defaultAdmin, minter))
+                "StableBondCoins.sol", 
+                abi.encodeCall(StableBondCoins.initialize, (defaultAdmin, minter, delegate)),
+                opts
             )
         );
     }
@@ -33,6 +46,7 @@ contract StableBondCoinsTest is Test {
 
         assertEq(stableBondCoins.hasRole(DEFAULT_ADMIN_ROLE, defaultAdmin), true);
         assertEq(stableBondCoins.hasRole(MINTER_ROLE, minter), true);
+        assertEq(stableBondCoins.owner(), delegate);
     }
 
     function testNameSpace() public pure {
@@ -43,7 +57,7 @@ contract StableBondCoinsTest is Test {
     }
 
     function testMint() public {
-        address recipient = address(3);
+        address recipient = address(5);
         uint256 amount = 100;
 
         vm.prank(minter);
@@ -53,7 +67,7 @@ contract StableBondCoinsTest is Test {
     }
 
     function testBurn() public {
-        address owner = address(3);
+        address owner = address(5);
         uint256 amount = 100;
 
         vm.prank(minter);
@@ -66,7 +80,7 @@ contract StableBondCoinsTest is Test {
     }
 
     function testOnlyMinterCanMint() public {
-        address recipient = address(3);
+        address recipient = address(5);
         uint256 amount = 100;
 
         vm.expectRevert();
@@ -74,7 +88,7 @@ contract StableBondCoinsTest is Test {
     }
 
     function testOnlyMinterCanBurn() public {
-        address owner = address(3);
+        address owner = address(5);
         uint256 amount = 100;
 
         vm.prank(minter);
@@ -85,9 +99,14 @@ contract StableBondCoinsTest is Test {
     }
 
     function testUUPSUpgrade() public {
+        Options memory opts;
+        opts.constructorData = abi.encode(address(lzEndpointMock));
+
         vm.prank(defaultAdmin);
         address proxy = Upgrades.deployUUPSProxy(
-            "StableBondCoins.sol", abi.encodeCall(StableBondCoins.initialize, (defaultAdmin, minter))
+            "StableBondCoins.sol",
+            abi.encodeCall(StableBondCoins.initialize, (defaultAdmin, minter, defaultAdmin)),
+            opts
         );
         StableBondCoins instance = StableBondCoins(proxy);
 
@@ -97,6 +116,7 @@ contract StableBondCoinsTest is Test {
         assertEq(instance.name(), "Stable Bond Coins");
         assertEq(instance.balanceOf(address(3)), 100);
         assertEq(instance.decimals(), 6);
+
         address implAddressV1 = Upgrades.getImplementationAddress(proxy);
 
         //         vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, address(3), DEFAULT_ADMIN_ROLE));
@@ -111,6 +131,7 @@ contract StableBondCoinsTest is Test {
             proxy, 
             "StableBondCoinsV2.sol", 
             abi.encodeCall(StableBondCoinsV2.initializeV2, ()),
+            opts,
             defaultAdmin
         );
 

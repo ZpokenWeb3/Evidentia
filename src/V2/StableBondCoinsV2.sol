@@ -10,6 +10,8 @@ import {StableBondCoins} from "../StableBondCoins.sol";
  */
 /// @custom:oz-upgrades-from StableBondCoins
 contract StableBondCoinsV2 is StableBondCoins {
+    constructor(address _lzEndpoint) StableBondCoins(_lzEndpoint) {}
+
     /// @custom:oz-upgrades-validate-as-initializer
     function initializeV2() external reinitializer(2) {
         __ERC20_init("Stable Bond Coins", "SBC");

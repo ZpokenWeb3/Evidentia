@@ -5,6 +5,8 @@ import {Test, console} from "forge-std/Test.sol";
 import {StableCoinsStaking} from "../src/StableCoinsStaking.sol";
 import {StableBondCoins} from "../src/StableBondCoins.sol";
 import {Upgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
+import {Options} from "openzeppelin-foundry-upgrades/Options.sol";
+import {EndpointV2Mock} from "@layerzerolabs/test-devtools-evm-foundry/contracts/mocks/EndpointV2Mock.sol";
 
 // Mock for reward contract
 contract MockReward {
@@ -51,9 +53,18 @@ contract StableCoinsStakingNegativeTest is Test {
         user2 = address(3);
 
         vm.startPrank(owner);
+
+        // Deploy a mock endpoint
+        EndpointV2Mock lzEndpointMock = new EndpointV2Mock(1, owner);
+
+        Options memory opts;
+        opts.constructorData = abi.encode(address(lzEndpointMock));
+
         stableBondCoins = StableBondCoins(
             Upgrades.deployUUPSProxy(
-                "StableBondCoins.sol:StableBondCoins", abi.encodeCall(stableBondCoins.initialize, (owner, owner))
+                "StableBondCoins.sol:StableBondCoins", 
+                abi.encodeCall(StableBondCoins.initialize, (owner, owner, owner)),
+                opts
             )
         );
 

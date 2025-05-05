@@ -8,6 +8,8 @@ import {StableCoinsStaking} from "../src/StableCoinsStaking.sol";
 import {StableCoinsStakingV2} from "../src/V2/StableCoinsStakingV2.sol";
 import {BondNFT} from "../src/BondNFT.sol";
 import {Upgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
+import {Options} from "openzeppelin-foundry-upgrades/Options.sol";
+import {EndpointV2Mock} from "@layerzerolabs/test-devtools-evm-foundry/contracts/mocks/EndpointV2Mock.sol";
 import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
 
 contract StakingStablesTest is Test {
@@ -29,9 +31,17 @@ contract StakingStablesTest is Test {
             )
         );
 
+        // Deploy a mock endpoint
+        EndpointV2Mock lzEndpointMock = new EndpointV2Mock(1, owner);
+
+        Options memory opts;
+        opts.constructorData = abi.encode(address(lzEndpointMock));
+
         stableBondCoins = StableBondCoins(
             Upgrades.deployUUPSProxy(
-                "StableBondCoins.sol:StableBondCoins", abi.encodeCall(stableBondCoins.initialize, (owner, owner))
+                "StableBondCoins.sol:StableBondCoins", 
+                abi.encodeCall(StableBondCoins.initialize, (owner, owner, owner)),
+                opts
             )
         );
 
