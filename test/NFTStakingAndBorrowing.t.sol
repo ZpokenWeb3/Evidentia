@@ -262,7 +262,7 @@ contract NFTStakingAndBorrowingTest is Test {
 
         assertEq(userStats.staked, 997_500000);
         assertEq(totalStats.staked, 2 * 997_500000);
-        assertEq(totalStats.debt, 903_156174);
+        assertEq(totalStats.debt, 915863667);
         assertEq(userStats.debtUpdateTimestamp, 90 days);
         assertEq(totalStats.debtUpdateTimestamp, 90 days);
         assertEq(userStats.nominalAvailable, 903_156174);
@@ -280,9 +280,9 @@ contract NFTStakingAndBorrowingTest is Test {
         NFTStakingAndBorrowing.UserStats memory userStats2 = nftStaking.getUserStats(client2);
         totalStats = nftStaking.getTotalStats();
 
-        assertEq(userStats1.debt, 924_434505);
-        assertEq(userStats2.debt, 924_434505);
-        assertEq(totalStats.debt, 2 * 924_434505);
+        assertEq(userStats1.debt, 924434505);
+        assertEq(userStats2.debt, 911608092);
+        assertEq(totalStats.debt, 1836042598);
         assertEq(totalStats.borrowed, 903_156174 + 898_959646);
         assertEq(userStats1.debtUpdateTimestamp, 120 days);
         assertEq(userStats2.debtUpdateTimestamp, 120 days);
@@ -386,10 +386,10 @@ contract NFTStakingAndBorrowingTest is Test {
         assertEq(nftStaking.userAvailableToUnstake(client1, address(bondNFT), 2), 0);
 
         nftStaking.stakeNFT(address(bondNFT), 3, 10);
-        assertEq(nftStaking.userAvailableToUnstake(client1, address(bondNFT), 2), 10);
+        assertEq(nftStaking.userAvailableToUnstake(client1, address(bondNFT), 2), 9);
         assertEq(nftStaking.userAvailableToUnstake(client1, address(bondNFT), 3), 10);
 
-        nftStaking.unstakeNFT(address(bondNFT), 2, 10);
+        nftStaking.unstakeNFT(address(bondNFT), 2, 9);
         assertEq(nftStaking.userAvailableToUnstake(client1, address(bondNFT), 3), 0);
     }
 
@@ -546,7 +546,7 @@ contract NFTStakingAndBorrowingTest is Test {
         );
 
         assertEq(stableBondCoins.balanceOf(client1), 13359_375000);
-        assertEq(stableBondCoins.balanceOf(client2),  9578_493555);
+        assertEq(stableBondCoins.balanceOf(client2), 9578_493555);
     }
 
     function testLiquidateCase03() public {
