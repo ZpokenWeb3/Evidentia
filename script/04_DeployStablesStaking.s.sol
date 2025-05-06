@@ -9,8 +9,8 @@ import {Upgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 contract DeployStablesStaking is Script {
     function run() external returns (StableCoinsStaking) {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        address stableCoinsAddress = vm.envAddress("STABLES_ADDRESS");
-        address nftStakingAddress = vm.envAddress("NFT_STAKING_ADDRESS");
+        address stableCoinsAddress = vm.envAddress("STABLES_PROXY_ADDRESS");
+        address nftStakingAddress = vm.envAddress("NFT_STAKING_PROXY_ADDRESS");
         address owner = vm.envAddress("STABLE_COINS_STAKING_OWNER_ADDRESS");
 
         // Deploy the contract as a UUPS proxy with the initializer

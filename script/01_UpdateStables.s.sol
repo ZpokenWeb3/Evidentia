@@ -11,7 +11,7 @@ contract UpdateStables is Script {
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address owner = vm.envAddress("STABLE_BOND_COINS_OWNER_ADDRESS");
-        address minter = vm.envAddress("NFT_STAKING_ADDRESS");
+        address minter = vm.envAddress("NFT_STAKING_PROXY_ADDRESS");
 
         // Address of the existing proxy
         address proxyAddress = 0xE2a8D33e3a60486Bd737760B58811B9089Baa69D;
