@@ -12,13 +12,11 @@ contract DeployStables is Script {
         address owner = vm.envAddress("STABLE_BOND_COINS_OWNER_ADDRESS");
         address minter = vm.envAddress("MINTER_ADDRESS");
 
+        // Deploy the contract as a UUPS proxy with the initializer
         vm.startBroadcast(deployerPrivateKey);
-
         address proxy =
             Upgrades.deployUUPSProxy("StableBondCoins.sol", abi.encodeCall(StableBondCoins.initialize, (owner, minter)));
-
         StableBondCoins stablesContract = StableBondCoins(proxy);
-
         vm.stopBroadcast();
 
         console.log("StableBondCoins deployed at:", address(stablesContract));

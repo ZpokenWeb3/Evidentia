@@ -2,7 +2,7 @@ const { ethers } = require('ethers');
 const fs = require('fs');
 require('dotenv').config();
 
-const contractAddress = '0xc745ffdF5cE0F277a0d42EDD07FaFbE8d57be0F4'; // BondNFT
+const bondNFTAddress = process.env.NFT_ADDRESS; // BondNFT
 const contractABIPath = './script/ABI/BondNFT.json';
 
 const privateKey = process.env.PRIVATE_KEY;
@@ -15,7 +15,7 @@ async function setMetadata() {
     const provider = new ethers.JsonRpcProvider(rpcUrl);
     const wallet = new ethers.Wallet(privateKey, provider);
 
-    const contract = new ethers.Contract(contractAddress, contractABI, wallet);
+    const contract = new ethers.Contract(bondNFTAddress, contractABI, wallet);
 
     const timestamp = provider.getBlock("latest").timestamp;
 
