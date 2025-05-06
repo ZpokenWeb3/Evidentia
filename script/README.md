@@ -57,5 +57,5 @@ node script/05b_set_stables_staking.js
 ## 10. Set Metadata for a specific token ID in BondNFT
 
 ```bash
-node script/05c_set_metadata.js
+node script/05c_set_metadata.js [options]
 ```
