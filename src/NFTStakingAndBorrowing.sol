@@ -158,6 +158,8 @@ contract NFTStakingAndBorrowing is
     error ZeroAddress();
     /// @dev Error when an arithmetic operation results in an overflow during debt/borrow calculations.
     error AmountOverflow();
+    /// @dev Error when attempting to stake NFT that has expired over liquidation time.
+    error NftExpired();
 
     /**
      * @dev Initializes the contract (replaces constructor).
@@ -476,6 +478,7 @@ contract NFTStakingAndBorrowing is
 
         // Get Metadata and Calculate Value
         IBondNFT.Metadata memory metadata = IBondNFT(nftAddress).getMetaData(tokenId);
+        if (metadata.expirationTimestamp - $.liquidationTimeWindow <= block.timestamp) revert NftExpired();
         // Value used for collateral calculation (includes coupon, reduced by safety fee)
         uint256 totalValue = (metadata.value + metadata.couponValue) * amount * (UNIT - $.safetyFee) / UNIT;
         // Maximum borrowable amount against this specific staked batch
