@@ -997,6 +997,11 @@
   },
   {
     "type": "error",
+    "name": "NftExpired",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "NotEnoughCollateral",
     "inputs": [
       {

@@ -9,25 +9,25 @@
 ## 2. Deploy StableBondCoins
 
 ```bash
-./script/01_run_DeployStables_script.sh
+./script/01_run_DeployStables.sh
 ```
 
 ## 3. Deploy BondNFT
 
 ```bash
-./script/02_run_DeployNft_script.sh
+./script/02_run_DeployNft.sh
 ```
 
 ## 4. Deploy NFTStakingAndBorrowing
 
 ```bash
-./script/03_run_DeployNftStaking_script.sh
+./script/03_run_DeployNftStaking.sh
 ```
 
 ## 5. Deploy StableCoinsStaking
 
 ```bash
-./script/04_run_DeployStablesStaking_script.sh
+./script/04_run_DeployStablesStaking.sh
 ```
 
 ## 6. Verify contracts
@@ -58,4 +58,10 @@ node script/05b_set_stables_staking.js
 
 ```bash
 node script/05c_set_metadata.js [options]
+```
+
+# Automated Deployment
+
+```bash
+./script/deploy_all.sh
 ```
