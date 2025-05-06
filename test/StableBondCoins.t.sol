@@ -21,7 +21,11 @@ contract StableBondCoinsTest is Test {
 
         stableBondCoins = StableBondCoins(
             Upgrades.deployUUPSProxy(
-                "StableBondCoins.sol", abi.encodeCall(stableBondCoins.initialize, (defaultAdmin, minter))
+                "StableBondCoins.sol", 
+                abi.encodeCall(
+                    stableBondCoins.initialize, 
+                    (defaultAdmin, minter, "Stable Bond Coins", "SBC", 6)
+                )
             )
         );
     }
@@ -87,7 +91,11 @@ contract StableBondCoinsTest is Test {
     function testUUPSUpgrade() public {
         vm.prank(defaultAdmin);
         address proxy = Upgrades.deployUUPSProxy(
-            "StableBondCoins.sol", abi.encodeCall(StableBondCoins.initialize, (defaultAdmin, minter))
+            "StableBondCoins.sol", 
+            abi.encodeCall(
+                StableBondCoins.initialize, 
+                (defaultAdmin, minter, "Stable Bond Coins", "SBC", 6)
+            )
         );
         StableBondCoins instance = StableBondCoins(proxy);
 
@@ -99,13 +107,15 @@ contract StableBondCoinsTest is Test {
         assertEq(instance.decimals(), 6);
         address implAddressV1 = Upgrades.getImplementationAddress(proxy);
 
-        //         vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, address(3), DEFAULT_ADMIN_ROLE));
-        //         Upgrades.upgradeProxy(
-        //             proxy,
-        //             "StableBondCoinsV2.sol",
-        //             abi.encodeCall(StableBondCoinsV2.initializeV2, ()),
-        //             address(3)
-        //         );
+//         address unauthorizedUser = address(3);
+//         vm.prank(unauthorizedUser);
+//         vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, unauthorizedUser, DEFAULT_ADMIN_ROLE));
+//         Upgrades.upgradeProxy(
+//             proxy,
+//             "StableBondCoinsV2.sol",
+//             abi.encodeCall(StableBondCoinsV2.initializeV2, ()),
+//             unauthorizedUser
+//         );
 
         Upgrades.upgradeProxy(
             proxy, "StableBondCoinsV2.sol", abi.encodeCall(StableBondCoinsV2.initializeV2, ()), defaultAdmin

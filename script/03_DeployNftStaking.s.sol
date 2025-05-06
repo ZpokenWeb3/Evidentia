@@ -16,7 +16,7 @@ contract DeployNftStaking is Script {
         address proxy = Upgrades.deployUUPSProxy(
             "NFTStakingAndBorrowing.sol:NFTStakingAndBorrowing",
             abi.encodeCall(NFTStakingAndBorrowing.initialize, (stableCoinsAddress))
-        )
+        );
         NFTStakingAndBorrowing nftStaking = NFTStakingAndBorrowing(proxy);
         vm.stopBroadcast();
 
