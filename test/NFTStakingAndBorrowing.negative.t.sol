@@ -237,4 +237,19 @@ contract NFTStakingAndBorrowingNegativeTest is Test {
         vm.expectRevert(NFTStakingAndBorrowing.AmountOverflow.selector);
         nftStaking.calculateMaxBorrow(type(uint256).max / 10 ** 18 + 1, 90, 1_000_000);
     }
+
+    function testExpiredNftStakingReverts() public {
+        vm.prank(owner);
+        bondNFT.setAllowedMints(address(client1), 2, 20);
+
+        vm.startPrank(client1);
+        bondNFT.setApprovalForAll(address(nftStaking), true);
+        assertEq(bondNFT.remainingMints(address(client1), 2), 10);
+        bondNFT.mint(2, 10, "");
+
+        vm.warp(365 days - 40 days);
+        vm.expectRevert(NFTStakingAndBorrowing.NftExpired.selector);
+        nftStaking.stakeNFT(address(bondNFT), 2, 10);
+        vm.stopPrank();
+    }
 }
