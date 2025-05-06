@@ -45,12 +45,7 @@ contract UpdateStables is Script {
                     upgradeApprovalProcessId: "",
                     licenseType: "",
                     skipLicenseType: false,
-                    txOverrides: TxOverrides({
-                        gasLimit: 0,
-                        gasPrice: 0,
-                        maxFeePerGas: 0,
-                        maxPriorityFeePerGas: 0
-                    }),
+                    txOverrides: TxOverrides({gasLimit: 0, gasPrice: 0, maxFeePerGas: 0, maxPriorityFeePerGas: 0}),
                     metadata: ""
                 })
             })
@@ -61,10 +56,7 @@ contract UpdateStables is Script {
         Upgrades.upgradeProxy(
             proxyAddress,
             "StableBondCoins.sol",
-            abi.encodeCall(
-                StableBondCoins.initialize,
-                (owner, minter, "eUAH", "eUAH", 6)
-            )
+            abi.encodeCall(StableBondCoins.initialize, (owner, minter, "eUAH", "eUAH", 6))
         );
 
         vm.stopBroadcast();
@@ -72,4 +64,4 @@ contract UpdateStables is Script {
         console.log("Contract updated successfully!");
         console.log("New implementation address:", newImplementation);
     }
-} 
+}

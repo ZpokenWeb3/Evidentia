@@ -14,8 +14,9 @@ contract DeployStables is Script {
 
         // Deploy the contract as a UUPS proxy with the initializer
         vm.startBroadcast(deployerPrivateKey);
-        address proxy =
-            Upgrades.deployUUPSProxy("StableBondCoins.sol", abi.encodeCall(StableBondCoins.initialize, (owner, minter, "eUAH", "eUAH", 6)));
+        address proxy = Upgrades.deployUUPSProxy(
+            "StableBondCoins.sol", abi.encodeCall(StableBondCoins.initialize, (owner, minter, "eUAH", "eUAH", 6))
+        );
         StableBondCoins stablesContract = StableBondCoins(proxy);
         vm.stopBroadcast();
 

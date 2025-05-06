@@ -53,11 +53,8 @@ contract StableCoinsStakingNegativeTest is Test {
         vm.startPrank(owner);
         stableBondCoins = StableBondCoins(
             Upgrades.deployUUPSProxy(
-                "StableBondCoins.sol:StableBondCoins", 
-                abi.encodeCall(
-                    stableBondCoins.initialize, 
-                    (owner, owner, "Stable Bond Coins", "SBC", 6)
-                )
+                "StableBondCoins.sol:StableBondCoins",
+                abi.encodeCall(stableBondCoins.initialize, (owner, owner, "Stable Bond Coins", "SBC", 6))
             )
         );
 
