@@ -65,6 +65,7 @@ contract StakingStablesTest is Test {
             )
         );
         nftStaking.setStablesStakingAddress(address(stakingStables));
+        nftStaking.setProtocolFee(0);
         vm.stopPrank();
     }
 
