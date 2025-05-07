@@ -2,7 +2,7 @@ const { ethers } = require('ethers');
 const fs = require('fs');
 require('dotenv').config();
 
-const contractAddress = process.env.NFT_STAKING_ADDRESS; // NftStaking
+const contractAddress = process.env.NFT_STAKING_PROXY_ADDRESS; // NftStakingAndBorrowing
 const contractABIPath = './script/ABI/NFTStakingAndBorrowing.json';
 
 const privateKey = process.env.PRIVATE_KEY;
@@ -17,7 +17,7 @@ async function setStablesStaking() {
 
     const contract = new ethers.Contract(contractAddress, contractABI, wallet);
 
-    const stablesStakingAddress = process.env.STABLES_STAKING_ADDRESS;
+    const stablesStakingAddress = process.env.STABLES_STAKING_PROXY_ADDRESS;
 
     console.log('Setting stables staking contract...');
     const tx = await contract.setStablesStakingAddress(stablesStakingAddress);

@@ -24,3 +24,6 @@ Notes.txt
 .gas-snapshot
 lcov.info
 coverage_report/
+
+# Logs
+log/

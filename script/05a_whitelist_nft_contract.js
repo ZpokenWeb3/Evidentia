@@ -2,7 +2,7 @@ const { ethers } = require('ethers');
 const fs = require('fs');
 require('dotenv').config();
 
-const contractAddress = process.env.NFT_STAKING_ADDRESS; // NftStaking
+const contractAddress = process.env.NFT_STAKING_PROXY_ADDRESS; // NftStakingAndBorrowing
 const contractABIPath = './script/ABI/NFTStakingAndBorrowing.json';
 
 const privateKey = process.env.PRIVATE_KEY;
@@ -17,7 +17,7 @@ async function whitelistNft() {
 
     const contract = new ethers.Contract(contractAddress, contractABI, wallet);
 
-    const bondNFT = process.env.NFT_ADDRESS;
+    const bondNFT = process.env.BOND_NFT_PROXY_ADDRESS;
 
     console.log('Whitelisting NFT contract...');
     const tx = await contract.whitelistNFT(bondNFT, true);

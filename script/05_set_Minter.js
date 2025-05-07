@@ -2,10 +2,10 @@ const { ethers } = require('ethers');
 const fs = require('fs');
 require('dotenv').config();
 
-const contractAddress = process.env.STABLES_ADDRESS; // StableCoins
+const contractAddress = process.env.STABLES_PROXY_ADDRESS; // StableCoins
 const contractABIPath = './script/ABI/StableBondCoins.json';
 
-const newMinterAddress = process.env.NFT_STAKING_ADDRESS; // NFT Staking
+const newMinterAddress = process.env.NFT_STAKING_PROXY_ADDRESS; // NFT Staking
 const privateKey = process.env.PRIVATE_KEY;
 const rpcUrl = process.env.SEPOLIA_RPC_URL;
 

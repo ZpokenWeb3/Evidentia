@@ -12,8 +12,8 @@ import {StableBondCoins} from "../StableBondCoins.sol";
 contract StableBondCoinsV2 is StableBondCoins {
     /// @custom:oz-upgrades-validate-as-initializer
     function initializeV2() external reinitializer(2) {
-        __ERC20_init("Stable Bond Coins", "SBC");
-        __ERC20Permit_init("Stable Bond Coins");
+        __ERC20_init(name(), symbol());
+        __ERC20Permit_init(name());
         __AccessControl_init();
         __UUPSUpgradeable_init();
     }

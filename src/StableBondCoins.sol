@@ -42,10 +42,19 @@ contract StableBondCoins is ERC20Upgradeable, AccessControlUpgradeable, ERC20Per
      * @dev Initializes the contract (replaces constructor).
      * @param defaultAdmin The address that will be granted the default admin role.
      * @param minter The address that will be granted the minter role.
+     * @param name The name of the token.
+     * @param symbol The symbol of the token.
+     * @param tokenDecimals The number of decimals for the token.
      */
-    function initialize(address defaultAdmin, address minter) external initializer {
-        __ERC20_init("Stable Bond Coins", "SBC");
-        __ERC20Permit_init("Stable Bond Coins");
+    function initialize(
+        address defaultAdmin,
+        address minter,
+        string memory name,
+        string memory symbol,
+        uint8 tokenDecimals
+    ) external initializer {
+        __ERC20_init(name, symbol);
+        __ERC20Permit_init(name);
         __AccessControl_init();
         __UUPSUpgradeable_init();
 
@@ -53,7 +62,7 @@ contract StableBondCoins is ERC20Upgradeable, AccessControlUpgradeable, ERC20Per
         _grantRole(MINTER_ROLE, minter);
 
         StableBondCoinsStorage storage $ = _getStableBondCoinsStorage();
-        $.decimals = 6;
+        $.decimals = tokenDecimals;
     }
 
     /**
