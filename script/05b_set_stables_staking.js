@@ -2,7 +2,7 @@ const { ethers } = require('ethers');
 const fs = require('fs');
 require('dotenv').config();
 
-const contractAddress = process.env.NFT_STAKING_PROXY_ADDRESS; // NftStaking
+const contractAddress = process.env.NFT_STAKING_PROXY_ADDRESS; // NftStakingAndBorrowing
 const contractABIPath = './script/ABI/NFTStakingAndBorrowing.json';
 
 const privateKey = process.env.PRIVATE_KEY;

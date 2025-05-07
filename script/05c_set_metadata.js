@@ -5,7 +5,7 @@ const yargs = require('yargs');
 require('dotenv').config();
 
 // Contract configuration
-const bondNFTAddress = process.env.BOND_NFT_PROXY_ADDRESS;
+const bondNFTAddress = process.env.BOND_NFT_PROXY_ADDRESS; // BondNFT
 const contractABIPath = './script/ABI/BondNFT.json';
 
 // Wallet and provider configuration
