@@ -955,6 +955,7 @@ contract NFTStakingAndBorrowing is
         // Rewards = Total Current Debt - Total Principal Borrowed - Rewards Already Claimed
         uint256 rewardAmount = currentDebt - $.totalStats.borrowed - $.rewardsTransfered;
         // Deduct protocol fee
+        // Rewards are rounded down, protocol fee is rounded up
         rewardAmount = rewardAmount * (UNIT - $.protocolFee) / UNIT;
         return rewardAmount;
     }
@@ -969,6 +970,8 @@ contract NFTStakingAndBorrowing is
     function getRewards() external onlyStablesStaking returns (uint256) {
         Layout storage $ = _getStorage();
         uint256 currentDebt;
+        uint256 protocolFee;
+
         // Get current total debt (avoid redundant calculation if already updated this block)
         if ($.totalStats.debtUpdateTimestamp == block.timestamp) {
             currentDebt = $.totalStats.debt;
@@ -985,7 +988,12 @@ contract NFTStakingAndBorrowing is
         $.rewardsTransfered += rewardAmount;
 
         // Calculate protocol fee
-        uint256 protocolFee = rewardAmount * $.protocolFee / UNIT;
+        if (rewardAmount > 0 && $.protocolFee > 0) {
+            // Calculate the product first to avoid potential intermediate truncation
+            uint256 product = rewardAmount * $.protocolFee;
+            // Perform ceiling division to round up
+            protocolFee = (product + UNIT - 1) / UNIT;
+        }
 
         // Deduct protocol fee
         rewardAmount = rewardAmount - protocolFee;
