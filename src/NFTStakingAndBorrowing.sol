@@ -67,6 +67,10 @@ contract NFTStakingAndBorrowing is
         address stablesStakingAddress;
         /// @dev The stablecoin token contract used for borrowing and repayment. Must implement IMintableERC20.
         IMintableERC20 stableToken;
+        /// @dev Protocol fee applied to rewards, expressed with UNIT precision (e.g., 1% is 100 * UNIT / BPS).
+        uint256 protocolFee;
+        /// @dev Address to receive protocol fees.
+        address feeReceiver;
     }
 
     // keccak256(abi.encode(uint256(keccak256("nft.staking.and.borrowing.storage")) - 1)) & ~bytes32(uint256(0xff))
@@ -180,6 +184,8 @@ contract NFTStakingAndBorrowing is
         $.protocolYield = 1200 * UNIT / BPS;
         $.safetyFee = 500 * UNIT / BPS;
         $.liquidationTimeWindow = 45 days;
+        $.protocolFee = 1000 * UNIT / BPS;
+        $.feeReceiver = msg.sender;
     }
 
     /**
@@ -247,6 +253,27 @@ contract NFTStakingAndBorrowing is
         address oldAddress = $.stablesStakingAddress;
         $.stablesStakingAddress = _address;
         emit StablesStakingAddressUpdated(oldAddress, $.stablesStakingAddress);
+    }
+
+    /**
+     * @notice Sets the protocol fee.
+     * @dev Only callable by the contract owner. Input is in Basis Points (BPS).
+     * @param _protocolFeeInBPS The new protocol fee in BPS (e.g., 1000 for 10%).
+     */
+    function setProtocolFee(uint256 _protocolFeeInBPS) external onlyOwner {
+        Layout storage $ = _getStorage();
+        $.protocolFee = _protocolFeeInBPS * UNIT / BPS;
+    }
+
+    /**
+     * @notice Sets the fee receiver address.
+     * @dev Only callable by the contract owner. Cannot be set to the zero address.
+     * @param _address The new fee receiver address.
+     */
+    function setFeeReceiver(address _address) external onlyOwner {
+        if (_address == address(0)) revert ZeroAddress();
+        Layout storage $ = _getStorage();
+        $.feeReceiver = _address;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -927,6 +954,8 @@ contract NFTStakingAndBorrowing is
         uint256 currentDebt = calculateDebt($.totalStats.debt, $.totalStats.debtUpdateTimestamp, block.timestamp);
         // Rewards = Total Current Debt - Total Principal Borrowed - Rewards Already Claimed
         uint256 rewardAmount = currentDebt - $.totalStats.borrowed - $.rewardsTransfered;
+        // Deduct protocol fee
+        rewardAmount = rewardAmount * (UNIT - $.protocolFee) / UNIT;
         return rewardAmount;
     }
 
@@ -955,9 +984,18 @@ contract NFTStakingAndBorrowing is
         // Update rewards transferred *before* transfer (Effects before Interactions)
         $.rewardsTransfered += rewardAmount;
 
+        // Calculate protocol fee
+        uint256 protocolFee = rewardAmount * $.protocolFee / UNIT;
+
+        // Deduct protocol fee
+        rewardAmount = rewardAmount - protocolFee;
+
         // Transfer rewards if any
         if (rewardAmount > 0) {
             $.stableToken.transfer(msg.sender, rewardAmount);
+        }
+        if (protocolFee > 0) {
+            $.stableToken.transfer($.feeReceiver, protocolFee);
         }
 
         return rewardAmount;
@@ -1038,5 +1076,23 @@ contract NFTStakingAndBorrowing is
     function getStableToken() external view returns (address) {
         Layout storage $ = _getStorage();
         return address($.stableToken);
+    }
+
+    /**
+     * @notice Returns the current protocol fee.
+     * @return uint256 The protocol fee expressed with UNIT precision.
+     */
+    function getProtocolFee() external view returns (uint256) {
+        Layout storage $ = _getStorage();
+        return $.protocolFee;
+    }
+
+    /**
+     * @notice Returns the current fee receiver address.
+     * @return address The fee receiver address.
+     */
+    function getFeeReceiver() external view returns (address) {
+        Layout storage $ = _getStorage();
+        return $.feeReceiver;
     }
 }
