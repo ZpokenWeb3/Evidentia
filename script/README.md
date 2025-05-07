@@ -60,6 +60,12 @@ node script/05b_set_stables_staking.js
 node script/05c_set_metadata.js [options]
 ```
 
+Example:
+
+```bash
+node script/05c_set_metadata.js -i 29.04.2025 -e 19.08.2026 -v 1000_000000 -c 81_650000 -n UA4000235378
+```
+
 # Automated Deployment
 
 ```bash
@@ -78,10 +84,22 @@ Environment variables (e.g., contract addresses, private key, RPC URL) are loade
 node script/06_mint_allowance.js <allowToAddress> <tokenId> <mintAmount>
 ```
 
+Example:
+
+```bash
+node script/06_mint_allowance.js 0xC85906530Df2D4227f713CFCDD08085309A4f821 75955146522550863186049403197281544413786813629915328080343312216854220103147 1000
+```
+
 ## Mint NFT Tokens
 
 ```bash
 node script/07_mint_nft.js <tokenId> <mintAmount>
+```
+
+Example:
+
+```bash
+node script/07_mint_nft.js 75955146522550863186049403197281544413786813629915328080343312216854220103147 10
 ```
 
 ## Approve NFT Tokens
@@ -96,10 +114,22 @@ node script/08_approve_nft.js
 node script/09_stake_nft.js <tokenId> <amount>
 ```
 
+Example:
+
+```bash
+node script/09_stake_nft.js 75955146522550863186049403197281544413786813629915328080343312216854220103147 10
+```
+
 ## Unstake NFT Tokens
 
 ```bash
 node script/10_unstake_nft.js <tokenId> <amount>
+```
+
+Example:
+
+```bash
+node script/10_unstake_nft.js 75955146522550863186049403197281544413786813629915328080343312216854220103147 10
 ```
 
 ## Borrow Stables
@@ -108,16 +138,34 @@ node script/10_unstake_nft.js <tokenId> <amount>
 node script/11_borrow.js <amount>
 ```
 
+Example:
+
+```bash
+node script/11_borrow.js 1000000000
+```
+
 ## Repay Stables
 
 ```bash
 node script/12_repay.js <amount>
 ```
 
+Example:
+
+```bash
+node script/12_repay.js 1000000000
+```
+
 ## Stake NFT and Stables
 
 ```bash
 node script/13_stake_nft_and_stables.js <tokenId> <amount>
+```
+
+Example:
+
+```bash
+node script/13_stake_nft_and_stables.js 75955146522550863186049403197281544413786813629915328080343312216854220103147 10
 ```
 
 ## Approve Stables
@@ -130,4 +178,10 @@ node script/14_approve_stables.js
 
 ```bash
 node script/15_stake_stables.js <amount>
+```
+
+Example:
+
+```bash
+node script/15_stake_stables.js 1000000000
 ```
