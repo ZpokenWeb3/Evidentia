@@ -27,6 +27,41 @@ contract BondNFT is
     bytes32 private constant STORAGE_LOCATION = 0xffef8b0e9aa2c483e819ac9d28d3b5f004d7e8fbb6ec97cdc9221e749673c000;
 
     /**
+     * @dev Reverts when a user attempts to mint a token ID they are not allowed to mint (allowance is 0).
+     */
+    error NftMintingNotAllowed();
+    /**
+     * @dev Reverts when a user attempts to mint more tokens than their remaining allowance.
+     * @param remaining The number of tokens the user is still allowed to mint.
+     */
+    error NftMintingLimitExceeded(uint256 remaining);
+    /**
+     * @dev Reverts when a user attempts to burn more tokens than they own.
+     */
+    error NftInsufficientBalanceToBurn();
+
+    /**
+     * @dev Emitted when the mint allowance for a specific user and token ID is set or updated.
+     * @param user The address of the user whose allowance is being set.
+     * @param id The token ID for which the allowance is being set.
+     * @param allowedAmount The new allowed mint amount.
+     */
+    event MintAllowanceSet(address user, uint256 id, uint256 allowedAmount);
+
+    /**
+     * @dev Emitted when the metadata for a specific token ID is updated.
+     * @param id The token ID for which the metadata is being updated.
+     * @param value The face value or principal amount of the bond.
+     * @param couponValue The value of the coupon payment.
+     * @param issueTimestamp The timestamp when the bond was issued.
+     * @param expirationTimestamp The timestamp when the bond expires or matures.
+     * @param ISIN International Securities Identification Number for the bond.
+     */
+    event MetadataUpdated(
+        uint256 id, uint256 value, uint256 couponValue, uint256 issueTimestamp, uint256 expirationTimestamp, string ISIN
+    );
+
+    /**
      * @dev Struct to hold metadata for each bond type (token ID).
      * @param value The face value or principal amount of the bond.
      * @param couponValue The value of the coupon payment.
@@ -81,41 +116,6 @@ contract BondNFT is
     }
 
     /**
-     * @dev Emitted when the mint allowance for a specific user and token ID is set or updated.
-     * @param user The address of the user whose allowance is being set.
-     * @param id The token ID for which the allowance is being set.
-     * @param allowedAmount The new allowed mint amount.
-     */
-    event MintAllowanceSet(address user, uint256 id, uint256 allowedAmount);
-
-    /**
-     * @dev Emitted when the metadata for a specific token ID is updated.
-     * @param id The token ID for which the metadata is being updated.
-     * @param value The face value or principal amount of the bond.
-     * @param couponValue The value of the coupon payment.
-     * @param issueTimestamp The timestamp when the bond was issued.
-     * @param expirationTimestamp The timestamp when the bond expires or matures.
-     * @param ISIN International Securities Identification Number for the bond.
-     */
-    event MetadataUpdated(
-        uint256 id, uint256 value, uint256 couponValue, uint256 issueTimestamp, uint256 expirationTimestamp, string ISIN
-    );
-
-    /**
-     * @dev Reverts when a user attempts to mint a token ID they are not allowed to mint (allowance is 0).
-     */
-    error NftMintingNotAllowed();
-    /**
-     * @dev Reverts when a user attempts to mint more tokens than their remaining allowance.
-     * @param remaining The number of tokens the user is still allowed to mint.
-     */
-    error NftMintingLimitExceeded(uint256 remaining);
-    /**
-     * @dev Reverts when a user attempts to burn more tokens than they own.
-     */
-    error NftInsufficientBalanceToBurn();
-
-    /**
      * @dev Initializes the contract. Replaces constructor for upgradeable contracts.
      * @param initialOwner The address that will initially own the contract.
      * @param _uri The base URI for token metadata.
@@ -131,6 +131,12 @@ contract BondNFT is
         $.name = "BondNFT";
         $.symbol = "BNFT";
     }
+
+    /**
+     * @dev Authorizes an upgrade to a new implementation contract address. Only callable by the contract owner.
+     * @param newImplementation The address of the new implementation contract.
+     */
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     /**
      * @dev Sets the base URI for token metadata.
@@ -161,16 +167,6 @@ contract BondNFT is
     }
 
     /**
-     * @dev Retrieves the metadata for a specific token ID.
-     * @param id The token ID to query metadata for.
-     * @return Metadata struct containing the bond details.
-     */
-    function getMetaData(uint256 id) external view returns (Metadata memory) {
-        BondNFTStorage storage $ = _getBondNFTStorage();
-        return $.metadata[id];
-    }
-
-    /**
      * @dev Sets the maximum number of tokens of a specific ID that a user is allowed to mint.
      * Only callable by the owner. Emits a {MintAllowanceSet} event.
      * @param user The address of the user whose allowance is being set.
@@ -181,6 +177,54 @@ contract BondNFT is
         BondNFTStorage storage $ = _getBondNFTStorage();
         $.allowedMints[user][id] = allowedAmount;
         emit MintAllowanceSet(user, id, allowedAmount);
+    }
+
+    /**
+     * @dev Retrieves the metadata for a specific token ID.
+     * @param id The token ID to query metadata for.
+     * @return Metadata struct containing the bond details.
+     */
+    function getMetaData(uint256 id) external view returns (Metadata memory) {
+        BondNFTStorage storage $ = _getBondNFTStorage();
+        return $.metadata[id];
+    }
+
+    /**
+     * @dev View function to get the number of remaining mints allowed for a user per token ID.
+     * @param user The address of the user to query.
+     * @param id The token ID to query.
+     * @return The number of tokens the user can still mint for the specified ID.
+     */
+    function remainingMints(address user, uint256 id) external view returns (uint256) {
+        BondNFTStorage storage $ = _getBondNFTStorage();
+        return $.allowedMints[user][id] - $.mintedPerUser[user][id];
+    }
+
+    /**
+     * @dev Retrieves the total number of tokens of a specific ID that a user is allowed to mint.
+     * @param user The address of the user to query.
+     * @param id The token ID to query.
+     * @return The total number of tokens the user is allowed to mint for the specified ID.
+     */
+    function allowedMints(address user, uint256 id) external view returns (uint256) {
+        BondNFTStorage storage $ = _getBondNFTStorage();
+        return $.allowedMints[user][id];
+    }
+
+    /**
+     * @dev Returns the name of the token collection.
+     */
+    function name() external view returns (string memory) {
+        BondNFTStorage storage $ = _getBondNFTStorage();
+        return $.name;
+    }
+
+    /**
+     * @dev Returns the symbol of the token collection.
+     */
+    function symbol() external view returns (string memory) {
+        BondNFTStorage storage $ = _getBondNFTStorage();
+        return $.symbol;
     }
 
     /**
@@ -252,12 +296,6 @@ contract BondNFT is
     }
 
     /**
-     * @dev Authorizes an upgrade to a new implementation contract address. Only callable by the contract owner.
-     * @param newImplementation The address of the new implementation contract.
-     */
-    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
-
-    /**
      * @dev Hook called before any token transfer, including minting and burning.
      * Overrides the function from {ERC1155Upgradeable} and {ERC1155SupplyUpgradeable}.
      * @inheritdoc ERC1155SupplyUpgradeable
@@ -269,41 +307,5 @@ contract BondNFT is
         super._update(from, to, ids, values);
     }
 
-    /**
-     * @dev View function to get the number of remaining mints allowed for a user per token ID.
-     * @param user The address of the user to query.
-     * @param id The token ID to query.
-     * @return The number of tokens the user can still mint for the specified ID.
-     */
-    function remainingMints(address user, uint256 id) external view returns (uint256) {
-        BondNFTStorage storage $ = _getBondNFTStorage();
-        return $.allowedMints[user][id] - $.mintedPerUser[user][id];
-    }
 
-    /**
-     * @dev Retrieves the total number of tokens of a specific ID that a user is allowed to mint.
-     * @param user The address of the user to query.
-     * @param id The token ID to query.
-     * @return The total number of tokens the user is allowed to mint for the specified ID.
-     */
-    function allowedMints(address user, uint256 id) external view returns (uint256) {
-        BondNFTStorage storage $ = _getBondNFTStorage();
-        return $.allowedMints[user][id];
-    }
-
-    /**
-     * @dev Returns the name of the token collection.
-     */
-    function name() external view returns (string memory) {
-        BondNFTStorage storage $ = _getBondNFTStorage();
-        return $.name;
-    }
-
-    /**
-     * @dev Returns the symbol of the token collection.
-     */
-    function symbol() external view returns (string memory) {
-        BondNFTStorage storage $ = _getBondNFTStorage();
-        return $.symbol;
-    }
 }

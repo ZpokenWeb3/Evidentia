@@ -30,36 +30,18 @@ interface IExternalRewardContract {
 contract StableCoinsStaking is ReentrancyGuardUpgradeable, UUPSUpgradeable, AccessControlUpgradeable {
     // keccak256(abi.encode(uint256(keccak256("StableCoinsStaking.storage")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant STORAGE_LOCATION = 0x5ad9b57132bffc89e46deaf23730f9173da95952e39a655cdb65df9a44414600;
-
     /// @dev Role identifier for the admin who can upgrade the contract.
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
-
-    /**
-     * @dev Storage struct for ERC7201 namespace.
-     */
-    /// @custom:storage-location erc7201:StableCoinsStaking.storage
-    struct StableCoinsStakingStorage {
-        IERC20 stakingToken;
-        IExternalRewardContract externalRewardContract;
-        uint256 totalStaked;
-        uint256 rewardPerTokenStored;
-        uint256 lastUpdateTime;
-        mapping(address => StakerInfo) stakers;
-    }
-
-    /**
-     * @dev Structure to store information about each staker.
-     */
-    struct StakerInfo {
-        uint256 stakedAmount;
-        uint256 rewardPaid;
-        uint256 userRewardPerTokenPaid;
-        uint256 rewardsEarned;
-        uint256 stakeTimestamp;
-    }
-
     /// @dev Constant representing the number of seconds in a year (365 days).
     uint256 internal constant YEAR_IN_SECONDS = 31536000;
+
+    /**
+     * @dev Errors
+     */
+    error ZeroAmountNotAllowed();
+    error NotEnoughStaked(uint256 staked);
+    error NoRewardsAvailable();
+    error NotEnoughBalance();
 
     /**
      * @dev Emitted when a user stakes tokens.
@@ -77,12 +59,28 @@ contract StableCoinsStaking is ReentrancyGuardUpgradeable, UUPSUpgradeable, Acce
     event RewardClaimed(address indexed user, uint256 reward);
 
     /**
-     * @dev Errors
+     * @dev Structure to store information about each staker.
      */
-    error ZeroAmountNotAllowed();
-    error NotEnoughStaked(uint256 staked);
-    error NoRewardsAvailable();
-    error NotEnoughBalance();
+    struct StakerInfo {
+        uint256 stakedAmount;
+        uint256 rewardPaid;
+        uint256 userRewardPerTokenPaid;
+        uint256 rewardsEarned;
+        uint256 stakeTimestamp;
+    }
+
+    /**
+     * @dev Storage struct for ERC7201 namespace.
+     */
+    /// @custom:storage-location erc7201:StableCoinsStaking.storage
+    struct StableCoinsStakingStorage {
+        IERC20 stakingToken;
+        IExternalRewardContract externalRewardContract;
+        uint256 totalStaked;
+        uint256 rewardPerTokenStored;
+        uint256 lastUpdateTime;
+        mapping(address => StakerInfo) stakers;
+    }
 
     /**
      * @dev Retrieves the storage slot for the contract.
@@ -133,6 +131,81 @@ contract StableCoinsStaking is ReentrancyGuardUpgradeable, UUPSUpgradeable, Acce
             user.userRewardPerTokenPaid = $.rewardPerTokenStored;
         }
         _;
+    }
+
+    /**
+     * @dev Calculates the amount of rewards earned by a specific staker since their last update.
+     */
+    function _earned(address _staker) internal view returns (uint256) {
+        StableCoinsStakingStorage storage $ = _getStableCoinsStakingStorage();
+        StakerInfo storage user = $.stakers[_staker];
+        uint256 rewardPerTokenDelta = $.rewardPerTokenStored - user.userRewardPerTokenPaid;
+        return ((user.stakedAmount * rewardPerTokenDelta) / 1e18) + user.rewardsEarned;
+    }
+
+    /**
+     * @dev Provides a view of the pending rewards for a specific staker without triggering any state changes.
+     */
+    function pendingRewards(address _staker) public view returns (uint256) {
+        StableCoinsStakingStorage storage $ = _getStableCoinsStakingStorage();
+        if ($.totalStaked == 0) {
+            return 0;
+        }
+
+        uint256 rewardFromExternal = $.externalRewardContract.getRewardAmount();
+        uint256 _rewardPerTokenStored = $.rewardPerTokenStored + ((rewardFromExternal * 1e18) / $.totalStaked);
+
+        StakerInfo storage user = $.stakers[_staker];
+        uint256 rewardPerTokenDelta = _rewardPerTokenStored - user.userRewardPerTokenPaid;
+        return ((user.stakedAmount * rewardPerTokenDelta) / 1e18) + user.rewardsEarned;
+    }
+
+    /**
+     * @dev Gets the staking token address.
+     */
+    function stakingToken() external view returns (address) {
+        StableCoinsStakingStorage storage $ = _getStableCoinsStakingStorage();
+        return address($.stakingToken);
+    }
+
+    /**
+     * @dev Gets the external reward contract address.
+     */
+    function externalRewardContract() external view returns (address) {
+        StableCoinsStakingStorage storage $ = _getStableCoinsStakingStorage();
+        return address($.externalRewardContract);
+    }
+
+    /**
+     * @dev Gets the total amount of tokens currently staked.
+     */
+    function totalStaked() external view returns (uint256) {
+        StableCoinsStakingStorage storage $ = _getStableCoinsStakingStorage();
+        return $.totalStaked;
+    }
+
+    /**
+     * @dev Gets the reward per token stored.
+     */
+    function rewardPerTokenStored() external view returns (uint256) {
+        StableCoinsStakingStorage storage $ = _getStableCoinsStakingStorage();
+        return $.rewardPerTokenStored;
+    }
+
+    /**
+     * @dev Gets the last update timestamp.
+     */
+    function lastUpdateTime() external view returns (uint256) {
+        StableCoinsStakingStorage storage $ = _getStableCoinsStakingStorage();
+        return $.lastUpdateTime;
+    }
+
+    /**
+     * @dev Gets the staker's information.
+     */
+    function stakers(address staker) external view returns (StakerInfo memory) {
+        StableCoinsStakingStorage storage $ = _getStableCoinsStakingStorage();
+        return $.stakers[staker];
     }
 
     /**
@@ -217,80 +290,5 @@ contract StableCoinsStaking is ReentrancyGuardUpgradeable, UUPSUpgradeable, Acce
         uint256 currentRewardPerTokenStored = $.rewardPerTokenStored;
         uint256 rewardFromExternal = $.externalRewardContract.getRewards();
         return currentRewardPerTokenStored + ((rewardFromExternal * 1e18) / $.totalStaked);
-    }
-
-    /**
-     * @dev Calculates the amount of rewards earned by a specific staker since their last update.
-     */
-    function _earned(address _staker) internal view returns (uint256) {
-        StableCoinsStakingStorage storage $ = _getStableCoinsStakingStorage();
-        StakerInfo storage user = $.stakers[_staker];
-        uint256 rewardPerTokenDelta = $.rewardPerTokenStored - user.userRewardPerTokenPaid;
-        return ((user.stakedAmount * rewardPerTokenDelta) / 1e18) + user.rewardsEarned;
-    }
-
-    /**
-     * @dev Provides a view of the pending rewards for a specific staker without triggering any state changes.
-     */
-    function pendingRewards(address _staker) public view returns (uint256) {
-        StableCoinsStakingStorage storage $ = _getStableCoinsStakingStorage();
-        if ($.totalStaked == 0) {
-            return 0;
-        }
-
-        uint256 rewardFromExternal = $.externalRewardContract.getRewardAmount();
-        uint256 _rewardPerTokenStored = $.rewardPerTokenStored + ((rewardFromExternal * 1e18) / $.totalStaked);
-
-        StakerInfo storage user = $.stakers[_staker];
-        uint256 rewardPerTokenDelta = _rewardPerTokenStored - user.userRewardPerTokenPaid;
-        return ((user.stakedAmount * rewardPerTokenDelta) / 1e18) + user.rewardsEarned;
-    }
-
-    /**
-     * @dev Gets the staking token address.
-     */
-    function stakingToken() external view returns (address) {
-        StableCoinsStakingStorage storage $ = _getStableCoinsStakingStorage();
-        return address($.stakingToken);
-    }
-
-    /**
-     * @dev Gets the external reward contract address.
-     */
-    function externalRewardContract() external view returns (address) {
-        StableCoinsStakingStorage storage $ = _getStableCoinsStakingStorage();
-        return address($.externalRewardContract);
-    }
-
-    /**
-     * @dev Gets the total amount of tokens currently staked.
-     */
-    function totalStaked() external view returns (uint256) {
-        StableCoinsStakingStorage storage $ = _getStableCoinsStakingStorage();
-        return $.totalStaked;
-    }
-
-    /**
-     * @dev Gets the reward per token stored.
-     */
-    function rewardPerTokenStored() external view returns (uint256) {
-        StableCoinsStakingStorage storage $ = _getStableCoinsStakingStorage();
-        return $.rewardPerTokenStored;
-    }
-
-    /**
-     * @dev Gets the last update timestamp.
-     */
-    function lastUpdateTime() external view returns (uint256) {
-        StableCoinsStakingStorage storage $ = _getStableCoinsStakingStorage();
-        return $.lastUpdateTime;
-    }
-
-    /**
-     * @dev Gets the staker's information.
-     */
-    function stakers(address staker) external view returns (StakerInfo memory) {
-        StableCoinsStakingStorage storage $ = _getStableCoinsStakingStorage();
-        return $.stakers[staker];
     }
 }

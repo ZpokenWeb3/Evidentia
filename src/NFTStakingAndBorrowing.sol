@@ -47,6 +47,78 @@ contract NFTStakingAndBorrowing is
 {
     // keccak256(abi.encode(uint256(keccak256("NFTStakingAndBorrowing.storage")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant STORAGE_LOCATION = 0x6a441442997d548c1da10218ea0e91c439ff7c57f962abbe6c4b985a11b4e500;
+    /// @dev Number of seconds in a year, used for interest calculations.
+    uint256 internal constant YEAR_IN_SECONDS = 31536000;
+    /// @dev Basis unit for fixed-point math (1e18).
+    uint256 internal constant UNIT = 1e18;
+    /// @dev Basis points denominator (10000), used for fees and rates.
+    uint256 internal constant BPS = 1e4;
+
+    /// @dev Error when attempting to stake an NFT that is not whitelisted.
+    error NFTNotWhitelisted();
+    /// @dev Error when attempting an action (stake, unstake, liquidate) with insufficient NFT balance (either in wallet or staked).
+    error InsufficientNFTBalance();
+    /// @dev Error when attempting to borrow more than the calculated maximum allowed amount. Includes the maximum amount allowed.
+    error BorrowAmountExceedsLimit(uint256 maxBorrow);
+    /// @dev Error when attempting to repay without sufficient stablecoin balance in the wallet.
+    error InsufficientBalanceToRepay();
+    /// @dev Error when attempting to unstake NFTs would leave insufficient collateral for the existing debt. Includes the remaining borrowing capacity.
+    error NotEnoughCollateral(uint256 remainingCapacity);
+    /// @dev Error when attempting to liquidate a position before the liquidation time window opens.
+    error TooEarlyToLiquidate();
+    /// @dev Error when a function restricted to the stable staking contract is called by another address.
+    error OnlyStableStakingContract();
+    /// @dev Error when attempting to set an address parameter (e.g., stablesStakingAddress) to the zero address.
+    error ZeroAddress();
+    /// @dev Error when an arithmetic operation results in an overflow during debt/borrow calculations.
+    error AmountOverflow();
+    /// @dev Error when attempting to stake NFT that has expired over liquidation time.
+    error NftExpired();
+
+    /// @dev Emitted when a user stakes NFTs.
+    event NFTStaked(address indexed user, address indexed nftAddress, uint256 tokenId, uint256 amount);
+    /// @dev Emitted when a user unstakes NFTs.
+    event NFTUnstaked(address indexed user, address indexed nftAddress, uint256 tokenId, uint256 amount);
+    /// @dev Emitted when a user borrows stablecoins.
+    event Borrowed(address indexed user, uint256 amount);
+    /// @dev Emitted when a user repays debt.
+    event Repaid(address indexed user, uint256 amount);
+    /// @dev Emitted when a user's position is liquidated.
+    event Liquidated(
+        address indexed user, address liquidator, address indexed nftAddress, uint256 tokenId, uint256 amount
+    );
+    /// @dev Emitted when the stablecoin staking contract address is updated.
+    event StablesStakingAddressUpdated(address indexed oldAddress, address indexed newAddress);
+
+    /**
+     * @dev Stores global statistics for the protocol.
+     * @param staked Total nominal value of all staked NFTs (after safety fee).
+     * @param borrowed Total amount of stablecoins initially borrowed by all users.
+     * @param debt Total current debt (borrowed + accrued interest) across all users.
+     * @param debtUpdateTimestamp Timestamp when the total debt was last updated.
+     */
+    struct TotalStats {
+        uint256 staked;
+        uint256 borrowed;
+        uint256 debt;
+        uint256 debtUpdateTimestamp;
+    }
+
+    /**
+     * @dev Stores statistics for a specific user.
+     * @param staked Total nominal value of the user's staked NFTs (after safety fee).
+     * @param nominalAvailable The maximum amount the user *could* borrow based on their staked collateral's future value, before accounting for existing debt.
+     * @param borrowed Total amount of stablecoins initially borrowed by the user.
+     * @param debt User's current debt (borrowed + accrued interest).
+     * @param debtUpdateTimestamp Timestamp when the user's debt and nominalAvailable were last updated.
+     */
+    struct UserStats {
+        uint256 staked;
+        uint256 nominalAvailable;
+        uint256 borrowed;
+        uint256 debt;
+        uint256 debtUpdateTimestamp;
+    }
 
     /**
      * @dev Storage struct for ERC7201 namespace.
@@ -85,86 +157,6 @@ contract NFTStakingAndBorrowing is
     }
 
     /**
-     * @dev Function that should revert when `msg.sender` is not authorized to upgrade the contract. Called by
-     * {upgradeTo} and {upgradeToAndCall}.
-     * @param newImplementation address of the new implementation.
-     */
-    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
-
-    /**
-     * @dev Stores global statistics for the protocol.
-     * @param staked Total nominal value of all staked NFTs (after safety fee).
-     * @param borrowed Total amount of stablecoins initially borrowed by all users.
-     * @param debt Total current debt (borrowed + accrued interest) across all users.
-     * @param debtUpdateTimestamp Timestamp when the total debt was last updated.
-     */
-    struct TotalStats {
-        uint256 staked;
-        uint256 borrowed;
-        uint256 debt;
-        uint256 debtUpdateTimestamp;
-    }
-
-    /**
-     * @dev Stores statistics for a specific user.
-     * @param staked Total nominal value of the user's staked NFTs (after safety fee).
-     * @param nominalAvailable The maximum amount the user *could* borrow based on their staked collateral's future value, before accounting for existing debt.
-     * @param borrowed Total amount of stablecoins initially borrowed by the user.
-     * @param debt User's current debt (borrowed + accrued interest).
-     * @param debtUpdateTimestamp Timestamp when the user's debt and nominalAvailable were last updated.
-     */
-    struct UserStats {
-        uint256 staked;
-        uint256 nominalAvailable;
-        uint256 borrowed;
-        uint256 debt;
-        uint256 debtUpdateTimestamp;
-    }
-
-    /// @dev Number of seconds in a year, used for interest calculations.
-    uint256 internal constant YEAR_IN_SECONDS = 31536000;
-    /// @dev Basis unit for fixed-point math (1e18).
-    uint256 internal constant UNIT = 1e18;
-    /// @dev Basis points denominator (10000), used for fees and rates.
-    uint256 internal constant BPS = 1e4;
-
-    /// @dev Emitted when a user stakes NFTs.
-    event NFTStaked(address indexed user, address indexed nftAddress, uint256 tokenId, uint256 amount);
-    /// @dev Emitted when a user unstakes NFTs.
-    event NFTUnstaked(address indexed user, address indexed nftAddress, uint256 tokenId, uint256 amount);
-    /// @dev Emitted when a user borrows stablecoins.
-    event Borrowed(address indexed user, uint256 amount);
-    /// @dev Emitted when a user repays debt.
-    event Repaid(address indexed user, uint256 amount);
-    /// @dev Emitted when a user's position is liquidated.
-    event Liquidated(
-        address indexed user, address liquidator, address indexed nftAddress, uint256 tokenId, uint256 amount
-    );
-    /// @dev Emitted when the stablecoin staking contract address is updated.
-    event StablesStakingAddressUpdated(address indexed oldAddress, address indexed newAddress);
-
-    /// @dev Error when attempting to stake an NFT that is not whitelisted.
-    error NFTNotWhitelisted();
-    /// @dev Error when attempting an action (stake, unstake, liquidate) with insufficient NFT balance (either in wallet or staked).
-    error InsufficientNFTBalance();
-    /// @dev Error when attempting to borrow more than the calculated maximum allowed amount. Includes the maximum amount allowed.
-    error BorrowAmountExceedsLimit(uint256 maxBorrow);
-    /// @dev Error when attempting to repay without sufficient stablecoin balance in the wallet.
-    error InsufficientBalanceToRepay();
-    /// @dev Error when attempting to unstake NFTs would leave insufficient collateral for the existing debt. Includes the remaining borrowing capacity.
-    error NotEnoughCollateral(uint256 remainingCapacity);
-    /// @dev Error when attempting to liquidate a position before the liquidation time window opens.
-    error TooEarlyToLiquidate();
-    /// @dev Error when a function restricted to the stable staking contract is called by another address.
-    error OnlyStableStakingContract();
-    /// @dev Error when attempting to set an address parameter (e.g., stablesStakingAddress) to the zero address.
-    error ZeroAddress();
-    /// @dev Error when an arithmetic operation results in an overflow during debt/borrow calculations.
-    error AmountOverflow();
-    /// @dev Error when attempting to stake NFT that has expired over liquidation time.
-    error NftExpired();
-
-    /**
      * @dev Initializes the contract (replaces constructor).
      * @param _stableToken The address of the stablecoin (IMintableERC20) contract.
      */
@@ -184,6 +176,13 @@ contract NFTStakingAndBorrowing is
         $.safetyFee = 500 * UNIT / BPS;
         $.liquidationTimeWindow = 45 days;
     }
+
+    /**
+     * @dev Function that should revert when `msg.sender` is not authorized to upgrade the contract. Called by
+     * {upgradeTo} and {upgradeToAndCall}.
+     * @param newImplementation address of the new implementation.
+     */
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     /**
      * @dev Modifier to restrict function access to the `stablesStakingAddress`.
@@ -445,6 +444,98 @@ contract NFTStakingAndBorrowing is
         } else {
             return amount;
         }
+    }
+
+    /**
+     * @dev Gets the amount of a specific NFT a user has staked.
+     * Returns the value from the `userNFTs` mapping.
+     * @param user The address of the user.
+     * @param nftAddress The address of the NFT contract.
+     * @param tokenId The ID of the NFT.
+     * @return The amount of the specified NFT the user has staked.
+     */
+    function getUserNFTBalance(address user, address nftAddress, uint256 tokenId) external view returns (uint256) {
+        NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
+        return $.userNFTs[user][nftAddress][tokenId];
+    }
+
+    /**
+     * @dev Returns whether an NFT contract is whitelisted.
+     * @param nftAddress The address of the NFT contract.
+     * @return bool True if the NFT is whitelisted, false otherwise.
+     */
+    function isWhitelistedNFT(address nftAddress) external view returns (bool) {
+        NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
+        return $.whitelistedNFTs[nftAddress];
+    }
+
+    /**
+     * @dev Returns the current protocol rate.
+     * @return uint256 The annual protocol rate expressed with UNIT precision.
+     */
+    function getProtocolRate() external view returns (uint256) {
+        NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
+        return $.protocolRate;
+    }
+
+    /**
+     * @dev Returns the current safety fee.
+     * @return uint256 The safety fee expressed with UNIT precision.
+     */
+    function getSafetyFee() external view returns (uint256) {
+        NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
+        return $.safetyFee;
+    }
+
+    /**
+     * @dev Returns the current liquidation time window.
+     * @return uint256 The time window in seconds before NFT expiration during which liquidation is possible.
+     */
+    function getLiquidationTimeWindow() external view returns (uint256) {
+        NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
+        return $.liquidationTimeWindow;
+    }
+
+    /**
+     * @dev Returns the total rewards transferred to the stables staking contract.
+     * @return uint256 The total amount of rewards transferred.
+     */
+    function getRewardsTransfered() external view returns (uint256) {
+        NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
+        return $.rewardsTransfered;
+    }
+
+    /**
+     * @dev Returns the address of the stablecoin staking contract.
+     * @return address The address of the stables staking contract.
+     */
+    function getStablesStakingAddress() external view returns (address) {
+        NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
+        return $.stablesStakingAddress;
+    }
+
+    /**
+     * @dev Returns the address of the stablecoin token contract.
+     * @return address The address of the stablecoin token contract.
+     */
+    function getStableToken() external view returns (address) {
+        NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
+        return address($.stableToken);
+    }
+
+    /**
+     * @dev Calculates the amount of rewards (accrued interest minus already transferred rewards) available to be claimed.
+     * Calculates the current total debt based on the last update timestamp.
+     * The reward amount is the difference between the current total debt, the total amount ever borrowed (principal), and the rewards already transferred out.
+     * @return rewardAmount The amount of claimable rewards.
+     */
+    function getRewardAmount() external view returns (uint256) {
+        NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
+        // Calculate total debt up to current block timestamp
+        uint256 currentDebt = calculateDebt($.totalStats.debt, $.totalStats.debtUpdateTimestamp, block.timestamp);
+        // Rewards = Total Current Debt - Total Principal Borrowed - Rewards Already Claimed
+        uint256 rewardAmount = currentDebt - $.totalStats.borrowed - $.rewardsTransfered;
+        return rewardAmount;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -926,21 +1017,6 @@ contract NFTStakingAndBorrowing is
     }
 
     /**
-     * @dev Calculates the amount of rewards (accrued interest minus already transferred rewards) available to be claimed.
-     * Calculates the current total debt based on the last update timestamp.
-     * The reward amount is the difference between the current total debt, the total amount ever borrowed (principal), and the rewards already transferred out.
-     * @return rewardAmount The amount of claimable rewards.
-     */
-    function getRewardAmount() external view returns (uint256) {
-        NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
-        // Calculate total debt up to current block timestamp
-        uint256 currentDebt = calculateDebt($.totalStats.debt, $.totalStats.debtUpdateTimestamp, block.timestamp);
-        // Rewards = Total Current Debt - Total Principal Borrowed - Rewards Already Claimed
-        uint256 rewardAmount = currentDebt - $.totalStats.borrowed - $.rewardsTransfered;
-        return rewardAmount;
-    }
-
-    /**
      * @dev Allows the designated stablecoin staking contract to claim accumulated rewards (interest).
      * Calculates the current total debt. Determines the reward amount (current total debt - total principal borrowed - already transferred rewards).
      * Updates `rewardsTransfered`. Transfers the calculated `rewardAmount` of stablecoins to the caller (`msg.sender`,
@@ -971,82 +1047,5 @@ contract NFTStakingAndBorrowing is
         }
 
         return rewardAmount;
-    }
-
-    /**
-     * @dev Gets the amount of a specific NFT a user has staked.
-     * Returns the value from the `userNFTs` mapping.
-     * @param user The address of the user.
-     * @param nftAddress The address of the NFT contract.
-     * @param tokenId The ID of the NFT.
-     * @return The amount of the specified NFT the user has staked.
-     */
-    function getUserNFTBalance(address user, address nftAddress, uint256 tokenId) external view returns (uint256) {
-        NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
-        return $.userNFTs[user][nftAddress][tokenId];
-    }
-
-    /**
-     * @dev Returns whether an NFT contract is whitelisted.
-     * @param nftAddress The address of the NFT contract.
-     * @return bool True if the NFT is whitelisted, false otherwise.
-     */
-    function isWhitelistedNFT(address nftAddress) external view returns (bool) {
-        NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
-        return $.whitelistedNFTs[nftAddress];
-    }
-
-    /**
-     * @dev Returns the current protocol rate.
-     * @return uint256 The annual protocol rate expressed with UNIT precision.
-     */
-    function getProtocolRate() external view returns (uint256) {
-        NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
-        return $.protocolRate;
-    }
-
-    /**
-     * @dev Returns the current safety fee.
-     * @return uint256 The safety fee expressed with UNIT precision.
-     */
-    function getSafetyFee() external view returns (uint256) {
-        NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
-        return $.safetyFee;
-    }
-
-    /**
-     * @dev Returns the current liquidation time window.
-     * @return uint256 The time window in seconds before NFT expiration during which liquidation is possible.
-     */
-    function getLiquidationTimeWindow() external view returns (uint256) {
-        NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
-        return $.liquidationTimeWindow;
-    }
-
-    /**
-     * @dev Returns the total rewards transferred to the stables staking contract.
-     * @return uint256 The total amount of rewards transferred.
-     */
-    function getRewardsTransfered() external view returns (uint256) {
-        NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
-        return $.rewardsTransfered;
-    }
-
-    /**
-     * @dev Returns the address of the stablecoin staking contract.
-     * @return address The address of the stables staking contract.
-     */
-    function getStablesStakingAddress() external view returns (address) {
-        NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
-        return $.stablesStakingAddress;
-    }
-
-    /**
-     * @dev Returns the address of the stablecoin token contract.
-     * @return address The address of the stablecoin token contract.
-     */
-    function getStableToken() external view returns (address) {
-        NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
-        return address($.stableToken);
     }
 }
