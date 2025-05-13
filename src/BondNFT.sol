@@ -306,6 +306,4 @@ contract BondNFT is
     {
         super._update(from, to, ids, values);
     }
-
-
 }
