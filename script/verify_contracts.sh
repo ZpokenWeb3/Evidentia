@@ -42,7 +42,7 @@ verify_implementation() {
         --chain-id 11155111 \
         --watch \
         --etherscan-api-key "$ETHERSCAN_API_KEY" \
-        --compiler-version v0.8.22+commit.4fc1097e \
+        --compiler-version v0.8.30+commit.4fc1097e \
         "$address" \
         "$contract" || {
         log "WARNING: Failed to verify implementation contract \`$address\` for \`$contract\`"
@@ -69,7 +69,7 @@ verify_proxy() {
         --watch \
         --constructor-args $(cast abi-encode "constructor(address,bytes)" "$impl_address" "0x") \
         --etherscan-api-key "$ETHERSCAN_API_KEY" \
-        --compiler-version v0.8.22+commit.4fc1097e \
+        --compiler-version v0.8.30+commit.4fc1097e \
         "$proxy_address" \
         "lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy" || {
         log "WARNING: Failed to verify proxy contract \`$proxy_address\`"

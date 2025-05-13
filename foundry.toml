@@ -6,7 +6,7 @@ evm_version = "cancun"
 ast = true
 extra_output = ["evm.bytecode", "evm.deployedBytecode", "abi", "metadata", "ir", "irOptimized", "storageLayout", "devdoc", "userdoc"]
 extra_output_files = ["metadata", "ir", "irOptimized", "storageLayout", "devdoc", "userdoc"]
-solc_version = "0.8.22"
+solc_version = "0.8.30"
 fs_permissions = [{ access = "read", path = "out" }]
 ffi = true
 build_info = true
