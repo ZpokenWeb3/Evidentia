@@ -221,10 +221,10 @@ contract NFTStakingAndBorrowingNegativeTest is Test {
         nftStaking.setStablesStakingAddress(address(1));
     }
 
-    function testOnlyStablesStakingGetRewardsReverts() public {
+    function testOnlyStablesStakingTransferRewardsReverts() public {
         vm.prank(client1);
         vm.expectRevert(NFTStakingAndBorrowing.OnlyStableStakingContract.selector);
-        nftStaking.getRewards();
+        nftStaking.transferRewards();
     }
 
     function testZeroAddressStableStakingReverts() public {

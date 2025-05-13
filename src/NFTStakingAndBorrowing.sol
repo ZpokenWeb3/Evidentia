@@ -1017,13 +1017,14 @@ contract NFTStakingAndBorrowing is
     }
 
     /**
-     * @dev Allows the designated stablecoin staking contract to claim accumulated rewards (interest).
-     * Calculates the current total debt. Determines the reward amount (current total debt - total principal borrowed - already transferred rewards).
-     * Updates `rewardsTransfered`. Transfers the calculated `rewardAmount` of stablecoins to the caller (`msg.sender`,
-     * which must be `stablesStakingAddress` due to the modifier). Only callable by `stablesStakingAddress`.
+     * @dev Transfers accumulated rewards (interest) to the designated stablecoin staking contract.
+     * Calculates the current total debt and determines the reward amount (current total debt - total principal borrowed - previously transferred rewards).
+     * Updates `rewardsTransfered` to track the transferred amount.
+     * Transfers the calculated `rewardAmount` of stablecoins to the caller (`msg.sender`, which must be `stablesStakingAddress` due to the modifier).
+     * Only callable by `stablesStakingAddress`.
      * @return rewardAmount The amount of rewards transferred in this call.
      */
-    function getRewards() external onlyStablesStaking returns (uint256) {
+    function transferRewards() external onlyStablesStaking returns (uint256) {
         NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
         uint256 currentDebt;
         // Get current total debt (avoid redundant calculation if already updated this block)
@@ -1038,7 +1039,7 @@ contract NFTStakingAndBorrowing is
         // Calculate claimable rewards
         uint256 rewardAmount = currentDebt - $.totalStats.borrowed - $.rewardsTransfered;
 
-        // Update rewards transferred *before* transfer (Effects before Interactions)
+        // Update rewards transferred *before* transfer (effects before interactions)
         $.rewardsTransfered += rewardAmount;
 
         // Transfer rewards if any

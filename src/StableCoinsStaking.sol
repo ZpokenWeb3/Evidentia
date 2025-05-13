@@ -19,7 +19,7 @@ interface IERC20 {
  */
 interface IExternalRewardContract {
     function getRewardAmount() external view returns (uint256);
-    function getRewards() external returns (uint256);
+    function transferRewards() external returns (uint256);
 }
 
 /**
@@ -280,6 +280,8 @@ contract StableCoinsStaking is ReentrancyGuardUpgradeable, UUPSUpgradeable, Acce
 
     /**
      * @dev Calculates the current reward rate per staked token.
+     * Initiates the transfer of available rewards from the external reward contract.
+     * @return The updated reward per token, accounting for transferred rewards from the external contract (scaled by 1e18).
      */
     function _rewardPerToken() internal returns (uint256) {
         StableCoinsStakingStorage storage $ = _getStableCoinsStakingStorage();
@@ -288,7 +290,7 @@ contract StableCoinsStaking is ReentrancyGuardUpgradeable, UUPSUpgradeable, Acce
         }
 
         uint256 currentRewardPerTokenStored = $.rewardPerTokenStored;
-        uint256 rewardFromExternal = $.externalRewardContract.getRewards();
-        return currentRewardPerTokenStored + ((rewardFromExternal * 1e18) / $.totalStaked);
+        uint256 rewardsTransferedFromExternal = $.externalRewardContract.transferRewards();
+        return currentRewardPerTokenStored + ((rewardsTransferedFromExternal * 1e18) / $.totalStaked);
     }
 }

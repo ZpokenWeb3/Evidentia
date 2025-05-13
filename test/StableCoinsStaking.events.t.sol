@@ -8,11 +8,14 @@ import {Upgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 
 // Simple mock contract for tests
 contract MockReward {
+    uint256 private rewardAmount;
+
     function getRewardAmount() external pure returns (uint256) {
         return 0;
     }
 
-    function getRewards() external pure returns (uint256) {
+    function transferRewards() external returns (uint256) {
+        rewardAmount = 0;
         return 0;
     }
 }
