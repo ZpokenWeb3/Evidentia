@@ -98,7 +98,7 @@
   },
   {
     "type": "function",
-    "name": "getProtocolYield",
+    "name": "getProtocolRate",
     "inputs": [],
     "outputs": [
       {
@@ -491,10 +491,10 @@
   },
   {
     "type": "function",
-    "name": "setProtocolYield",
+    "name": "setProtocolRate",
     "inputs": [
       {
-        "name": "_protocolYieldInBPS",
+        "name": "_protocolRateInBPS",
         "type": "uint256",
         "internalType": "uint256"
       }
