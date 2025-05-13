@@ -21,7 +21,7 @@ contract NFTStakingAndBorrowingTest is Test {
     uint256 internal constant START_TIME = 1706745600;
     uint256 internal constant UNIT = 1e18;
     uint256 internal constant BIPS = 1e4;
-    uint256 internal constant PROTOCOL_YIELD = 1200 * UNIT / BIPS;
+    uint256 internal constant PROTOCOL_RATE = 1200 * UNIT / BIPS;
 
     function setUp() public {
         owner = address(1);
@@ -817,7 +817,7 @@ contract NFTStakingAndBorrowingTest is Test {
         uint256 x256 = (uint256(x) + uint256(2)) * 1e18;
         uint256 maxBorrow = nftStaking.calculateMaxBorrow(x256, START_TIME, START_TIME + YEAR_IN_SECONDS);
         uint256 diff = 0;
-        uint256 borrowDebt = maxBorrow * PROTOCOL_YIELD / UNIT;
+        uint256 borrowDebt = maxBorrow * PROTOCOL_RATE / UNIT;
         if ((x256 - borrowDebt) >= maxBorrow) {
             diff = (x256 - borrowDebt) - maxBorrow;
         } else {
@@ -831,8 +831,8 @@ contract NFTStakingAndBorrowingTest is Test {
         uint256 x256 = (uint256(x) + uint256(2)) * 1e18;
         uint256 maxBorrow = nftStaking.calculateMaxBorrow(x256, START_TIME, START_TIME + 2 * YEAR_IN_SECONDS);
         uint256 diff = 0;
-        uint256 firstYearDebt = maxBorrow * PROTOCOL_YIELD / UNIT;
-        uint256 secondYearDebt = (firstYearDebt + maxBorrow) * PROTOCOL_YIELD / UNIT;
+        uint256 firstYearDebt = maxBorrow * PROTOCOL_RATE / UNIT;
+        uint256 secondYearDebt = (firstYearDebt + maxBorrow) * PROTOCOL_RATE / UNIT;
 
         if ((x256 - firstYearDebt - secondYearDebt) >= maxBorrow) {
             diff = (x256 - firstYearDebt - secondYearDebt) - maxBorrow;
@@ -847,10 +847,10 @@ contract NFTStakingAndBorrowingTest is Test {
         uint256 x256 = (uint256(x) + uint256(2)) * 1e18;
         uint256 debt = nftStaking.calculateDebt(x256, START_TIME, START_TIME + YEAR_IN_SECONDS);
         uint256 diff = 0;
-        if ((x256 + x256 * PROTOCOL_YIELD / UNIT) >= debt) {
-            diff = (x256 + x256 * PROTOCOL_YIELD / UNIT) - debt;
+        if ((x256 + x256 * PROTOCOL_RATE / UNIT) >= debt) {
+            diff = (x256 + x256 * PROTOCOL_RATE / UNIT) - debt;
         } else {
-            diff = debt - (x256 + x256 * PROTOCOL_YIELD / UNIT);
+            diff = debt - (x256 + x256 * PROTOCOL_RATE / UNIT);
         }
 
         assertGt(debt / 3e16, diff);
@@ -860,8 +860,8 @@ contract NFTStakingAndBorrowingTest is Test {
         uint256 x256 = (uint256(x) + uint256(2)) * 1e18;
         uint256 debt = nftStaking.calculateDebt(x256, START_TIME, START_TIME + 2 * YEAR_IN_SECONDS);
         uint256 diff = 0;
-        uint256 firstYearDebt = x256 + x256 * PROTOCOL_YIELD / UNIT;
-        uint256 secondYearDebt = firstYearDebt + firstYearDebt * PROTOCOL_YIELD / UNIT;
+        uint256 firstYearDebt = x256 + x256 * PROTOCOL_RATE / UNIT;
+        uint256 secondYearDebt = firstYearDebt + firstYearDebt * PROTOCOL_RATE / UNIT;
         if (secondYearDebt >= debt) {
             diff = secondYearDebt - debt;
         } else {
@@ -897,8 +897,8 @@ contract NFTStakingAndBorrowingTest is Test {
         debt = nftStaking.calculateDebt(x256, START_TIME, START_TIME + boundedInterval);
 
         // Linear approximation for comparison
-        // Linear debt = principal + (principal * protocolYield * time / YEAR_IN_SECONDS)
-        uint256 linearDebt = x256 + (x256 / UNIT) * PROTOCOL_YIELD * boundedInterval / YEAR_IN_SECONDS;
+        // Linear debt = principal + (principal * protocolRate * time / YEAR_IN_SECONDS)
+        uint256 linearDebt = x256 + (x256 / UNIT) * PROTOCOL_RATE * boundedInterval / YEAR_IN_SECONDS;
 
         assertGe(debt, linearDebt / 1e18, "Debt should be at least as large as linear approximation");
         assertGt(debt, x256 / 1e18, "Debt should increase over time");
@@ -930,10 +930,10 @@ contract NFTStakingAndBorrowingTest is Test {
     function testFuzzMaxBorrow1Month(uint128 x) public view {
         uint256 x256 = (uint256(x) + uint256(2)) * 1e18;
         uint256 monthInSeconds = YEAR_IN_SECONDS / 12;
-        uint256 monthYield = 9488792934583 * UNIT / (BIPS * 1e11); // (1.12)**(1/12)
+        uint256 monthRate = 9488792934583 * UNIT / (BIPS * 1e11); // (1.12)**(1/12)
         uint256 maxBorrow = nftStaking.calculateMaxBorrow(x256, START_TIME, START_TIME + monthInSeconds);
         uint256 diff = 0;
-        uint256 monthDebt = maxBorrow * monthYield / UNIT;
+        uint256 monthDebt = maxBorrow * monthRate / UNIT;
 
         if ((x256 - monthDebt) >= maxBorrow) {
             diff = (x256 - monthDebt) - maxBorrow;
@@ -947,11 +947,11 @@ contract NFTStakingAndBorrowingTest is Test {
     function testFuzzMaxBorrow2Months(uint128 x) public view {
         uint256 x256 = (uint256(x) + uint256(2)) * 1e18;
         uint256 monthInSeconds = YEAR_IN_SECONDS / 12;
-        uint256 monthYield = 9488792934583 * UNIT / (BIPS * 1e11); // (1.12)**(1/12)
+        uint256 monthRate = 9488792934583 * UNIT / (BIPS * 1e11); // (1.12)**(1/12)
         uint256 maxBorrow = nftStaking.calculateMaxBorrow(x256, START_TIME, START_TIME + 2 * monthInSeconds);
         uint256 diff = 0;
-        uint256 firstMonthDebt = maxBorrow * monthYield / UNIT;
-        uint256 secondMonthDebt = (maxBorrow + firstMonthDebt) * monthYield / UNIT;
+        uint256 firstMonthDebt = maxBorrow * monthRate / UNIT;
+        uint256 secondMonthDebt = (maxBorrow + firstMonthDebt) * monthRate / UNIT;
 
         if ((x256 - firstMonthDebt - secondMonthDebt) >= maxBorrow) {
             diff = (x256 - firstMonthDebt - secondMonthDebt) - maxBorrow;
@@ -965,10 +965,10 @@ contract NFTStakingAndBorrowingTest is Test {
     function testFuzzDebt1Month(uint128 x) public view {
         uint256 x256 = (uint256(x) + uint256(2)) * 1e18;
         uint256 monthInSeconds = YEAR_IN_SECONDS / 12;
-        uint256 monthYield = 9488792934583 * UNIT / (BIPS * 1e11); // (1.12)**(1/12)
+        uint256 monthRate = 9488792934583 * UNIT / (BIPS * 1e11); // (1.12)**(1/12)
         uint256 debt = nftStaking.calculateDebt(x256, START_TIME, START_TIME + monthInSeconds);
         uint256 diff = 0;
-        uint256 firstMonthDebt = x256 + x256 * monthYield / UNIT;
+        uint256 firstMonthDebt = x256 + x256 * monthRate / UNIT;
         if (firstMonthDebt >= debt) {
             diff = firstMonthDebt - debt;
         } else {
@@ -981,11 +981,11 @@ contract NFTStakingAndBorrowingTest is Test {
     function testFuzzDebt2Month(uint128 x) public view {
         uint256 x256 = (uint256(x) + uint256(2)) * 1e18;
         uint256 monthInSeconds = YEAR_IN_SECONDS / 12;
-        uint256 monthYield = 9488792934583 * UNIT / (BIPS * 1e11); // (1.12)**(1/12)
+        uint256 monthRate = 9488792934583 * UNIT / (BIPS * 1e11); // (1.12)**(1/12)
         uint256 debt = nftStaking.calculateDebt(x256, START_TIME, START_TIME + 2 * monthInSeconds);
         uint256 diff = 0;
-        uint256 firstMonthDebt = x256 + x256 * monthYield / UNIT;
-        uint256 secondMonthDebt = firstMonthDebt + firstMonthDebt * monthYield / UNIT;
+        uint256 firstMonthDebt = x256 + x256 * monthRate / UNIT;
+        uint256 secondMonthDebt = firstMonthDebt + firstMonthDebt * monthRate / UNIT;
         if (secondMonthDebt >= debt) {
             diff = secondMonthDebt - debt;
         } else {
@@ -1198,26 +1198,26 @@ contract NFTStakingAndBorrowingTest is Test {
         vm.startPrank(owner);
 
         // Initial values
-        uint256 initialProtocolYield = 1200; // 12% in BPS
+        uint256 initialProtocolRate = 1200; // 12% in BPS
         uint256 initialSafetyFee = 500; // 5% in BPS
         uint256 initialLiquidationTimeWindow = 45 days;
 
         // Check initial values
-        assertEq(nftStaking.getProtocolYield(), initialProtocolYield * 1e18 / 1e4);
+        assertEq(nftStaking.getProtocolRate(), initialProtocolRate * 1e18 / 1e4);
         assertEq(nftStaking.getSafetyFee(), initialSafetyFee * 1e18 / 1e4);
         assertEq(nftStaking.getLiquidationTimeWindow(), initialLiquidationTimeWindow);
 
         // Change values
-        uint256 newProtocolYield = 1000; // 10% in BPS
+        uint256 newProtocolRate = 1000; // 10% in BPS
         uint256 newSafetyFee = 300; // 3% in BPS
         uint256 newLiquidationTimeWindow = 30 days;
 
-        nftStaking.setProtocolYield(newProtocolYield);
+        nftStaking.setProtocolRate(newProtocolRate);
         nftStaking.setSafetyFee(newSafetyFee);
         nftStaking.setLiquidationTimeWindow(newLiquidationTimeWindow);
 
         // Check updated values
-        assertEq(nftStaking.getProtocolYield(), newProtocolYield * 1e18 / 1e4);
+        assertEq(nftStaking.getProtocolRate(), newProtocolRate * 1e18 / 1e4);
         assertEq(nftStaking.getSafetyFee(), newSafetyFee * 1e18 / 1e4);
         assertEq(nftStaking.getLiquidationTimeWindow(), newLiquidationTimeWindow);
 

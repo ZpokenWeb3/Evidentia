@@ -206,7 +206,7 @@ contract NFTStakingAndBorrowingNegativeTest is Test {
 
         vm.prank(client1);
         vm.expectRevert();
-        nftStaking.setProtocolYield(1200);
+        nftStaking.setProtocolRate(1200);
 
         vm.prank(client1);
         vm.expectRevert();

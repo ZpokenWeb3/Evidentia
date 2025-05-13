@@ -55,8 +55,8 @@ contract NFTStakingAndBorrowing is
         mapping(address => UserStats) userStats;
         /// @dev Mapping tracks staked NFTs: user => nftContract => tokenId => amount.
         mapping(address => mapping(address => mapping(uint256 => uint256))) userNFTs;
-        /// @dev Annual yield rate applied to borrowed amounts, expressed with UNIT precision (e.g., 12% is 1200 * UNIT / BPS).
-        uint256 protocolYield;
+        /// @dev Annual protocol rate applied to borrowed amounts, expressed with UNIT precision (e.g., 12% is 1200 * UNIT / BPS).
+        uint256 protocolRate;
         /// @dev Safety fee deducted from NFT value when calculating collateral, expressed with UNIT precision (e.g., 5% is 500 * UNIT / BPS).
         uint256 safetyFee;
         /// @dev Time window before NFT expiration during which liquidation is possible.
@@ -122,7 +122,7 @@ contract NFTStakingAndBorrowing is
     uint256 internal constant YEAR_IN_SECONDS = 31536000;
     /// @dev Basis unit for fixed-point math (1e18).
     uint256 internal constant UNIT = 1e18;
-    /// @dev Basis points denominator (10000), used for fees and yields.
+    /// @dev Basis points denominator (10000), used for fees and rates.
     uint256 internal constant BPS = 1e4;
 
     /// @notice Emitted when a user stakes NFTs.
@@ -177,7 +177,7 @@ contract NFTStakingAndBorrowing is
         // Initialize storage
         Layout storage $ = _getStorage();
         $.stableToken = IMintableERC20(_stableToken);
-        $.protocolYield = 1200 * UNIT / BPS;
+        $.protocolRate = 1200 * UNIT / BPS;
         $.safetyFee = 500 * UNIT / BPS;
         $.liquidationTimeWindow = 45 days;
     }
@@ -207,13 +207,13 @@ contract NFTStakingAndBorrowing is
     }
 
     /**
-     * @notice Sets the annual protocol yield rate.
+     * @notice Sets the annual protocol rate.
      * @dev Only callable by the contract owner. Input is in Basis Points (BPS).
-     * @param _protocolYieldInBPS The new yield rate in BPS (e.g., 1200 for 12%).
+     * @param _protocolRateInBPS The new protocol rate in BPS (e.g., 1200 for 12%).
      */
-    function setProtocolYield(uint256 _protocolYieldInBPS) external onlyOwner {
+    function setProtocolRate(uint256 _protocolRateInBPS) external onlyOwner {
         Layout storage $ = _getStorage();
-        $.protocolYield = _protocolYieldInBPS * UNIT / BPS;
+        $.protocolRate = _protocolRateInBPS * UNIT / BPS;
     }
 
     /**
@@ -302,7 +302,7 @@ contract NFTStakingAndBorrowing is
 
     /**
      * @notice Calculates the maximum amount that can be borrowed against a given collateral value (`totalAmount`) considering the time until NFT expiration.
-     * @dev This represents the present value of the future collateral value, discounted by the protocol yield.
+     * @dev This represents the present value of the future collateral value, discounted by the protocol rate.
      * Uses logarithmic and exponential functions for calculation via PRBMath UD60x18.
      * @param totalAmount The value of the collateral (e.g., nominal value after safety fee).
      * @param fromTime The timestamp from which to calculate the present value (e.g., `block.timestamp`).
@@ -323,7 +323,7 @@ contract NFTStakingAndBorrowing is
         totalAmount = totalAmount * UNIT;
         UD60x18 timeDelta = ud(toTime - fromTime);
         UD60x18 maxBorrowLog2 =
-            ud(totalAmount).log2() - (timeDelta / ud(YEAR_IN_SECONDS)) * (ud(UNIT + $.protocolYield)).log2();
+            ud(totalAmount).log2() - (timeDelta / ud(YEAR_IN_SECONDS)) * (ud(UNIT + $.protocolRate)).log2();
 
         return maxBorrowLog2.exp2().intoUint256() / UNIT;
     }
@@ -346,7 +346,7 @@ contract NFTStakingAndBorrowing is
         }
         UD60x18 timeDelta = ud(toTime - fromTime);
         UD60x18 debtLog2 =
-            (timeDelta / ud(YEAR_IN_SECONDS)) * (ud(UNIT + $.protocolYield)).log2() + ud(borrowedAmount).log2();
+            (timeDelta / ud(YEAR_IN_SECONDS)) * (ud(UNIT + $.protocolRate)).log2() + ud(borrowedAmount).log2();
 
         return debtLog2.exp2().intoUint256() / UNIT;
     }
@@ -987,12 +987,12 @@ contract NFTStakingAndBorrowing is
     }
 
     /**
-     * @notice Returns the current protocol yield rate.
-     * @return uint256 The annual yield rate expressed with UNIT precision.
+     * @notice Returns the current protocol rate.
+     * @return uint256 The annual protocol rate expressed with UNIT precision.
      */
-    function getProtocolYield() external view returns (uint256) {
+    function getProtocolRate() external view returns (uint256) {
         Layout storage $ = _getStorage();
-        return $.protocolYield;
+        return $.protocolRate;
     }
 
     /**
