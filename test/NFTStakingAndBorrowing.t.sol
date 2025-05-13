@@ -1280,8 +1280,8 @@ contract NFTStakingAndBorrowingTest is Test {
 
     function testNameSpace() public pure {
         assertEq(
-            keccak256(abi.encode(uint256(keccak256("nft.staking.and.borrowing.storage")) - 1)) & ~bytes32(uint256(0xff)),
-            0x9a8eb021283f43dd2cabdbb84bb028df4a714b0bdf8b9bbf43c63e73140ef000
+            keccak256(abi.encode(uint256(keccak256("NFTStakingAndBorrowing.storage")) - 1)) & ~bytes32(uint256(0xff)),
+            0x6a441442997d548c1da10218ea0e91c439ff7c57f962abbe6c4b985a11b4e500
         );
     }
 

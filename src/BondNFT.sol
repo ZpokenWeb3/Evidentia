@@ -23,6 +23,9 @@ contract BondNFT is
     ReentrancyGuardUpgradeable,
     UUPSUpgradeable
 {
+    // keccak256(abi.encode(uint256(keccak256("BondNFT.storage")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant STORAGE_LOCATION = 0xffef8b0e9aa2c483e819ac9d28d3b5f004d7e8fbb6ec97cdc9221e749673c000;
+
     /**
      * @dev Struct to hold metadata for each bond type (token ID).
      * @param value The face value or principal amount of the bond.
@@ -40,10 +43,10 @@ contract BondNFT is
     }
 
     /**
-     * @custom:storage-location erc7201:bond.nft.storage
-     * @dev Struct to hold all storage variables to prevent storage collisions during upgrades.
+     * @dev Storage struct for ERC7201 namespace.
      */
-    struct Layout {
+    /// @custom:storage-location erc7201:BondNFT.storage
+    struct BondNFTStorage {
         /**
          * @dev Mapping from token ID to its Metadata struct.
          */
@@ -68,13 +71,10 @@ contract BondNFT is
         string symbol;
     }
 
-    // keccak256(abi.encode(uint256(keccak256("bond.nft.storage")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant STORAGE_LOCATION = 0x57deeb5d263ad500cb3646f0c17a9a963c02d1d301632922b135588e514fb000;
-
     /**
-     * @dev Private function to retrieve storage layout.
+     * @dev Retrieves the storage slot for the contract.
      */
-    function _getStorage() internal pure returns (Layout storage $) {
+    function _getBondNFTStorage() internal pure returns (BondNFTStorage storage $) {
         assembly {
             $.slot := STORAGE_LOCATION
         }
@@ -127,7 +127,7 @@ contract BondNFT is
         __ReentrancyGuard_init();
         __UUPSUpgradeable_init();
 
-        Layout storage $ = _getStorage();
+        BondNFTStorage storage $ = _getBondNFTStorage();
         $.name = "BondNFT";
         $.symbol = "BNFT";
     }
@@ -148,7 +148,8 @@ contract BondNFT is
      * @param _metadata The Metadata struct containing the details.
      */
     function setMetaData(uint256 id, Metadata memory _metadata) external onlyOwner {
-        _getStorage().metadata[id] = _metadata;
+        BondNFTStorage storage $ = _getBondNFTStorage();
+        $.metadata[id] = _metadata;
         emit MetadataUpdated(
             id,
             _metadata.value,
@@ -165,7 +166,8 @@ contract BondNFT is
      * @return Metadata struct containing the bond details.
      */
     function getMetaData(uint256 id) external view returns (Metadata memory) {
-        return _getStorage().metadata[id];
+        BondNFTStorage storage $ = _getBondNFTStorage();
+        return $.metadata[id];
     }
 
     /**
@@ -176,7 +178,7 @@ contract BondNFT is
      * @param allowedAmount The total number of tokens the user is allowed to mint for this ID.
      */
     function setAllowedMints(address user, uint256 id, uint256 allowedAmount) external onlyOwner {
-        Layout storage $ = _getStorage();
+        BondNFTStorage storage $ = _getBondNFTStorage();
         $.allowedMints[user][id] = allowedAmount;
         emit MintAllowanceSet(user, id, allowedAmount);
     }
@@ -193,7 +195,7 @@ contract BondNFT is
      * @param data Additional data to pass to the mint function (optional).
      */
     function mint(uint256 id, uint256 amount, bytes memory data) public nonReentrant {
-        Layout storage $ = _getStorage();
+        BondNFTStorage storage $ = _getBondNFTStorage();
         if ($.allowedMints[msg.sender][id] == 0) revert NftMintingNotAllowed();
         if ($.mintedPerUser[msg.sender][id] + amount > $.allowedMints[msg.sender][id]) {
             revert NftMintingLimitExceeded($.allowedMints[msg.sender][id] - $.mintedPerUser[msg.sender][id]);
@@ -216,7 +218,7 @@ contract BondNFT is
      * @param data Additional data to pass to the batch mint function (optional).
      */
     function mintBatch(uint256[] memory ids, uint256[] memory amounts, bytes memory data) public nonReentrant {
-        Layout storage $ = _getStorage();
+        BondNFTStorage storage $ = _getBondNFTStorage();
         // Check allowances for all requested mints first
         for (uint256 i = 0; i < ids.length; i++) {
             uint256 id = ids[i];
@@ -274,7 +276,7 @@ contract BondNFT is
      * @return The number of tokens the user can still mint for the specified ID.
      */
     function remainingMints(address user, uint256 id) external view returns (uint256) {
-        Layout storage $ = _getStorage();
+        BondNFTStorage storage $ = _getBondNFTStorage();
         return $.allowedMints[user][id] - $.mintedPerUser[user][id];
     }
 
@@ -285,20 +287,23 @@ contract BondNFT is
      * @return The total number of tokens the user is allowed to mint for the specified ID.
      */
     function allowedMints(address user, uint256 id) external view returns (uint256) {
-        return _getStorage().allowedMints[user][id];
+        BondNFTStorage storage $ = _getBondNFTStorage();
+        return $.allowedMints[user][id];
     }
 
     /**
      * @dev Returns the name of the token collection.
      */
     function name() external view returns (string memory) {
-        return _getStorage().name;
+        BondNFTStorage storage $ = _getBondNFTStorage();
+        return $.name;
     }
 
     /**
      * @dev Returns the symbol of the token collection.
      */
     function symbol() external view returns (string memory) {
-        return _getStorage().symbol;
+        BondNFTStorage storage $ = _getBondNFTStorage();
+        return $.symbol;
     }
 }

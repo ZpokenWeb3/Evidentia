@@ -31,12 +31,13 @@ contract StableCoinsStaking is ReentrancyGuardUpgradeable, UUPSUpgradeable, Acce
     // keccak256(abi.encode(uint256(keccak256("StableCoinsStaking.storage")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant STORAGE_LOCATION = 0x5ad9b57132bffc89e46deaf23730f9173da95952e39a655cdb65df9a44414600;
 
-    /// @notice Role identifier for the admin who can upgrade the contract.
+    /// @dev Role identifier for the admin who can upgrade the contract.
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
     /**
      * @dev Storage struct for ERC7201 namespace.
      */
+    /// @custom:storage-location erc7201:StableCoinsStaking.storage
     struct StableCoinsStakingStorage {
         IERC20 stakingToken;
         IExternalRewardContract externalRewardContract;
@@ -61,22 +62,22 @@ contract StableCoinsStaking is ReentrancyGuardUpgradeable, UUPSUpgradeable, Acce
     uint256 internal constant YEAR_IN_SECONDS = 31536000;
 
     /**
-     * @notice Emitted when a user stakes tokens.
+     * @dev Emitted when a user stakes tokens.
      */
     event Staked(address indexed user, uint256 amount);
 
     /**
-     * @notice Emitted when a user withdraws staked tokens.
+     * @dev Emitted when a user withdraws staked tokens.
      */
     event Withdrawn(address indexed user, uint256 amount);
 
     /**
-     * @notice Emitted when a user claims their earned rewards.
+     * @dev Emitted when a user claims their earned rewards.
      */
     event RewardClaimed(address indexed user, uint256 reward);
 
     /**
-     * @notice Errors
+     * @dev Errors
      */
     error ZeroAmountNotAllowed();
     error NotEnoughStaked(uint256 staked);
@@ -84,9 +85,9 @@ contract StableCoinsStaking is ReentrancyGuardUpgradeable, UUPSUpgradeable, Acce
     error NotEnoughBalance();
 
     /**
-     * @dev Retrieve the storage slot for the contract.
+     * @dev Retrieves the storage slot for the contract.
      */
-    function _getStableCoinsStakingStorage() private pure returns (StableCoinsStakingStorage storage $) {
+    function _getStableCoinsStakingStorage() internal pure returns (StableCoinsStakingStorage storage $) {
         assembly {
             $.slot := STORAGE_LOCATION
         }
@@ -112,7 +113,7 @@ contract StableCoinsStaking is ReentrancyGuardUpgradeable, UUPSUpgradeable, Acce
     }
 
     /**
-     * @dev Authorize upgrades (required for UUPS).
+     * @dev Authorizes upgrades (required for UUPS).
      * Only callable by the admin (holder of ADMIN_ROLE).
      */
     function _authorizeUpgrade(address newImplementation) internal override onlyRole(ADMIN_ROLE) {}
@@ -135,7 +136,7 @@ contract StableCoinsStaking is ReentrancyGuardUpgradeable, UUPSUpgradeable, Acce
     }
 
     /**
-     * @notice Allows a user to stake a specified amount of staking tokens.
+     * @dev Allows a user to stake a specified amount of staking tokens.
      */
     function stake(uint256 _amount) external nonReentrant updateReward(msg.sender) {
         StableCoinsStakingStorage storage $ = _getStableCoinsStakingStorage();
@@ -152,7 +153,7 @@ contract StableCoinsStaking is ReentrancyGuardUpgradeable, UUPSUpgradeable, Acce
     }
 
     /**
-     * @notice Allows a user (sender) to stake tokens on behalf of another address.
+     * @dev Allows a user (sender) to stake tokens on behalf of another address.
      */
     function stakeOnBehalfOf(uint256 _amount, address onBehalfOf) external nonReentrant updateReward(onBehalfOf) {
         StableCoinsStakingStorage storage $ = _getStableCoinsStakingStorage();
@@ -169,7 +170,7 @@ contract StableCoinsStaking is ReentrancyGuardUpgradeable, UUPSUpgradeable, Acce
     }
 
     /**
-     * @notice Allows a user to withdraw a specified amount of their staked tokens.
+     * @dev Allows a user to withdraw a specified amount of their staked tokens.
      */
     function withdraw(uint256 _amount) external nonReentrant updateReward(msg.sender) {
         StableCoinsStakingStorage storage $ = _getStableCoinsStakingStorage();
@@ -188,7 +189,7 @@ contract StableCoinsStaking is ReentrancyGuardUpgradeable, UUPSUpgradeable, Acce
     }
 
     /**
-     * @notice Allows a user to claim their accumulated rewards.
+     * @dev Allows a user to claim their accumulated rewards.
      */
     function claimRewards() external nonReentrant updateReward(msg.sender) {
         StableCoinsStakingStorage storage $ = _getStableCoinsStakingStorage();
@@ -205,7 +206,7 @@ contract StableCoinsStaking is ReentrancyGuardUpgradeable, UUPSUpgradeable, Acce
     }
 
     /**
-     * @notice Calculates the current reward rate per staked token.
+     * @dev Calculates the current reward rate per staked token.
      */
     function _rewardPerToken() internal returns (uint256) {
         StableCoinsStakingStorage storage $ = _getStableCoinsStakingStorage();
@@ -219,7 +220,7 @@ contract StableCoinsStaking is ReentrancyGuardUpgradeable, UUPSUpgradeable, Acce
     }
 
     /**
-     * @notice Calculates the amount of rewards earned by a specific staker since their last update.
+     * @dev Calculates the amount of rewards earned by a specific staker since their last update.
      */
     function _earned(address _staker) internal view returns (uint256) {
         StableCoinsStakingStorage storage $ = _getStableCoinsStakingStorage();
@@ -229,7 +230,7 @@ contract StableCoinsStaking is ReentrancyGuardUpgradeable, UUPSUpgradeable, Acce
     }
 
     /**
-     * @notice Provides a view of the pending rewards for a specific staker without triggering any state changes.
+     * @dev Provides a view of the pending rewards for a specific staker without triggering any state changes.
      */
     function pendingRewards(address _staker) public view returns (uint256) {
         StableCoinsStakingStorage storage $ = _getStableCoinsStakingStorage();
@@ -246,7 +247,7 @@ contract StableCoinsStaking is ReentrancyGuardUpgradeable, UUPSUpgradeable, Acce
     }
 
     /**
-     * @notice Get the staking token address.
+     * @dev Gets the staking token address.
      */
     function stakingToken() external view returns (address) {
         StableCoinsStakingStorage storage $ = _getStableCoinsStakingStorage();
@@ -254,7 +255,7 @@ contract StableCoinsStaking is ReentrancyGuardUpgradeable, UUPSUpgradeable, Acce
     }
 
     /**
-     * @notice Get the external reward contract address.
+     * @dev Gets the external reward contract address.
      */
     function externalRewardContract() external view returns (address) {
         StableCoinsStakingStorage storage $ = _getStableCoinsStakingStorage();
@@ -262,7 +263,7 @@ contract StableCoinsStaking is ReentrancyGuardUpgradeable, UUPSUpgradeable, Acce
     }
 
     /**
-     * @notice Get the total amount of tokens currently staked.
+     * @dev Gets the total amount of tokens currently staked.
      */
     function totalStaked() external view returns (uint256) {
         StableCoinsStakingStorage storage $ = _getStableCoinsStakingStorage();
@@ -270,7 +271,7 @@ contract StableCoinsStaking is ReentrancyGuardUpgradeable, UUPSUpgradeable, Acce
     }
 
     /**
-     * @notice Get the reward per token stored.
+     * @dev Gets the reward per token stored.
      */
     function rewardPerTokenStored() external view returns (uint256) {
         StableCoinsStakingStorage storage $ = _getStableCoinsStakingStorage();
@@ -278,7 +279,7 @@ contract StableCoinsStaking is ReentrancyGuardUpgradeable, UUPSUpgradeable, Acce
     }
 
     /**
-     * @notice Get the last update timestamp.
+     * @dev Gets the last update timestamp.
      */
     function lastUpdateTime() external view returns (uint256) {
         StableCoinsStakingStorage storage $ = _getStableCoinsStakingStorage();
@@ -286,7 +287,7 @@ contract StableCoinsStaking is ReentrancyGuardUpgradeable, UUPSUpgradeable, Acce
     }
 
     /**
-     * @notice Get the staker's information.
+     * @dev Gets the staker's information.
      */
     function stakers(address staker) external view returns (StakerInfo memory) {
         StableCoinsStakingStorage storage $ = _getStableCoinsStakingStorage();
