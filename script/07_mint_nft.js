@@ -45,11 +45,11 @@ async function mintNft() {
     const provider = new ethers.JsonRpcProvider(rpcUrl);
     const wallet = new ethers.Wallet(privateKey, provider);
 
-    const contract = new ethers.Contract(bondNFTAddress, contractABI, wallet);
+    const bondNFT = new ethers.Contract(bondNFTAddress, contractABI, wallet);
 
     console.log(`Minting ${mintAmountInt} tokens for tokenId ${tokenId}...`);
     // Mint to the msg.sender
-    const tx = await contract.mint(tokenId, mintAmountInt, ethers.toUtf8Bytes(""));
+    const tx = await bondNFT.mint(tokenId, mintAmountInt, ethers.toUtf8Bytes(""));
     console.log(`Transaction hash: ${tx.hash}`);
 
     const receipt = await tx.wait();

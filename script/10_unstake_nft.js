@@ -3,20 +3,20 @@ const fs = require('fs');
 require('dotenv').config();
 
 // Environment variables
-const contractAddress = process.env.NFT_STAKING_PROXY_ADDRESS; // NftStakingAndBorrowing
+const nftStakingAndBorrowingAddress = process.env.NFT_STAKING_PROXY_ADDRESS; // NftStakingAndBorrowing
 const bondNFTAddress = process.env.BOND_NFT_PROXY_ADDRESS; // BondNFT
 const contractABIPath = './script/ABI/NFTStakingAndBorrowing.json';
 const privateKey = process.env.PRIVATE_KEY;
 const rpcUrl = process.env.SEPOLIA_RPC_URL;
 
 // Validate environment variables
-if (!contractAddress || !bondNFTAddress || !privateKey || !rpcUrl) {
+if (!nftStakingAndBorrowingAddress || !bondNFTAddress || !privateKey || !rpcUrl) {
   console.error('Error: Missing required environment variables (NFT_STAKING_PROXY_ADDRESS, BOND_NFT_PROXY_ADDRESS, PRIVATE_KEY, SEPOLIA_RPC_URL)');
   process.exit(1);
 }
 
 // Validate addresses
-if (!ethers.isAddress(contractAddress)) {
+if (!ethers.isAddress(nftStakingAndBorrowingAddress)) {
   console.error('Error: NFT_STAKING_PROXY_ADDRESS must be a valid Ethereum address');
   process.exit(1);
 }
@@ -50,11 +50,11 @@ async function unstakeNft() {
     const provider = new ethers.JsonRpcProvider(rpcUrl);
     const wallet = new ethers.Wallet(privateKey, provider);
 
-    const contract = new ethers.Contract(contractAddress, contractABI, wallet);
+    const nftStakingAndBorrowing = new ethers.Contract(nftStakingAndBorrowingAddress, contractABI, wallet);
 
     console.log(`Unstaking ${amountInt} NFTs for tokenId ${tokenId} with BondNFT address ${bondNFTAddress}...`);
 
-    const tx = await contract.unstakeNFT(bondNFTAddress, tokenId, amountInt);
+    const tx = await nftStakingAndBorrowing.unstakeNFT(bondNFTAddress, tokenId, amountInt);
     console.log(`Transaction hash: ${tx.hash}`);
 
     const receipt = await tx.wait();

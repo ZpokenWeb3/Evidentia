@@ -121,7 +121,7 @@ async function setMetadata() {
     // Initialize Ethereum components
     const provider = new ethers.JsonRpcProvider(rpcUrl);
     const wallet = new ethers.Wallet(privateKey, provider);
-    const contract = new ethers.Contract(bondNFTAddress, contractABI, wallet);
+    const bondNFT = new ethers.Contract(bondNFTAddress, contractABI, wallet);
 
     // Prepare metadata
     const metadata = {
@@ -147,7 +147,7 @@ async function setMetadata() {
 
     // Execute transaction
     console.log('Sending transaction...');
-    const tx = await contract.setMetaData(tokenId, metadata);
+    const tx = await bondNFT.setMetaData(tokenId, metadata);
     console.log(`Transaction broadcasted: ${tx.hash}`);
     
     const receipt = await tx.wait();

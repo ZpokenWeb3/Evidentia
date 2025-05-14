@@ -1,12 +1,22 @@
 const { ethers } = require('ethers');
 const fs = require('fs');
-require('dotenv').config();
+const path = require('path');
 
-// Environment variables
+// Determine which env file to use based on NODE_ENV
+const network = process.env.NODE_ENV || 'sepolia';
+const envFile = network === 'mainnet' ? '.env_mainnet' : '.env';
+
+// Load the appropriate env file
+require('dotenv').config({ path: path.resolve(process.cwd(), envFile) });
+
+// Contract configuration
 const bondNFTAddress = process.env.BOND_NFT_PROXY_ADDRESS; // BondNFT
 const contractABIPath = './script/ABI/BondNFT.json';
+
+// Wallet and provider configuration
 const privateKey = process.env.PRIVATE_KEY;
-const rpcUrl = process.env.SEPOLIA_RPC_URL;
+// Use the appropriate RPC URL based on the network
+const rpcUrl = network === 'mainnet' ? process.env.MAINNET_RPC_URL : process.env.SEPOLIA_RPC_URL;
 
 // Validate environment variables
 if (!bondNFTAddress || !privateKey || !rpcUrl) {
@@ -51,11 +61,11 @@ async function mintAllowance() {
     const provider = new ethers.JsonRpcProvider(rpcUrl);
     const wallet = new ethers.Wallet(privateKey, provider);
 
-    const contract = new ethers.Contract(bondNFTAddress, contractABI, wallet);
+    const bondNFT = new ethers.Contract(bondNFTAddress, contractABI, wallet);
 
     console.log(`Setting allowance of ${mintAmountInt} tokens for tokenId ${tokenId} to address ${allowToAddress}...`);
 
-    const tx = await contract.setAllowedMints(allowToAddress, tokenId, mintAmountInt);
+    const tx = await bondNFT.setAllowedMints(allowToAddress, tokenId, mintAmountInt);
     console.log(`Transaction hash: ${tx.hash}`);
 
     const receipt = await tx.wait();

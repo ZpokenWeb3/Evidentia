@@ -9,7 +9,7 @@ const envFile = network === 'mainnet' ? '.env_mainnet' : '.env';
 // Load the appropriate env file
 require('dotenv').config({ path: path.resolve(process.cwd(), envFile) });
 
-const contractAddress = process.env.NFT_STAKING_PROXY_ADDRESS; // NftStakingAndBorrowing
+const nftStakingAndBorrowingAddress = process.env.NFT_STAKING_PROXY_ADDRESS; // NftStakingAndBorrowing
 const contractABIPath = './script/ABI/NFTStakingAndBorrowing.json';
 
 const privateKey = process.env.PRIVATE_KEY;
@@ -23,12 +23,12 @@ async function whitelistNft() {
     const provider = new ethers.JsonRpcProvider(rpcUrl);
     const wallet = new ethers.Wallet(privateKey, provider);
 
-    const contract = new ethers.Contract(contractAddress, contractABI, wallet);
+    const nftStakingAndBorrowing = new ethers.Contract(nftStakingAndBorrowingAddress, contractABI, wallet);
 
-    const bondNFT = process.env.BOND_NFT_PROXY_ADDRESS;
+    const bondNFTAddress = process.env.BOND_NFT_PROXY_ADDRESS;
 
     console.log('Whitelisting NFT contract...');
-    const tx = await contract.whitelistNFT(bondNFT, true);
+    const tx = await nftStakingAndBorrowing.whitelistNFT(bondNFTAddress, true);
     console.log(`Transaction hash: ${tx.hash}`);
 
     const receipt = await tx.wait();
