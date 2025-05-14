@@ -2,7 +2,7 @@ const { ethers, MaxInt256 } = require('ethers');
 const fs = require('fs');
 require('dotenv').config();
 
-const contractAddress = process.env.STABLES_PROXY_ADDRESS; // StableBondCoins
+const stableBondCoinsAddress = process.env.STABLES_PROXY_ADDRESS; // StableBondCoins
 const contractABIPath = './script/ABI/StableBondCoins.json';
 
 const privateKey = process.env.PRIVATE_KEY;
@@ -17,12 +17,12 @@ async function approveStables() {
     const provider = new ethers.JsonRpcProvider(rpcUrl);
     const wallet = new ethers.Wallet(privateKey, provider);
 
-    const contract = new ethers.Contract(contractAddress, contractABI, wallet);
+    const stableBondCoins = new ethers.Contract(stableBondCoinsAddress, contractABI, wallet);
 
     console.log('Approving Stables...');
     const amount = MaxInt256;
     const spender = process.env.STABLES_STAKING_PROXY_ADDRESS; // StableCoinsStaking
-    const tx = await contract.approve(spender, amount, { gasLimit });
+    const tx = await stableBondCoins.approve(spender, amount, { gasLimit });
     console.log(`Transaction hash: ${tx.hash}`);
 
     const receipt = await tx.wait();

@@ -58,12 +58,14 @@ node script/05b_set_stables_staking.js
 
 ```bash
 node script/05c_set_metadata.js [options]
+node script/05c_set_metadata.js -i DD.MM.YYYY -e DD.MM.YYYY -v VALUE -c COUPON -n ISIN
 ```
 
 Example:
 
 ```bash
 node script/05c_set_metadata.js -i 29.04.2025 -e 19.08.2026 -v 1000_000000 -c 81_650000 -n UA4000235378
+NODE_ENV=mainnet node script/05c_set_metadata.js -i 29.04.2025 -e 19.08.2026 -v 1000_000000 -c 81_650000 -n UA4000235378
 ```
 
 # Automated Deployment
@@ -88,6 +90,7 @@ Example:
 
 ```bash
 node script/06_mint_allowance.js 0xC85906530Df2D4227f713CFCDD08085309A4f821 75955146522550863186049403197281544413786813629915328080343312216854220103147 1000
+NODE_ENV=mainnet node script/06_mint_allowance.js 0x2e990d5cea3e2748257287acb0d70a50e6f31f33 75955146522550863186049403197281544413786813629915328080343312216854220103147 1000
 ```
 
 ## Mint NFT Tokens
