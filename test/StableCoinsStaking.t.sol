@@ -582,4 +582,55 @@ contract StakingStablesTest is Test {
         assertEq(instance2.getInitializedVersion(), 2, "Version should be updated to 2");
         assertEq(instance2.newFeature(), "V2 Feature", "Should use V2 implementation");
     }
+
+    function testRewardsManipulation() public {
+        owner = address(1);
+        address client1 = address(2);
+        address client2 = address(3);
+        address client3 = address(4);
+
+        vm.startPrank(owner);
+        bondNFT.setAllowedMints(client1, 1, 30);
+        bondNFT.setAllowedMints(client2, 2, 10);
+        bondNFT.setAllowedMints(client3, 3, 2000);
+        vm.stopPrank();
+
+        vm.startPrank(client1);
+        bondNFT.mint(1, 30, "");
+        bondNFT.setApprovalForAll(address(nftStaking), true);
+        nftStaking.stakeNFT(address(bondNFT), 1, 30);
+        nftStaking.borrow(0); // client1 borrows all available stables
+        vm.stopPrank();
+
+        vm.startPrank(client2);
+        bondNFT.mint(2, 10, "");
+        bondNFT.setApprovalForAll(address(nftStaking), true);
+        nftStaking.stakeNFT(address(bondNFT), 2, 10);
+        nftStaking.borrow(0);
+        stableBondCoins.approve(address(stakingStables), UINT256_MAX);
+        uint256 amount = stableBondCoins.balanceOf(client2);
+        // Client 2 stakes stables
+        stakingStables.stake(amount);
+        vm.stopPrank();
+
+        vm.warp(30 days);
+        vm.roll(2);
+
+        uint256 staked = stakingStables.stakers(client2).stakedAmount;
+        console.log("After 30 days...");
+        console.log("Client2 staked : ", staked);
+        uint256 client2Rewards = stakingStables.pendingRewards(client2);
+        console.log("Client2 rewards: ", client2Rewards);
+
+        vm.startPrank(client3);
+        bondNFT.mint(3, 2000, "");
+        bondNFT.setApprovalForAll(address(nftStaking), true);
+        nftStaking.stakeNFTandStables(address(bondNFT), 3, 2000);
+        vm.stopPrank();
+
+        uint256 client2Rewards2 = stakingStables.pendingRewards(client2);
+        console.log("Client2 rewards: ", client2Rewards2);
+
+        assertEq(client2Rewards2, client2Rewards, "Rewards should be the same");
+    }
 }
