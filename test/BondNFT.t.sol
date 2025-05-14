@@ -28,8 +28,8 @@ contract BondNFTTest is Test {
 
     function testNameSpace() public pure {
         assertEq(
-            keccak256(abi.encode(uint256(keccak256("bond.nft.storage")) - 1)) & ~bytes32(uint256(0xff)),
-            0x57deeb5d263ad500cb3646f0c17a9a963c02d1d301632922b135588e514fb000
+            keccak256(abi.encode(uint256(keccak256("BondNFT.storage")) - 1)) & ~bytes32(uint256(0xff)),
+            0xffef8b0e9aa2c483e819ac9d28d3b5f004d7e8fbb6ec97cdc9221e749673c000
         );
     }
 

@@ -22,8 +22,10 @@ contract MockReward {
         return rewardToReturn;
     }
 
-    function getRewards() external view returns (uint256) {
-        return rewardToReturn;
+    function transferRewards() external returns (uint256) {
+        uint256 _rewardToReturn = rewardToReturn;
+        rewardToReturn = 0;
+        return _rewardToReturn;
     }
 }
 

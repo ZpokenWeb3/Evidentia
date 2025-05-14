@@ -16,7 +16,6 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 contract StableBondCoins is ERC20Upgradeable, AccessControlUpgradeable, ERC20PermitUpgradeable, UUPSUpgradeable {
     // keccak256(abi.encode(uint256(keccak256("StableBondCoins.storage")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant STORAGE_LOCATION = 0xd617c1a7b49d27159d9fe0ce7de01c7130c8a8bb809755fe8b0df36a2bc07e00;
-
     /**
      * @dev Role identifier for minters. Only addresses with this role can mint or burn tokens.
      */
@@ -25,14 +24,15 @@ contract StableBondCoins is ERC20Upgradeable, AccessControlUpgradeable, ERC20Per
     /**
      * @dev Storage struct for ERC7201 namespace.
      */
+    /// @custom:storage-location erc7201:StableBondCoins.storage
     struct StableBondCoinsStorage {
         uint8 decimals;
     }
 
     /**
-     * @dev Retrieve the storage slot for the contract.
+     * @dev Retrieves the storage slot for the contract.
      */
-    function _getStableBondCoinsStorage() private pure returns (StableBondCoinsStorage storage $) {
+    function _getStableBondCoinsStorage() internal pure returns (StableBondCoinsStorage storage $) {
         assembly {
             $.slot := STORAGE_LOCATION
         }
@@ -66,7 +66,7 @@ contract StableBondCoins is ERC20Upgradeable, AccessControlUpgradeable, ERC20Per
     }
 
     /**
-     * @dev Authorize upgrades (required for UUPS).
+     * @dev Authorizes upgrades (required for UUPS).
      * Only callable by the admin (holder of DEFAULT_ADMIN_ROLE).
      */
     function _authorizeUpgrade(address newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}

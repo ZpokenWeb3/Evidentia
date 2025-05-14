@@ -8,6 +8,7 @@ import {Upgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 
 contract EdgeRewardMock {
     uint256 private rewardAmount;
+    uint256 private accumulatedRewards;
     bool private shouldRevert;
 
     constructor() {
@@ -28,8 +29,9 @@ contract EdgeRewardMock {
         return rewardAmount;
     }
 
-    function getRewards() external view returns (uint256) {
+    function transferRewards() external returns (uint256) {
         require(!shouldRevert, "Reverted as configured");
+        accumulatedRewards = 0;
         return rewardAmount;
     }
 }
@@ -61,10 +63,10 @@ contract BetterRewardMock {
         return rewardAmount;
     }
 
-    // This simulates claiming rewards (state changing function)
-    function getRewards() external returns (uint256) {
+    // This simulates transfer rewards (state changing function)
+    function transferRewards() external returns (uint256) {
         uint256 rewards = accumulatedRewards;
-        accumulatedRewards = 0; // Reset after claiming
+        accumulatedRewards = 0; // Reset after transfer
         return rewards;
     }
 }

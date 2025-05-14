@@ -745,7 +745,7 @@ contract NFTStakingAndBorrowingTest is Test {
 
         // Claim rewards through stableStaking contract
         vm.prank(address(stableStaking));
-        uint256 claimedRewards = nftStaking.getRewards();
+        uint256 claimedRewards = nftStaking.transferRewards();
 
         assertEq(claimedRewards, rewardAmount);
         assertEq(nftStaking.getRewardAmount(), 0);
@@ -1080,7 +1080,7 @@ contract NFTStakingAndBorrowingTest is Test {
         assertEq(nftStaking.getUserNFTBalance(address(42), address(bondNFT), 1), 0);
     }
 
-    function testGetRewardsWithZeroReward() public {
+    function testTransferRewardsWithZeroReward() public {
         vm.startPrank(owner);
         StableCoinsStaking stableStaking = new StableCoinsStaking();
         stableStaking.initialize(address(stableBondCoins), address(nftStaking), address(owner));
@@ -1094,13 +1094,13 @@ contract NFTStakingAndBorrowingTest is Test {
         vm.stopPrank();
 
         vm.prank(address(stableStaking));
-        uint256 rewardAmount = nftStaking.getRewards();
+        uint256 rewardAmount = nftStaking.transferRewards();
 
         // Should be 0 since debt is 0
         assertEq(rewardAmount, 0);
     }
 
-    function testGetRewardsAfterMultipleCalls() public {
+    function testTransferRewardsAfterMultipleCalls() public {
         vm.startPrank(owner);
         StableCoinsStaking stableStaking = new StableCoinsStaking();
         stableStaking.initialize(address(stableBondCoins), address(nftStaking), address(owner));
@@ -1114,9 +1114,9 @@ contract NFTStakingAndBorrowingTest is Test {
         // Fast forward time to accumulate interest
         vm.warp(30 days);
 
-        // First call to getRewards
+        // First call to transferRewards
         vm.prank(address(stableStaking));
-        uint256 firstReward = nftStaking.getRewards();
+        uint256 firstReward = nftStaking.transferRewards();
         assertGt(firstReward, 0);
 
         // RewardsTransfered should be updated, so getRewardAmount should return 0
@@ -1125,16 +1125,16 @@ contract NFTStakingAndBorrowingTest is Test {
         // Fast forward time to accumulate more interest
         vm.warp(block.timestamp + 30 days);
 
-        // Second call to getRewards should return new rewards only
+        // Second call to transferRewards should return new rewards only
         vm.prank(address(stableStaking));
-        uint256 secondReward = nftStaking.getRewards();
+        uint256 secondReward = nftStaking.transferRewards();
         assertGt(secondReward, 0);
 
         // Ensure first and second rewards are different
         assertNotEq(firstReward, secondReward);
     }
 
-    function testGetRewardsWithRecentUpdate() public {
+    function testTransferRewardsWithRecentUpdate() public {
         StableCoinsStaking stableStaking;
 
         vm.startPrank(owner);
@@ -1149,9 +1149,9 @@ contract NFTStakingAndBorrowingTest is Test {
         nftStaking.borrow(0);
         vm.stopPrank();
 
-        // Test getRewards when debtUpdateTimestamp equals block.timestamp
+        // Test transferRewards when debtUpdateTimestamp equals block.timestamp
         vm.prank(address(stableStaking));
-        uint256 rewardAmount = nftStaking.getRewards();
+        uint256 rewardAmount = nftStaking.transferRewards();
 
         // Should be 0 since debt was just updated
         assertEq(rewardAmount, 0);
@@ -1280,8 +1280,8 @@ contract NFTStakingAndBorrowingTest is Test {
 
     function testNameSpace() public pure {
         assertEq(
-            keccak256(abi.encode(uint256(keccak256("nft.staking.and.borrowing.storage")) - 1)) & ~bytes32(uint256(0xff)),
-            0x9a8eb021283f43dd2cabdbb84bb028df4a714b0bdf8b9bbf43c63e73140ef000
+            keccak256(abi.encode(uint256(keccak256("NFTStakingAndBorrowing.storage")) - 1)) & ~bytes32(uint256(0xff)),
+            0x6a441442997d548c1da10218ea0e91c439ff7c57f962abbe6c4b985a11b4e500
         );
     }
 
