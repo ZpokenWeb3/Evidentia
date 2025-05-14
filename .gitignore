@@ -16,6 +16,7 @@ Notes.txt
 
 # Dotenv file
 .env
+.env_mainnet
 
 # IDE
 .idea/
@@ -27,3 +28,5 @@ coverage_report/
 
 # Logs
 log/
+
+.vscode/
