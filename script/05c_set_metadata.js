@@ -1,8 +1,15 @@
 const { ethers } = require('ethers');
 const { DateTime } = require('luxon');
 const fs = require('fs');
+const path = require('path');
 const yargs = require('yargs');
-require('dotenv').config();
+
+// Determine which env file to use based on NODE_ENV
+const network = process.env.NODE_ENV || 'sepolia';
+const envFile = network === 'mainnet' ? '.env_mainnet' : '.env';
+
+// Load the appropriate env file
+require('dotenv').config({ path: path.resolve(process.cwd(), envFile) });
 
 // Contract configuration
 const bondNFTAddress = process.env.BOND_NFT_PROXY_ADDRESS; // BondNFT
@@ -10,7 +17,8 @@ const contractABIPath = './script/ABI/BondNFT.json';
 
 // Wallet and provider configuration
 const privateKey = process.env.PRIVATE_KEY;
-const rpcUrl = process.env.SEPOLIA_RPC_URL;
+// Use the appropriate RPC URL based on the network
+const rpcUrl = network === 'mainnet' ? process.env.MAINNET_RPC_URL : process.env.SEPOLIA_RPC_URL;
 
 // Load contract ABI
 const contractABI = JSON.parse(fs.readFileSync(contractABIPath, 'utf8'));

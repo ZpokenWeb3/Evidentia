@@ -1,9 +1,10 @@
 #!/bin/bash
 
 # Check if required arguments are provided
-if [ $# -ne 4 ]; then
-    echo "Usage: $0 <sol_script> <contract_name> <proxy_env_var> <impl_env_var>"
+if [ $# -lt 4 ] || [ $# -gt 5 ]; then
+    echo "Usage: $0 <sol_script> <contract_name> <proxy_env_var> <impl_env_var> [network]"
     echo "Example: $0 script/01_DeployStables.s.sol StableBondCoins STABLES_PROXY_ADDRESS STABLES_IMPL_ADDRESS"
+    echo "Example with network: $0 script/01_DeployStables.s.sol StableBondCoins STABLES_PROXY_ADDRESS STABLES_IMPL_ADDRESS mainnet"
     exit 1
 fi
 
@@ -11,13 +12,14 @@ SOL_SCRIPT="$1"
 CONTRACT_NAME="$2"
 PROXY_ENV_VAR="$3"
 IMPL_ENV_VAR="$4"
+NETWORK="${5:-sepolia}"  # Default to sepolia if not specified
 
 # Create logs directory if it doesn't exist
 mkdir -p ./log
 
 # Generate timestamp and log file name
 TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
-LOG_FILE="./log/deploy_${CONTRACT_NAME}_${TIMESTAMP}.log"
+LOG_FILE="./log/deploy_${CONTRACT_NAME}_${NETWORK}_${TIMESTAMP}.log"
 
 # Log function with timestamp
 log() {
@@ -25,23 +27,41 @@ log() {
     echo "$message" | tee -a "$LOG_FILE"
 }
 
-# Check if .env file exists
-if [ ! -f .env ]; then
-    log "ERROR: .env file not found"
+# Determine which env file to use based on network
+if [ "$NETWORK" = "mainnet" ]; then
+    ENV_FILE=".env_mainnet"
+    log "Using mainnet configuration from $ENV_FILE"
+else
+    ENV_FILE=".env"
+    log "Using testnet configuration from $ENV_FILE"
+fi
+
+# Check if env file exists
+if [ ! -f "$ENV_FILE" ]; then
+    log "ERROR: $ENV_FILE file not found"
     exit 1
 fi
 
 # Load environment variables
-export $(grep -v '^#' .env | xargs)
+export $(grep -v '^#' "$ENV_FILE" | xargs)
 
-log "Starting deployment of $CONTRACT_NAME contract..."
+log "Starting deployment of $CONTRACT_NAME contract on $NETWORK..."
+
+# Set RPC URL based on network
+if [ "$NETWORK" = "mainnet" ]; then
+    RPC_URL="$MAINNET_RPC_URL"
+    CHAIN="mainnet"
+else
+    RPC_URL="$SEPOLIA_RPC_URL"
+    CHAIN="sepolia"
+fi
 
 # Run deployment with tee to both console and log file
-log "Deployment command executing..."
+log "Deployment command executing on $NETWORK..."
 DEPLOY_OUTPUT=$(forge script "$SOL_SCRIPT" \
-    --chain sepolia \
-    --rpc-url $SEPOLIA_RPC_URL \
-    --private-key $PRIVATE_KEY \
+    --chain "$CHAIN" \
+    --rpc-url "$RPC_URL" \
+    --private-key "$PRIVATE_KEY" \
     --broadcast \
     --slow \
     --verify \
@@ -76,10 +96,10 @@ validate_address "$IMPL_ADDRESS"
 log "Proxy: $PROXY_ADDRESS"
 log "Implementation ($CONTRACT_NAME): $IMPL_ADDRESS"
 
-# Update .env file
-log "Updating .env file..."
-sed -i -E "s|^(${PROXY_ENV_VAR}=).*|\1$PROXY_ADDRESS|" .env
-sed -i -E "s|^(${IMPL_ENV_VAR}=).*|\1$IMPL_ADDRESS|" .env
+# Update the appropriate env file
+log "Updating $ENV_FILE file..."
+sed -i -E "s|^(${PROXY_ENV_VAR}=).*|\1$PROXY_ADDRESS|" "$ENV_FILE"
+sed -i -E "s|^(${IMPL_ENV_VAR}=).*|\1$IMPL_ADDRESS|" "$ENV_FILE"
 
 log "Update complete. Deployment finished."
 log "Full deployment log saved to: $LOG_FILE"
