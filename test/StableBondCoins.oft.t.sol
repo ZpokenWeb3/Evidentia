@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import "../src/StableBondCoinsOFT.sol";
+import "./StableBondCoinsOFT.sol";
 
 // LayerZero test utils
 import {MessagingFee, MessagingReceipt} from "@layerzerolabs/oapp-evm/contracts/oapp/OAppSender.sol";

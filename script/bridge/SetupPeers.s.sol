@@ -42,14 +42,11 @@ contract SetupPeers is Script {
     function _envProxy(string memory network) internal view returns (address) {
         bytes32 k = keccak256(bytes(network));
 
-        if (k == keccak256("fuji")) {
-            return vm.envAddress("FUJI_STABLE_CONTRACT_ADDRESS");
-        }
         if (k == keccak256("sepolia")) {
-            return vm.envAddress("SEPOLIA_STABLE_CONTRACT_ADDRESS");
+            return vm.envAddress("OFT_ADAPTER_PROXY_ADDRESS");
         }
         if (k == keccak256("tron-testnet")) {
-            return vm.envAddress("TRON_TESTNET_STABLE_CONTRACT_ADDRESS");
+            return vm.envAddress("TRON_OFT_TOKEN_ADDRESS");
         }
         revert("SetupPeersByName: unknown network");
     }

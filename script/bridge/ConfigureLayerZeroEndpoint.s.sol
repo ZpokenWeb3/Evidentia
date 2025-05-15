@@ -25,17 +25,7 @@ contract ConfigureLayerZeroEndpoint is Script {
         LayerZeroConstants.ChainConfig memory cfg = LayerZeroConstants.getChainConfigByName(network);
 
         //  dispatch on network name to the correct env-var
-        address oapp;
-        bytes32 k = keccak256(bytes(network));
-        if (k == keccak256("fuji")) {
-            oapp = vm.envAddress("FUJI_STABLE_CONTRACT_ADDRESS");
-        } else if (k == keccak256("sepolia")) {
-            oapp = vm.envAddress("SEPOLIA_STABLE_CONTRACT_ADDRESS");
-        } else if (k == keccak256("tron-testnet")) {
-            oapp = vm.envAddress("TRON_TESTNET_STABLE_CONTRACT_ADDRESS");
-        } else {
-            revert("Unknown network");
-        }
+        address oapp = vm.envAddress("OFT_ADAPTER_PROXY_ADDRESS");
         vm.startBroadcast(vm.envUint("PRIVATE_KEY"));
 
         ILayerZeroEndpointV2(cfg.endpoint).setSendLibrary(oapp, cfg.eid, cfg.ulnSendLib);

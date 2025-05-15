@@ -36,7 +36,7 @@ contract TestOFTCrossChainTransfer is Script {
         // lookup LayerZero chain configs
         LayerZeroConstants.ChainConfig memory cDst = LayerZeroConstants.getChainConfigByName(dst);
 
-        address srcStableProxy = _getStableProxy(src);
+        address srcStableProxy = _getStableOFTProxy(src);
         StableBondCoins token = StableBondCoins(srcStableProxy);
 
         // read proxies from env based on network name
@@ -67,19 +67,15 @@ contract TestOFTCrossChainTransfer is Script {
         vm.stopBroadcast();
     }
 
-    function _getStableProxy(string memory network) internal view returns (address) {
+    function _getStableOFTProxy(string memory network) internal view returns (address) {
         bytes32 k = keccak256(bytes(network));
-        if (k == keccak256("fuji")) return vm.envAddress("FUJI_STABLE_CONTRACT_ADDRESS");
-        if (k == keccak256("sepolia")) return vm.envAddress("SEPOLIA_STABLE_CONTRACT_ADDRESS");
-        if (k == keccak256("tron-testnet")) return vm.envAddress("TRON_TESTNET_STABLE_CONTRACT_ADDRESS");
+        if (k == keccak256("tron-testnet")) return vm.envAddress("TRON_OFT_TOKEN_ADDRESS");
         revert("Unknown network");
     }
 
     function _getAdapterProxy(string memory network) internal view returns (address) {
         bytes32 k = keccak256(bytes(network));
-        if (k == keccak256("fuji")) return vm.envAddress("FUJI_ADAPTER_CONTRACT_ADDRESS");
-        if (k == keccak256("sepolia")) return vm.envAddress("SEPOLIA_ADAPTER_CONTRACT_ADDRESS");
-        if (k == keccak256("tron-testnet")) return vm.envAddress("TRON_TESTNET_ADAPTER_CONTRACT_ADDRESS");
+        if (k == keccak256("sepolia")) return vm.envAddress("OFT_ADAPTER_PROXY_ADDRESS");
         revert("Unknown network");
     }
 }
