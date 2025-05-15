@@ -1,32 +1,32 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.30;
 
-import {MessagingFee, MessagingReceipt} from "@layerzerolabs/oapp-evm/contracts/oapp/OAppSender.sol";
+import "../src/StableBondCoinsOFT.sol";
 
 // LayerZero test utils
+import {MessagingFee, MessagingReceipt} from "@layerzerolabs/oapp-evm/contracts/oapp/OAppSender.sol";
 import {OptionsBuilder} from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
 import {SendParam} from "@layerzerolabs/oft-evm/contracts/interfaces/IOFT.sol";
 import {StableBondCoins} from "../src/StableBondCoins.sol";
 import {StableOFTAdapter} from "../src/StableOFTAdapter.sol";
 import {Test, console} from "forge-std/Test.sol";
 import {TestHelperOz5} from "@layerzerolabs/test-devtools-evm-foundry/contracts/TestHelperOz5.sol";
-import {Upgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 import {UnsafeUpgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
+import {Upgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 
 contract StableOFTAdapterTest is TestHelperOz5 {
     using OptionsBuilder for bytes;
 
     // Stable coins
     StableBondCoins public srcStableBondCoins;
-    StableBondCoins public dstStableBondCoins;
+    StableBondCoinsOFT public dstOFTStableCoins;
+
     // OFT Adapters
     StableOFTAdapter public srcOFTAdapter;
-    StableOFTAdapter public dstOFTAdapter;
 
     // Roles and addresses
     address public defaultAdmin;
     address public minter;
-    address public delegate;
     address public user1;
     address public user2;
 
@@ -42,15 +42,15 @@ contract StableOFTAdapterTest is TestHelperOz5 {
         super.setUp();
 
         // Create test addresses
-        defaultAdmin = makeAddr("defaultAdmin");
+        defaultAdmin = address(this); // Use the test contract as the admin instead of a separate address
         minter = makeAddr("minter");
-        delegate = makeAddr("delegate");
         user1 = makeAddr("user1");
         user2 = makeAddr("user2");
 
         // Fund users with ETH for gas
         vm.deal(user1, 10 ether);
         vm.deal(user2, 10 ether);
+        vm.deal(defaultAdmin, 10 ether);
 
         // Setup LayerZero endpoints for two chains
         setUpEndpoints(2, LibraryType.UltraLightNode);
@@ -70,29 +70,21 @@ contract StableOFTAdapterTest is TestHelperOz5 {
         address srcProxyAddr = UnsafeUpgrades.deployUUPSProxy(address(srcImpl), srcInitData);
         srcOFTAdapter = StableOFTAdapter(srcProxyAddr);
 
-        // Source chain token
-        dstStableBondCoins = StableBondCoins(
-            Upgrades.deployUUPSProxy(
-                "StableBondCoins.sol",
-                abi.encodeCall(srcStableBondCoins.initialize, (defaultAdmin, minter, "Stable Bond Coins", "SBC", 6))
-            )
-        );
         // Destination chain OFT adapter
-        StableOFTAdapter dstImpl = new StableOFTAdapter(address(dstStableBondCoins), address(endpoints[DST_CHAIN_ID]));
-        bytes memory dstInitData = abi.encodeCall(StableOFTAdapter.initialize, (defaultAdmin));
+        StableBondCoinsOFT dstImpl = new StableBondCoinsOFT(address(endpoints[DST_CHAIN_ID]));
+        bytes memory dstInitData =
+            abi.encodeCall(StableBondCoinsOFT.initialize, (defaultAdmin, minter, "Stable Bond Coins", "SBC"));
         address dstProxyAddr = UnsafeUpgrades.deployUUPSProxy(address(dstImpl), dstInitData);
-        dstOFTAdapter = StableOFTAdapter(dstProxyAddr);
+        dstOFTStableCoins = StableBondCoinsOFT(dstProxyAddr);
 
-        vm.startPrank(defaultAdmin);
-        // Setup OFT connection (setPeer)
-        srcOFTAdapter.setPeer(DST_CHAIN_ID, bytes32(uint256(uint160(address(dstStableBondCoins)))));
-        dstOFTAdapter.setPeer(SRC_CHAIN_ID, bytes32(uint256(uint160(address(srcStableBondCoins)))));
-        vm.stopPrank();
+        // Setup OFT connection (setPeer) - No need for startPrank as defaultAdmin is now this contract
+        srcOFTAdapter.setPeer(DST_CHAIN_ID, bytes32(uint256(uint160(address(dstOFTStableCoins)))));
+        dstOFTStableCoins.setPeer(SRC_CHAIN_ID, bytes32(uint256(uint160(address(srcOFTAdapter)))));
 
         // Initial token minting
         vm.startPrank(minter);
         srcStableBondCoins.mint(user1, 1000 * 10 ** 6); // 1000 tokens
-        dstStableBondCoins.mint(user2, 1000 * 10 ** 6);
+        dstOFTStableCoins.mint(user2, 1000 * 10 ** 6);
         vm.stopPrank();
     }
 
@@ -101,7 +93,7 @@ contract StableOFTAdapterTest is TestHelperOz5 {
 
         // Initial balances
         uint256 user1SrcInitialBalance = srcStableBondCoins.balanceOf(user1);
-        uint256 user1DstInitialBalance = dstStableBondCoins.balanceOf(user1);
+        uint256 user1DstInitialBalance = dstOFTStableCoins.balanceOf(user1);
 
         // Create proper options for ULN
         bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0) // gas for execution on target chain
@@ -138,17 +130,17 @@ contract StableOFTAdapterTest is TestHelperOz5 {
             srcStableBondCoins.balanceOf(user1), user1SrcInitialBalance - amount, "Source chain balance not decreased"
         );
         assertEq(
-            dstStableBondCoins.balanceOf(user1),
+            dstOFTStableCoins.balanceOf(user1),
             user1DstInitialBalance,
             "Destination chain balance should not change before verification"
         );
 
         // Verify packets to simulate cross-chain transfer
-        verifyPackets(DST_CHAIN_ID, addressToBytes32(address(dstOFTAdapter)));
+        verifyPackets(DST_CHAIN_ID, addressToBytes32(address(dstOFTStableCoins)));
 
         // Check balances after transfer
         assertEq(
-            dstStableBondCoins.balanceOf(user1),
+            dstOFTStableCoins.balanceOf(user1),
             user1DstInitialBalance + amount,
             "Destination chain balance not increased"
         );
@@ -197,20 +189,18 @@ contract StableOFTAdapterTest is TestHelperOz5 {
         vm.stopPrank();
 
         // Verify packets to simulate cross-chain transfer
-        verifyPackets(DST_CHAIN_ID, addressToBytes32(address(dstOFTAdapter)));
+        verifyPackets(DST_CHAIN_ID, addressToBytes32(address(dstOFTStableCoins)));
 
         // Check recipient balances
-        assertEq(dstStableBondCoins.balanceOf(recipients[0]), amounts[0], "Invalid first recipient balance");
-        assertEq(dstStableBondCoins.balanceOf(recipients[1]), amounts[1], "Invalid second recipient balance");
+        assertEq(dstOFTStableCoins.balanceOf(recipients[0]), amounts[0], "Invalid first recipient balance");
+        assertEq(dstOFTStableCoins.balanceOf(recipients[1]), amounts[1], "Invalid second recipient balance");
     }
 
     function testSetDelegateAndOwnership() public {
         address newDelegate = makeAddr("newDelegate");
 
-        // Change owner via admin
-        vm.startPrank(defaultAdmin);
+        // Change owner - no need for startPrank as defaultAdmin is now this contract
         srcOFTAdapter.transferOwnership(newDelegate);
-        vm.stopPrank();
 
         assertEq(srcOFTAdapter.owner(), newDelegate, "Owner not changed");
 
