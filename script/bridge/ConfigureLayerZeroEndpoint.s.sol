@@ -40,8 +40,6 @@ contract ConfigureLayerZeroEndpoint is Script {
 
         ILayerZeroEndpointV2(cfg.endpoint).setSendLibrary(oapp, cfg.eid, cfg.ulnSendLib);
 
-        // ILayerZeroEndpointV2(cfg.endpoint).setReceiveLibrary(oapp, cfg.eid, cfg.ulnRecvLib, cfg.gracePeriod);
-
         vm.stopBroadcast();
     }
 }

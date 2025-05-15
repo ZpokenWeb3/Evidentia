@@ -11,8 +11,7 @@ import {StableBondCoins} from "../src/StableBondCoins.sol";
 import {StableOFTAdapter} from "../src/StableOFTAdapter.sol";
 import {Test, console} from "forge-std/Test.sol";
 import {TestHelperOz5} from "@layerzerolabs/test-devtools-evm-foundry/contracts/TestHelperOz5.sol";
-import {UnsafeUpgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
-import {Upgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
+import {Upgrades, Options} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 
 contract StableOFTAdapterTest is TestHelperOz5 {
     using OptionsBuilder for bytes;
@@ -64,17 +63,19 @@ contract StableOFTAdapterTest is TestHelperOz5 {
                 abi.encodeCall(srcStableBondCoins.initialize, (defaultAdmin, minter, "Stable Bond Coins", "SBC", 6))
             )
         );
+
         // Source chain OFT adapter
-        StableOFTAdapter srcImpl = new StableOFTAdapter(address(srcStableBondCoins), address(endpoints[SRC_CHAIN_ID]));
-        bytes memory srcInitData = abi.encodeCall(StableOFTAdapter.initialize, (defaultAdmin));
-        address srcProxyAddr = UnsafeUpgrades.deployUUPSProxy(address(srcImpl), srcInitData);
+        Options memory sourceOpts;
+        sourceOpts.constructorData = abi.encode(address(srcStableBondCoins), address(endpoints[SRC_CHAIN_ID]));
+        address srcProxyAddr = Upgrades.deployUUPSProxy("StableOFTAdapter.sol", abi.encodeCall(StableOFTAdapter.initialize, (defaultAdmin)), sourceOpts);
         srcOFTAdapter = StableOFTAdapter(srcProxyAddr);
 
-        // Destination chain OFT adapter
-        StableBondCoinsOFT dstImpl = new StableBondCoinsOFT(address(endpoints[DST_CHAIN_ID]));
+        // Destination chain OFT native token
+        Options memory dstOpts;
+        dstOpts.constructorData = abi.encode( address(endpoints[DST_CHAIN_ID]));
         bytes memory dstInitData =
             abi.encodeCall(StableBondCoinsOFT.initialize, (defaultAdmin, minter, "Stable Bond Coins", "SBC"));
-        address dstProxyAddr = UnsafeUpgrades.deployUUPSProxy(address(dstImpl), dstInitData);
+        address dstProxyAddr = Upgrades.deployUUPSProxy("StableBondCoinsOFT.sol", dstInitData, dstOpts);
         dstOFTStableCoins = StableBondCoinsOFT(dstProxyAddr);
 
         // Setup OFT connection (setPeer) - No need for startPrank as defaultAdmin is now this contract
