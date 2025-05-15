@@ -6,6 +6,7 @@ import {Script} from "forge-std/Script.sol";
 import {StableBondCoins} from "../../src/StableBondCoins.sol";
 import {LayerZeroConstants} from "./LayerZeroConstants.s.sol";
 import {console} from "forge-std/console.sol";
+import {StableOFTAdapter} from "../../src/StableOFTAdapter.sol";
 
 /**
  * @title SetupPeers
@@ -31,7 +32,7 @@ contract SetupPeers is Script {
 
         vm.startBroadcast(vm.envUint("PRIVATE_KEY"));
         // setPeer(dstEid, bytes32 address) on the source contract
-        StableBondCoins(proxySrc).setPeer(cDst.eid, bytes32(uint256(uint160(proxyDst))));
+        StableOFTAdapter(proxySrc).setPeer(cDst.eid, bytes32(uint256(uint160(proxyDst))));
         vm.stopBroadcast();
 
         console.log("Peer set:", src, "->", dst);

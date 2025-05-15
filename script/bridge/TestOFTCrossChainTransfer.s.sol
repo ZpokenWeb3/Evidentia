@@ -8,8 +8,9 @@ import {MessagingFee} from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfac
 import {SendParam} from "@layerzerolabs/oft-evm/contracts/interfaces/IOFT.sol";
 import {OptionsBuilder} from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
 import {LayerZeroConstants} from "./LayerZeroConstants.s.sol";
+import {StableOFTAdapter} from "../../src/StableOFTAdapter.sol";
 
-using OptionsBuilder for bytes;
+    using OptionsBuilder for bytes;
 
 /**
  * @title OFT Cross-Chain Transfer by Chain Name
@@ -35,10 +36,12 @@ contract TestOFTCrossChainTransfer is Script {
         // lookup LayerZero chain configs
         LayerZeroConstants.ChainConfig memory cDst = LayerZeroConstants.getChainConfigByName(dst);
 
-        // read proxies from env based on network name
-        address srcProxy = _getProxy(src);
+        address srcStableProxy = _getStableProxy(src);
+        StableBondCoins token = StableBondCoins(srcStableProxy);
 
-        StableBondCoins token = StableBondCoins(srcProxy);
+        // read proxies from env based on network name
+        address srcAdapterProxy = _getAdapterProxy(src);
+        StableOFTAdapter oftAdapter = StableOFTAdapter(srcAdapterProxy);
 
         vm.startBroadcast(pk);
         // mint to sender
@@ -58,17 +61,25 @@ contract TestOFTCrossChainTransfer is Script {
             oftCmd: ""
         });
 
-        MessagingFee memory fee = token.quoteSend(param, false);
+        MessagingFee memory fee = oftAdapter.quoteSend(param, false);
 
-        token.send{value: fee.nativeFee}(param, fee, sender);
+        oftAdapter.send{value: fee.nativeFee}(param, fee, sender);
         vm.stopBroadcast();
     }
 
-    function _getProxy(string memory network) internal view returns (address) {
+    function _getStableProxy(string memory network) internal view returns (address) {
         bytes32 k = keccak256(bytes(network));
         if (k == keccak256("fuji")) return vm.envAddress("FUJI_STABLE_CONTRACT_ADDRESS");
         if (k == keccak256("sepolia")) return vm.envAddress("SEPOLIA_STABLE_CONTRACT_ADDRESS");
         if (k == keccak256("tron-testnet")) return vm.envAddress("TRON_TESTNET_STABLE_CONTRACT_ADDRESS");
+        revert("Unknown network");
+    }
+
+    function _getAdapterProxy(string memory network) internal view returns (address) {
+        bytes32 k = keccak256(bytes(network));
+        if (k == keccak256("fuji")) return vm.envAddress("FUJI_ADAPTER_CONTRACT_ADDRESS");
+        if (k == keccak256("sepolia")) return vm.envAddress("SEPOLIA_ADAPTER_CONTRACT_ADDRESS");
+        if (k == keccak256("tron-testnet")) return vm.envAddress("TRON_TESTNET_ADAPTER_CONTRACT_ADDRESS");
         revert("Unknown network");
     }
 }
