@@ -120,6 +120,7 @@ contract StableOFTAdapterTest is TestHelperOz5 {
 
         vm.startPrank(user1);
 
+        srcStableBondCoins.approve(address(srcOFTAdapter), amount);
         // Get fee using quoteSend
         MessagingFee memory fee = srcOFTAdapter.quoteSend(sendParam, false);
 
@@ -181,6 +182,7 @@ contract StableOFTAdapterTest is TestHelperOz5 {
                 oftCmd: bytes("")
             });
 
+            srcStableBondCoins.approve(address(srcOFTAdapter), amounts[0] + amounts[1]);
             // Get fee for this transfer
             MessagingFee memory fee = srcOFTAdapter.quoteSend(sendParam, false);
 
