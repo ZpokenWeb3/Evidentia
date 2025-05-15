@@ -11,7 +11,6 @@ contract StableOFTAdapter is OFTAdapterUpgradeable, UUPSUpgradeable, AccessContr
     }
 
     function initialize(address defaultAdmin) public initializer {
-
         __OFTAdapter_init(defaultAdmin);
         __Ownable_init(defaultAdmin);
         __AccessControl_init();
@@ -20,7 +19,7 @@ contract StableOFTAdapter is OFTAdapterUpgradeable, UUPSUpgradeable, AccessContr
     }
 
     /**
- * @dev Authorizes upgrades (required for UUPS).
+     * @dev Authorizes upgrades (required for UUPS).
      * Only callable by the admin (holder of DEFAULT_ADMIN_ROLE).
      */
     function _authorizeUpgrade(address newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}

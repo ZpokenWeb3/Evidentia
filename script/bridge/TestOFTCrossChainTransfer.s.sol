@@ -10,7 +10,7 @@ import {OptionsBuilder} from "@layerzerolabs/oapp-evm/contracts/oapp/libs/Option
 import {LayerZeroConstants} from "./LayerZeroConstants.s.sol";
 import {StableOFTAdapter} from "../../src/StableOFTAdapter.sol";
 
-    using OptionsBuilder for bytes;
+using OptionsBuilder for bytes;
 
 /**
  * @title OFT Cross-Chain Transfer by Chain Name

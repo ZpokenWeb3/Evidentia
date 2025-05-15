@@ -13,7 +13,6 @@ import {TestHelperOz5} from "@layerzerolabs/test-devtools-evm-foundry/contracts/
 import {Upgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 import {UnsafeUpgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 
-
 contract StableOFTAdapterTest is TestHelperOz5 {
     using OptionsBuilder for bytes;
 
@@ -70,7 +69,6 @@ contract StableOFTAdapterTest is TestHelperOz5 {
         bytes memory srcInitData = abi.encodeCall(StableOFTAdapter.initialize, (defaultAdmin));
         address srcProxyAddr = UnsafeUpgrades.deployUUPSProxy(address(srcImpl), srcInitData);
         srcOFTAdapter = StableOFTAdapter(srcProxyAddr);
-
 
         // Source chain token
         dstStableBondCoins = StableBondCoins(
