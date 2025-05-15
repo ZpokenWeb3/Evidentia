@@ -19,25 +19,24 @@ contract DeployOFTAdapter is Script {
         // Get the token address to adapt
         address tokenAddress = vm.envAddress("STABLE_BOND_COINS_PROXY_ADDRESS");
 
-        // StableOFTAdapter requires constructor arguments for immutable variables
-        // The constructor takes (address _token, address _lzEndpoint)
-        console.log("Deploying StableOFTAdapter with:");
-        console.log("  - Token address:", tokenAddress);
-        console.log("  - LZ Endpoint:", cfg.endpoint);
-
         vm.startBroadcast(deployerPrivateKey);
 
-        // Deploy the contract using constructor params and initializer
         Options memory opts;
         opts.constructorData = abi.encode(tokenAddress, cfg.endpoint);
+        opts.unsafeAllow = "constructor,missing-initializer-call,state-variable-immutable";
 
-        address proxy =
-            Upgrades.deployUUPSProxy("StableOFTAdapter.sol", abi.encodeCall(StableOFTAdapter.initialize, (owner)), opts);
 
-        StableOFTAdapter stablesContract = StableOFTAdapter(proxy);
+    address srcProxyAddr = Upgrades.deployTransparentProxy(
+            "StableOFTAdapter.sol",
+            owner,
+            abi.encodeCall(StableOFTAdapter.initialize, (owner)),
+            opts
+        );
+        StableOFTAdapter OFTAdapter = StableOFTAdapter(srcProxyAddr);
+
         vm.stopBroadcast();
 
-        console.log("StableOFTAdapter deployed at:", address(stablesContract));
-        return stablesContract;
+        console.log("StableOFTAdapter deployed at:", address(OFTAdapter));
+        return OFTAdapter;
     }
 }

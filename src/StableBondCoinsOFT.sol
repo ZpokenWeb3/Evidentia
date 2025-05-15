@@ -6,14 +6,13 @@ import {OFTUpgradeable} from "@layerzerolabs/oft-evm-upgradeable/contracts/oft/O
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {ERC20PermitUpgradeable} from
     "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
-import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 /**
  * @title StableBondCoinsOFT
  * @dev An upgradeable OFT (Omnichain Fungible Token) contract with minting and burning capabilities controlled by AccessControl.
  * It includes ERC20Permit functionality and uses the UUPS proxy pattern for upgradeability.
  */
-contract StableBondCoinsOFT is OFTUpgradeable, AccessControlUpgradeable, ERC20PermitUpgradeable, UUPSUpgradeable {
+contract StableBondCoinsOFT is OFTUpgradeable, AccessControlUpgradeable, ERC20PermitUpgradeable {
     /**
      * @dev Role identifier for minters. Only addresses with this role can mint or burn tokens.
      */
@@ -41,17 +40,11 @@ contract StableBondCoinsOFT is OFTUpgradeable, AccessControlUpgradeable, ERC20Pe
         __OFT_init(name, symbol, defaultAdmin);
         __Ownable_init(defaultAdmin);
         __AccessControl_init();
-        __UUPSUpgradeable_init();
         __ERC20Permit_init(name);
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
         _grantRole(MINTER_ROLE, minter);
     }
 
-    /**
-     * @dev Authorizes upgrades (required for UUPS).
-     * Only callable by the admin (holder of DEFAULT_ADMIN_ROLE).
-     */
-    function _authorizeUpgrade(address newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
 
     /**
      * @dev Creates `amount` tokens and assigns them to `to`, increasing the total supply.

@@ -67,17 +67,21 @@ contract StableOFTAdapterTest is TestHelperOz5 {
         // Source chain OFT adapter
         Options memory sourceOpts;
         sourceOpts.constructorData = abi.encode(address(srcStableBondCoins), address(endpoints[SRC_CHAIN_ID]));
-        address srcProxyAddr = Upgrades.deployUUPSProxy(
-            "StableOFTAdapter.sol", abi.encodeCall(StableOFTAdapter.initialize, (defaultAdmin)), sourceOpts
+        sourceOpts.unsafeAllow = "constructor,missing-initializer-call,state-variable-immutable";
+
+    address srcProxyAddr = Upgrades.deployTransparentProxy(
+            "StableOFTAdapter.sol", defaultAdmin, abi.encodeCall(StableOFTAdapter.initialize, (defaultAdmin)), sourceOpts
         );
         srcOFTAdapter = StableOFTAdapter(srcProxyAddr);
 
         // Destination chain OFT native token
         Options memory dstOpts;
         dstOpts.constructorData = abi.encode(address(endpoints[DST_CHAIN_ID]));
-        bytes memory dstInitData =
+        dstOpts.unsafeAllow = "constructor,missing-initializer-call,state-variable-immutable";
+
+    bytes memory dstInitData =
             abi.encodeCall(StableBondCoinsOFT.initialize, (defaultAdmin, minter, "Stable Bond Coins", "SBC"));
-        address dstProxyAddr = Upgrades.deployUUPSProxy("StableBondCoinsOFT.sol", dstInitData, dstOpts);
+        address dstProxyAddr = Upgrades.deployTransparentProxy("StableBondCoinsOFT.sol", defaultAdmin, dstInitData, dstOpts);
         dstOFTStableCoins = StableBondCoinsOFT(dstProxyAddr);
 
         // Setup OFT connection (setPeer) - No need for startPrank as defaultAdmin is now this contract
