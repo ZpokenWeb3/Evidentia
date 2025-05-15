@@ -26,3 +26,6 @@
 [submodule "lib/LayerZero"]
 	path = lib/LayerZero
 	url = https://github.com/LayerZero-Labs/LayerZero
+[submodule "lib/devtools"]
+	path = lib/devtools
+	url = https://github.com/LayerZero-Labs/devtools
