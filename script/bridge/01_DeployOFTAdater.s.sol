@@ -25,12 +25,8 @@ contract DeployOFTAdapter is Script {
         opts.constructorData = abi.encode(tokenAddress, cfg.endpoint);
         opts.unsafeAllow = "constructor,missing-initializer-call,state-variable-immutable";
 
-
-    address srcProxyAddr = Upgrades.deployTransparentProxy(
-            "StableOFTAdapter.sol",
-            owner,
-            abi.encodeCall(StableOFTAdapter.initialize, (owner)),
-            opts
+        address srcProxyAddr = Upgrades.deployTransparentProxy(
+            "StableOFTAdapter.sol", owner, abi.encodeCall(StableOFTAdapter.initialize, (owner)), opts
         );
         StableOFTAdapter OFTAdapter = StableOFTAdapter(srcProxyAddr);
 

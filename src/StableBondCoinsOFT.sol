@@ -45,7 +45,6 @@ contract StableBondCoinsOFT is OFTUpgradeable, AccessControlUpgradeable, ERC20Pe
         _grantRole(MINTER_ROLE, minter);
     }
 
-
     /**
      * @dev Creates `amount` tokens and assigns them to `to`, increasing the total supply.
      * Requirements:
