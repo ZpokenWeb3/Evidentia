@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.30;
 
 import {Test, console} from "forge-std/Test.sol";
 import {BondNFT} from "../src/BondNFT.sol";
 import {BondNFTV2} from "../src/V2/BondNFTV2.sol";
-import {UnsafeUpgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
+import {Upgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 contract BondNFTTest is Test {
@@ -19,8 +19,8 @@ contract BondNFTTest is Test {
         account2 = address(2);
         // Deploy the contract as a proxy with the initializer
         bondNFT = BondNFT(
-            UnsafeUpgrades.deployUUPSProxy(
-                address(new BondNFT()), abi.encodeCall(BondNFT.initialize, (owner, "https://example.com/{id}.json"))
+            Upgrades.deployUUPSProxy(
+                "BondNFT.sol", abi.encodeCall(BondNFT.initialize, (owner, "https://example.com/{id}.json"))
             )
         );
         bondNFT.setAllowedMints(account1, 1, 10);
@@ -28,8 +28,8 @@ contract BondNFTTest is Test {
 
     function testNameSpace() public pure {
         assertEq(
-            keccak256(abi.encode(uint256(keccak256("bond.nft.storage")) - 1)) & ~bytes32(uint256(0xff)),
-            0x57deeb5d263ad500cb3646f0c17a9a963c02d1d301632922b135588e514fb000
+            keccak256(abi.encode(uint256(keccak256("BondNFT.storage")) - 1)) & ~bytes32(uint256(0xff)),
+            0xffef8b0e9aa2c483e819ac9d28d3b5f004d7e8fbb6ec97cdc9221e749673c000
         );
     }
 
@@ -127,8 +127,8 @@ contract BondNFTTest is Test {
     }
 
     function testUUPSUpgrade() public {
-        address proxy = UnsafeUpgrades.deployUUPSProxy(
-            address(new BondNFT()), abi.encodeCall(BondNFT.initialize, (owner, "https://example.com/{id}.json"))
+        address proxy = Upgrades.deployUUPSProxy(
+            "BondNFT.sol", abi.encodeCall(BondNFT.initialize, (owner, "https://example.com/{id}.json"))
         );
         BondNFT instance = BondNFT(proxy);
 
@@ -148,23 +148,21 @@ contract BondNFTTest is Test {
         assertEq(instance.name(), "BondNFT");
         assertEq(instance.balanceOf(account1, 1), 5);
         assertEq(instance.getMetaData(1).value, 100);
-        address implAddressV1 = UnsafeUpgrades.getImplementationAddress(proxy);
-
-        address newImplementation = address(new BondNFTV2());
+        address implAddressV1 = Upgrades.getImplementationAddress(proxy);
 
         //         vm.prank(account2);
         //         vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, account2));
-        //         UnsafeUpgrades.upgradeProxy(
+        //         Upgrades.upgradeProxy(
         //             proxy,
-        //             newImplementation,
+        //             "BondNFTV2.sol",
         //             abi.encodeCall(BondNFTV2.initializeV2, ()),
         //             account2
         //         );
 
-        UnsafeUpgrades.upgradeProxy(proxy, newImplementation, abi.encodeCall(BondNFTV2.initializeV2, ()), owner);
+        Upgrades.upgradeProxy(proxy, "BondNFTV2.sol", abi.encodeCall(BondNFTV2.initializeV2, ()), owner);
 
         BondNFTV2 instance2 = BondNFTV2(proxy);
-        address implAddressV2 = UnsafeUpgrades.getImplementationAddress(proxy);
+        address implAddressV2 = Upgrades.getImplementationAddress(proxy);
         assertFalse(implAddressV2 == implAddressV1, "Implementation address should change");
         assertEq(instance2.name(), "BondNFT", "Name should not change");
         assertEq(instance2.balanceOf(account1, 1), 5, "Balance should be preserved");

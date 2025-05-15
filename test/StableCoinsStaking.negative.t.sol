@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.22;
+pragma solidity >=0.8.30;
 
 import {Test, console} from "forge-std/Test.sol";
 import {StableCoinsStaking} from "../src/StableCoinsStaking.sol";
 import {StableBondCoins} from "../src/StableBondCoins.sol";
-import {UnsafeUpgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
-import {EndpointV2Mock} from "@layerzerolabs/test-devtools-evm-foundry/contracts/mocks/EndpointV2Mock.sol";
+import {Upgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 
 // Mock for reward contract
 contract MockReward {
@@ -23,8 +22,10 @@ contract MockReward {
         return rewardToReturn;
     }
 
-    function getRewards() external view returns (uint256) {
-        return rewardToReturn;
+    function transferRewards() external returns (uint256) {
+        uint256 _rewardToReturn = rewardToReturn;
+        rewardToReturn = 0;
+        return _rewardToReturn;
     }
 }
 
@@ -38,7 +39,6 @@ contract StableCoinsStakingNegativeTest is Test {
     address public owner;
     address public user1;
     address public user2;
-    address public lzEndpoint;
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
     // Custom errors
@@ -51,23 +51,20 @@ contract StableCoinsStakingNegativeTest is Test {
         owner = address(1);
         user1 = address(2);
         user2 = address(3);
-        lzEndpoint = address(4);
 
         vm.startPrank(owner);
-
-        // 1. Deploy a mock endpoint
-        EndpointV2Mock mock = new EndpointV2Mock(1, owner);
-
-        StableBondCoins impl = new StableBondCoins(address(mock));
-        bytes memory initData = abi.encodeCall(StableBondCoins.initialize, (owner, owner, owner));
-        address proxyAddr = UnsafeUpgrades.deployUUPSProxy(address(impl), initData);
-        stableBondCoins = StableBondCoins(proxyAddr);
+        stableBondCoins = StableBondCoins(
+            Upgrades.deployUUPSProxy(
+                "StableBondCoins.sol:StableBondCoins",
+                abi.encodeCall(stableBondCoins.initialize, (owner, owner, "Stable Bond Coins", "SBC", 6))
+            )
+        );
 
         mockReward = new MockReward(0);
 
         staking = StableCoinsStaking(
-            UnsafeUpgrades.deployUUPSProxy(
-                address(new StableCoinsStaking()),
+            Upgrades.deployUUPSProxy(
+                "StableCoinsStaking.sol:StableCoinsStaking",
                 abi.encodeCall(staking.initialize, (address(stableBondCoins), address(mockReward), address(owner)))
             )
         );

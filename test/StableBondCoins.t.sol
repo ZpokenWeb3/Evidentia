@@ -1,20 +1,16 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.30;
 
 import {Test, console} from "forge-std/Test.sol";
 import {StableBondCoins} from "../src/StableBondCoins.sol";
 import {StableBondCoinsV2} from "../src/V2/StableBondCoinsV2.sol";
-import {UnsafeUpgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
-import {EndpointV2Mock} from "@layerzerolabs/test-devtools-evm-foundry/contracts/mocks/EndpointV2Mock.sol";
+import {Upgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
 
 contract StableBondCoinsTest is Test {
     StableBondCoins public stableBondCoins;
-    EndpointV2Mock endpointMock;
     address public defaultAdmin;
     address public minter;
-    address public delegate;
-    address public lzEndpoint;
 
     bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
@@ -22,15 +18,13 @@ contract StableBondCoinsTest is Test {
     function setUp() public {
         defaultAdmin = address(1);
         minter = address(2);
-        delegate = address(3);
 
-        // 1. Deploy a mock endpoint
-        endpointMock = new EndpointV2Mock(1, address(this));
-
-        StableBondCoins impl = new StableBondCoins(address(endpointMock));
-        bytes memory initData = abi.encodeCall(StableBondCoins.initialize, (defaultAdmin, minter, delegate));
-        address proxyAddr = UnsafeUpgrades.deployUUPSProxy(address(impl), initData);
-        stableBondCoins = StableBondCoins(proxyAddr);
+        stableBondCoins = StableBondCoins(
+            Upgrades.deployUUPSProxy(
+                "StableBondCoins.sol",
+                abi.encodeCall(stableBondCoins.initialize, (defaultAdmin, minter, "Stable Bond Coins", "SBC", 6))
+            )
+        );
     }
 
     function testConstructor() public view {
@@ -40,7 +34,6 @@ contract StableBondCoinsTest is Test {
 
         assertEq(stableBondCoins.hasRole(DEFAULT_ADMIN_ROLE, defaultAdmin), true);
         assertEq(stableBondCoins.hasRole(MINTER_ROLE, minter), true);
-        assertEq(stableBondCoins.owner(), delegate);
     }
 
     function testNameSpace() public pure {
@@ -51,7 +44,7 @@ contract StableBondCoinsTest is Test {
     }
 
     function testMint() public {
-        address recipient = address(5);
+        address recipient = address(3);
         uint256 amount = 100;
 
         vm.prank(minter);
@@ -61,7 +54,7 @@ contract StableBondCoinsTest is Test {
     }
 
     function testBurn() public {
-        address owner = address(5);
+        address owner = address(3);
         uint256 amount = 100;
 
         vm.prank(minter);
@@ -74,7 +67,7 @@ contract StableBondCoinsTest is Test {
     }
 
     function testOnlyMinterCanMint() public {
-        address recipient = address(5);
+        address recipient = address(3);
         uint256 amount = 100;
 
         vm.expectRevert();
@@ -82,7 +75,7 @@ contract StableBondCoinsTest is Test {
     }
 
     function testOnlyMinterCanBurn() public {
-        address owner = address(5);
+        address owner = address(3);
         uint256 amount = 100;
 
         vm.prank(minter);
@@ -94,9 +87,9 @@ contract StableBondCoinsTest is Test {
 
     function testUUPSUpgrade() public {
         vm.prank(defaultAdmin);
-        address proxy = UnsafeUpgrades.deployUUPSProxy(
-            address(new StableBondCoins(address(endpointMock))),
-            abi.encodeCall(StableBondCoins.initialize, (defaultAdmin, minter, defaultAdmin))
+        address proxy = Upgrades.deployUUPSProxy(
+            "StableBondCoins.sol",
+            abi.encodeCall(StableBondCoins.initialize, (defaultAdmin, minter, "Stable Bond Coins", "SBC", 6))
         );
         StableBondCoins instance = StableBondCoins(proxy);
 
@@ -106,25 +99,24 @@ contract StableBondCoinsTest is Test {
         assertEq(instance.name(), "Stable Bond Coins");
         assertEq(instance.balanceOf(address(3)), 100);
         assertEq(instance.decimals(), 6);
-        address implAddressV1 = UnsafeUpgrades.getImplementationAddress(proxy);
+        address implAddressV1 = Upgrades.getImplementationAddress(proxy);
 
-        vm.prank(defaultAdmin);
-        address newImplementation = address(new StableBondCoinsV2(address(endpointMock)));
-
-        //         vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, address(3), DEFAULT_ADMIN_ROLE));
-        //         UnsafeUpgrades.upgradeProxy(
+        //         address unauthorizedUser = address(3);
+        //         vm.prank(unauthorizedUser);
+        //         vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, unauthorizedUser, DEFAULT_ADMIN_ROLE));
+        //         Upgrades.upgradeProxy(
         //             proxy,
-        //             newImplementation,
+        //             "StableBondCoinsV2.sol",
         //             abi.encodeCall(StableBondCoinsV2.initializeV2, ()),
-        //             address(3)
+        //             unauthorizedUser
         //         );
 
-        UnsafeUpgrades.upgradeProxy(
-            proxy, newImplementation, abi.encodeCall(StableBondCoinsV2.initializeV2, ()), defaultAdmin
+        Upgrades.upgradeProxy(
+            proxy, "StableBondCoinsV2.sol", abi.encodeCall(StableBondCoinsV2.initializeV2, ()), defaultAdmin
         );
 
         StableBondCoinsV2 instance2 = StableBondCoinsV2(proxy);
-        address implAddressV2 = UnsafeUpgrades.getImplementationAddress(proxy);
+        address implAddressV2 = Upgrades.getImplementationAddress(proxy);
         assertFalse(implAddressV2 == implAddressV1, "Implementation address should change");
         assertEq(instance2.name(), "Stable Bond Coins", "Name should not change");
         assertEq(instance2.balanceOf(address(3)), 100, "Balance should be preserved");

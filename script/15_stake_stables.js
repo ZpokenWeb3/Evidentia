@@ -2,24 +2,55 @@ const { ethers } = require('ethers');
 const fs = require('fs');
 require('dotenv').config();
 
-const contractAddress = "0x9A5F44F0161F9A897e2C2c3f54F24841324B62B3" // Stables Staking
+// Environment variables
+const stableCoinsStakingAddress = process.env.STABLES_STAKING_PROXY_ADDRESS; // StableCoinsStaking
 const contractABIPath = './script/ABI/StableCoinsStaking.json';
-
 const privateKey = process.env.PRIVATE_KEY;
 const rpcUrl = process.env.SEPOLIA_RPC_URL;
+const gasLimit = process.env.GAS_LIMIT || 500_000;
 
+// Validate environment variables
+if (!stableCoinsStakingAddress || !privateKey || !rpcUrl) {
+  console.error('Error: Missing required environment variables (STABLES_STAKING_PROXY_ADDRESS, PRIVATE_KEY, SEPOLIA_RPC_URL)');
+  process.exit(1);
+}
+
+// Validate stableCoinsStakingAddress
+if (!ethers.isAddress(stableCoinsStakingAddress)) {
+  console.error('Error: STABLES_STAKING_PROXY_ADDRESS must be a valid Ethereum address');
+  process.exit(1);
+}
+
+// Load contract ABI
 const contractABI = JSON.parse(fs.readFileSync(contractABIPath, 'utf8'));
+
+// Get command-line arguments
+const [, , amount] = process.argv;
+
+// Validate arguments
+if (!amount) {
+  console.error('Usage: node script/15_stake_stables.js <amount>');
+  console.error('Example: node script/15_stake_stables.js 1000000000');
+  process.exit(1);
+}
+
+// Validate amount
+const amountInt = parseInt(amount, 10);
+if (isNaN(amountInt) || amountInt <= 0) {
+  console.error('Error: amount must be a positive integer');
+  process.exit(1);
+}
 
 async function stakeStables() {
   try {
     const provider = new ethers.JsonRpcProvider(rpcUrl);
     const wallet = new ethers.Wallet(privateKey, provider);
 
-    const contract = new ethers.Contract(contractAddress, contractABI, wallet);
+    const stableCoinsStaking = new ethers.Contract(stableCoinsStakingAddress, contractABI, wallet);
 
-    console.log('Staking Stables...');
-    const amount = 1000_000000;
-    const tx = await contract.stake(amount, {gasLimit: 500_000});
+    console.log(`Staking ${amountInt} stables to contract ${stableCoinsStakingAddress}...`);
+
+    const tx = await stableCoinsStaking.stake(amountInt, { gasLimit });
     console.log(`Transaction hash: ${tx.hash}`);
 
     const receipt = await tx.wait();
@@ -29,6 +60,8 @@ async function stakeStables() {
 
   } catch (error) {
     console.error(`Error: ${error.message}`);
+    console.error('Full error:', error);
+    process.exit(1);
   }
 }
 

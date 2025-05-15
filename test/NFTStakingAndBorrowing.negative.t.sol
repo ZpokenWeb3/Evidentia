@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.22;
+pragma solidity >=0.8.30;
 
 import {Test, console} from "forge-std/Test.sol";
 import {NFTStakingAndBorrowing} from "../src/NFTStakingAndBorrowing.sol";
 import {StableBondCoins} from "../src/StableBondCoins.sol";
 import {BondNFT} from "../src/BondNFT.sol";
 import {StableCoinsStaking} from "../src/StableCoinsStaking.sol";
-import {UnsafeUpgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
-import {EndpointV2Mock} from "@layerzerolabs/test-devtools-evm-foundry/contracts/mocks/EndpointV2Mock.sol";
+import {Upgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 
 contract NFTStakingAndBorrowingNegativeTest is Test {
     NFTStakingAndBorrowing public nftStaking;
@@ -18,7 +17,6 @@ contract NFTStakingAndBorrowingNegativeTest is Test {
     address public client1;
     address public client2;
     address public notWhitelistedNFT;
-    address public lzEndpoint;
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     uint256 public constant MAX_UINT = type(uint256).max;
 
@@ -27,35 +25,33 @@ contract NFTStakingAndBorrowingNegativeTest is Test {
         client1 = address(2);
         client2 = address(3);
         notWhitelistedNFT = address(4);
-        lzEndpoint = address(5);
 
         vm.startPrank(owner);
 
         // Deploy the contract as a proxy with the initializer
         bondNFT = BondNFT(
-            UnsafeUpgrades.deployUUPSProxy(
-                address(new BondNFT()), abi.encodeCall(BondNFT.initialize, (owner, "https://example.com/{id}.json"))
+            Upgrades.deployUUPSProxy(
+                "BondNFT.sol:BondNFT", abi.encodeCall(BondNFT.initialize, (owner, "https://example.com/{id}.json"))
             )
         );
 
-        // 1. Deploy a mock endpoint
-        EndpointV2Mock mock = new EndpointV2Mock(1, owner);
-
-        StableBondCoins impl = new StableBondCoins(address(mock));
-        bytes memory initData = abi.encodeCall(StableBondCoins.initialize, (owner, owner, owner));
-        address proxyAddr = UnsafeUpgrades.deployUUPSProxy(address(impl), initData);
-        stableBondCoins = StableBondCoins(proxyAddr);
+        stableBondCoins = StableBondCoins(
+            Upgrades.deployUUPSProxy(
+                "StableBondCoins.sol:StableBondCoins",
+                abi.encodeCall(stableBondCoins.initialize, (owner, owner, "Stable Bond Coins", "SBC", 6))
+            )
+        );
 
         nftStaking = NFTStakingAndBorrowing(
-            UnsafeUpgrades.deployUUPSProxy(
-                address(new NFTStakingAndBorrowing()),
+            Upgrades.deployUUPSProxy(
+                "NFTStakingAndBorrowing.sol:NFTStakingAndBorrowing",
                 abi.encodeCall(NFTStakingAndBorrowing.initialize, (address(stableBondCoins)))
             )
         );
 
         stableStaking = StableCoinsStaking(
-            UnsafeUpgrades.deployUUPSProxy(
-                address(new StableCoinsStaking()),
+            Upgrades.deployUUPSProxy(
+                "StableCoinsStaking.sol:StableCoinsStaking",
                 abi.encodeCall(
                     stableStaking.initialize, (address(stableBondCoins), address(nftStaking), address(owner))
                 )
@@ -210,7 +206,7 @@ contract NFTStakingAndBorrowingNegativeTest is Test {
 
         vm.prank(client1);
         vm.expectRevert();
-        nftStaking.setProtocolYield(1200);
+        nftStaking.setProtocolRate(1200);
 
         vm.prank(client1);
         vm.expectRevert();
@@ -225,10 +221,10 @@ contract NFTStakingAndBorrowingNegativeTest is Test {
         nftStaking.setStablesStakingAddress(address(1));
     }
 
-    function testOnlyStablesStakingGetRewardsReverts() public {
+    function testOnlyStablesStakingTransferRewardsReverts() public {
         vm.prank(client1);
         vm.expectRevert(NFTStakingAndBorrowing.OnlyStableStakingContract.selector);
-        nftStaking.getRewards();
+        nftStaking.transferRewards();
     }
 
     function testZeroAddressStableStakingReverts() public {
@@ -240,5 +236,20 @@ contract NFTStakingAndBorrowingNegativeTest is Test {
     function testCalculateMaxBorrowOverflowReverts() public {
         vm.expectRevert(NFTStakingAndBorrowing.AmountOverflow.selector);
         nftStaking.calculateMaxBorrow(type(uint256).max / 10 ** 18 + 1, 90, 1_000_000);
+    }
+
+    function testExpiredNftStakingReverts() public {
+        vm.prank(owner);
+        bondNFT.setAllowedMints(address(client1), 2, 20);
+
+        vm.startPrank(client1);
+        bondNFT.setApprovalForAll(address(nftStaking), true);
+        assertEq(bondNFT.remainingMints(address(client1), 2), 10);
+        bondNFT.mint(2, 10, "");
+
+        vm.warp(365 days - 40 days);
+        vm.expectRevert(NFTStakingAndBorrowing.NftExpired.selector);
+        nftStaking.stakeNFT(address(bondNFT), 2, 10);
+        vm.stopPrank();
     }
 }

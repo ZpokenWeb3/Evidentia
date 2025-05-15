@@ -1,45 +1,26 @@
-// scripts/DeployStablesByName.s.sol
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.30;
 
 import {Script} from "forge-std/Script.sol";
-import {console} from "forge-std/console.sol";
 import {StableBondCoins} from "../src/StableBondCoins.sol";
-import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {LayerZeroConstants} from "./bridge/LayerZeroConstants.s.sol";
+import {console} from "forge-std/console.sol";
+import {Upgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 
-/**
- * @title DeployStablesByName
- * @dev Deploys a UUPS proxy of StableBondCoins on any supported chain by name.
- *
- * USAGE:
- *   forge script \
- *     script/01_DeployStables.s.sol:DeployStables \
- *     --sig "run(string)" \
- *     --rpc-url sepolia \
- *     --broadcast \
- *     --private-key $PRIVATE_KEY \
- *     "sepolia"
- */
 contract DeployStables is Script {
-    /// @param network one of: "fuji", "avaxMainnet", "arbSepolia", "mumbai", "tron-testnet", etc.
-    function run(string calldata network) external returns (StableBondCoins) {
-        uint256 pk = vm.envUint("PRIVATE_KEY");
-        address owner = vm.envAddress("OWNER");
-        // look up the LayerZero endpoint for this chain
-        LayerZeroConstants.ChainConfig memory cfg = LayerZeroConstants.getChainConfigByName(network);
+    function run() external returns (StableBondCoins) {
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        address owner = vm.envAddress("STABLE_BOND_COINS_OWNER_ADDRESS");
+        address minter = vm.envAddress("MINTER_ADDRESS");
 
-        vm.startBroadcast(pk);
-        // deploy implementation
-        StableBondCoins impl = new StableBondCoins(cfg.endpoint);
-
-        // deploy UUPS proxy, calling initialize(owner, owner, owner)
-        ERC1967Proxy proxy = new ERC1967Proxy(address(impl), abi.encodeCall(impl.initialize, (owner, owner, owner)));
-
-        StableBondCoins token = StableBondCoins(address(proxy));
-        console.log("StableBondCoins proxy deployed at:", address(token));
+        // Deploy the contract as a UUPS proxy with the initializer
+        vm.startBroadcast(deployerPrivateKey);
+        address proxy = Upgrades.deployUUPSProxy(
+            "StableBondCoins.sol", abi.encodeCall(StableBondCoins.initialize, (owner, minter, "eUAH", "eUAH", 6))
+        );
+        StableBondCoins stablesContract = StableBondCoins(proxy);
         vm.stopBroadcast();
 
-        return token;
+        console.log("StableBondCoins deployed at:", address(stablesContract));
+        return stablesContract;
     }
 }

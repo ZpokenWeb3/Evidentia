@@ -16,6 +16,7 @@ Notes.txt
 
 # Dotenv file
 .env
+.env_mainnet
 
 # IDE
 .idea/
@@ -24,3 +25,8 @@ Notes.txt
 .gas-snapshot
 lcov.info
 coverage_report/
+
+# Logs
+log/
+
+.vscode/

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.22;
+pragma solidity >=0.8.30;
 
 import {Test, console} from "forge-std/Test.sol";
 import {NFTStakingAndBorrowing} from "../src/NFTStakingAndBorrowing.sol";
@@ -7,8 +7,7 @@ import {NFTStakingAndBorrowingV2} from "../src/V2/NFTStakingAndBorrowingV2.sol";
 import {StableBondCoins} from "../src/StableBondCoins.sol";
 import {BondNFT} from "../src/BondNFT.sol";
 import {StableCoinsStaking} from "../src/StableCoinsStaking.sol";
-import {UnsafeUpgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
-import {EndpointV2Mock} from "@layerzerolabs/test-devtools-evm-foundry/contracts/mocks/EndpointV2Mock.sol";
+import {Upgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 contract NFTStakingAndBorrowingTest is Test {
@@ -16,38 +15,35 @@ contract NFTStakingAndBorrowingTest is Test {
     BondNFT public bondNFT;
     StableBondCoins public stableBondCoins;
     address public owner;
-    address public lzEndpoint;
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
     uint256 internal constant YEAR_IN_SECONDS = 31536000; // 365 days
     uint256 internal constant START_TIME = 1706745600;
     uint256 internal constant UNIT = 1e18;
     uint256 internal constant BIPS = 1e4;
-    uint256 internal constant PROTOCOL_YIELD = 1200 * UNIT / BIPS;
+    uint256 internal constant PROTOCOL_RATE = 1200 * UNIT / BIPS;
 
     function setUp() public {
         owner = address(1);
-        lzEndpoint = address(100);
         vm.startPrank(owner);
 
         // Deploy the contract as a proxy with the initializer
         bondNFT = BondNFT(
-            UnsafeUpgrades.deployUUPSProxy(
-                address(new BondNFT()), abi.encodeCall(BondNFT.initialize, (owner, "https://example.com/{id}.json"))
+            Upgrades.deployUUPSProxy(
+                "BondNFT.sol:BondNFT", abi.encodeCall(BondNFT.initialize, (owner, "https://example.com/{id}.json"))
             )
         );
 
-        // 1. Deploy a mock endpoint
-        EndpointV2Mock mock = new EndpointV2Mock(1, owner);
-
-        StableBondCoins impl = new StableBondCoins(address(mock));
-        bytes memory initData = abi.encodeCall(StableBondCoins.initialize, (owner, owner, owner));
-        address proxyAddr = UnsafeUpgrades.deployUUPSProxy(address(impl), initData);
-        stableBondCoins = StableBondCoins(proxyAddr);
+        stableBondCoins = StableBondCoins(
+            Upgrades.deployUUPSProxy(
+                "StableBondCoins.sol:StableBondCoins",
+                abi.encodeCall(stableBondCoins.initialize, (owner, owner, "Stable Bond Coins", "SBC", 6))
+            )
+        );
 
         nftStaking = NFTStakingAndBorrowing(
-            UnsafeUpgrades.deployUUPSProxy(
-                address(new NFTStakingAndBorrowing()),
+            Upgrades.deployUUPSProxy(
+                "NFTStakingAndBorrowing.sol:NFTStakingAndBorrowing",
                 abi.encodeCall(NFTStakingAndBorrowing.initialize, (address(stableBondCoins)))
             )
         );
@@ -57,12 +53,14 @@ contract NFTStakingAndBorrowingTest is Test {
             value: 1000_000000,
             couponValue: 50_000000,
             issueTimestamp: 1,
-            expirationTimestamp: 1 + 31536000,
+            expirationTimestamp: 1 + YEAR_IN_SECONDS,
             ISIN: "US1234567890"
         });
 
         bondNFT.setMetaData(1, metadata);
         bondNFT.setMetaData(2, metadata);
+        metadata.issueTimestamp = 1 + 45 days;
+        metadata.expirationTimestamp = 1 + YEAR_IN_SECONDS + 45 days;
         bondNFT.setMetaData(3, metadata);
         bondNFT.setAllowedMints(owner, 1, 10);
         bondNFT.setAllowedMints(owner, 2, 10);
@@ -257,7 +255,7 @@ contract NFTStakingAndBorrowingTest is Test {
         nftStaking.stakeNFT(address(bondNFT), 3, 1);
 
         userStats = nftStaking.getUserStats(client1);
-        assertEq(userStats.debt, 915_863667);
+        assertEq(userStats.debt, 915863667);
         assertEq(userStats.debtUpdateTimestamp, 90 days);
 
         userStats = nftStaking.getUserStats(client2);
@@ -265,11 +263,11 @@ contract NFTStakingAndBorrowingTest is Test {
 
         assertEq(userStats.staked, 997_500000);
         assertEq(totalStats.staked, 2 * 997_500000);
-        assertEq(totalStats.debt, 915_863667);
+        assertEq(totalStats.debt, 915863667);
         assertEq(userStats.debtUpdateTimestamp, 90 days);
         assertEq(totalStats.debtUpdateTimestamp, 90 days);
-        assertEq(userStats.nominalAvailable, 915_863667);
-        assertEq(nftStaking.userAvailableToBorrow(client2), 915_863667);
+        assertEq(userStats.nominalAvailable, 903_156174);
+        assertEq(nftStaking.userAvailableToBorrow(client2), 903_156174);
         assertEq(nftStaking.userAvailableToBorrow(client1), 0);
 
         // Client2 borrows everything available
@@ -283,10 +281,10 @@ contract NFTStakingAndBorrowingTest is Test {
         NFTStakingAndBorrowing.UserStats memory userStats2 = nftStaking.getUserStats(client2);
         totalStats = nftStaking.getTotalStats();
 
-        assertEq(userStats1.debt, 924_434505);
-        assertEq(userStats2.debt, 924_434505);
-        assertEq(totalStats.debt, 2 * 924_434505);
-        assertEq(totalStats.borrowed, 915_863667 + 898_959646);
+        assertEq(userStats1.debt, 924434505);
+        assertEq(userStats2.debt, 911608092);
+        assertEq(totalStats.debt, 1836042598);
+        assertEq(totalStats.borrowed, 903_156174 + 898_959646);
         assertEq(userStats1.debtUpdateTimestamp, 120 days);
         assertEq(userStats2.debtUpdateTimestamp, 120 days);
     }
@@ -389,10 +387,10 @@ contract NFTStakingAndBorrowingTest is Test {
         assertEq(nftStaking.userAvailableToUnstake(client1, address(bondNFT), 2), 0);
 
         nftStaking.stakeNFT(address(bondNFT), 3, 10);
-        assertEq(nftStaking.userAvailableToUnstake(client1, address(bondNFT), 2), 10);
+        assertEq(nftStaking.userAvailableToUnstake(client1, address(bondNFT), 2), 9);
         assertEq(nftStaking.userAvailableToUnstake(client1, address(bondNFT), 3), 10);
 
-        nftStaking.unstakeNFT(address(bondNFT), 2, 10);
+        nftStaking.unstakeNFT(address(bondNFT), 2, 9);
         assertEq(nftStaking.userAvailableToUnstake(client1, address(bondNFT), 3), 0);
     }
 
@@ -470,7 +468,7 @@ contract NFTStakingAndBorrowingTest is Test {
         );
 
         assertEq(stableBondCoins.balanceOf(client1), 4453_125000);
-        assertEq(stableBondCoins.balanceOf(client2), 4925_940381);
+        assertEq(stableBondCoins.balanceOf(client2), 4789_246778);
     }
 
     function testLiquidateCase02() public {
@@ -549,7 +547,7 @@ contract NFTStakingAndBorrowingTest is Test {
         );
 
         assertEq(stableBondCoins.balanceOf(client1), 13359_375000);
-        assertEq(stableBondCoins.balanceOf(client2), 9851_880762);
+        assertEq(stableBondCoins.balanceOf(client2), 9578_493555);
     }
 
     function testLiquidateCase03() public {
@@ -747,7 +745,7 @@ contract NFTStakingAndBorrowingTest is Test {
 
         // Claim rewards through stableStaking contract
         vm.prank(address(stableStaking));
-        uint256 claimedRewards = nftStaking.getRewards();
+        uint256 claimedRewards = nftStaking.transferRewards();
 
         assertEq(claimedRewards, rewardAmount);
         assertEq(nftStaking.getRewardAmount(), 0);
@@ -819,7 +817,7 @@ contract NFTStakingAndBorrowingTest is Test {
         uint256 x256 = (uint256(x) + uint256(2)) * 1e18;
         uint256 maxBorrow = nftStaking.calculateMaxBorrow(x256, START_TIME, START_TIME + YEAR_IN_SECONDS);
         uint256 diff = 0;
-        uint256 borrowDebt = maxBorrow * PROTOCOL_YIELD / UNIT;
+        uint256 borrowDebt = maxBorrow * PROTOCOL_RATE / UNIT;
         if ((x256 - borrowDebt) >= maxBorrow) {
             diff = (x256 - borrowDebt) - maxBorrow;
         } else {
@@ -833,8 +831,8 @@ contract NFTStakingAndBorrowingTest is Test {
         uint256 x256 = (uint256(x) + uint256(2)) * 1e18;
         uint256 maxBorrow = nftStaking.calculateMaxBorrow(x256, START_TIME, START_TIME + 2 * YEAR_IN_SECONDS);
         uint256 diff = 0;
-        uint256 firstYearDebt = maxBorrow * PROTOCOL_YIELD / UNIT;
-        uint256 secondYearDebt = (firstYearDebt + maxBorrow) * PROTOCOL_YIELD / UNIT;
+        uint256 firstYearDebt = maxBorrow * PROTOCOL_RATE / UNIT;
+        uint256 secondYearDebt = (firstYearDebt + maxBorrow) * PROTOCOL_RATE / UNIT;
 
         if ((x256 - firstYearDebt - secondYearDebt) >= maxBorrow) {
             diff = (x256 - firstYearDebt - secondYearDebt) - maxBorrow;
@@ -849,10 +847,10 @@ contract NFTStakingAndBorrowingTest is Test {
         uint256 x256 = (uint256(x) + uint256(2)) * 1e18;
         uint256 debt = nftStaking.calculateDebt(x256, START_TIME, START_TIME + YEAR_IN_SECONDS);
         uint256 diff = 0;
-        if ((x256 + x256 * PROTOCOL_YIELD / UNIT) >= debt) {
-            diff = (x256 + x256 * PROTOCOL_YIELD / UNIT) - debt;
+        if ((x256 + x256 * PROTOCOL_RATE / UNIT) >= debt) {
+            diff = (x256 + x256 * PROTOCOL_RATE / UNIT) - debt;
         } else {
-            diff = debt - (x256 + x256 * PROTOCOL_YIELD / UNIT);
+            diff = debt - (x256 + x256 * PROTOCOL_RATE / UNIT);
         }
 
         assertGt(debt / 3e16, diff);
@@ -862,8 +860,8 @@ contract NFTStakingAndBorrowingTest is Test {
         uint256 x256 = (uint256(x) + uint256(2)) * 1e18;
         uint256 debt = nftStaking.calculateDebt(x256, START_TIME, START_TIME + 2 * YEAR_IN_SECONDS);
         uint256 diff = 0;
-        uint256 firstYearDebt = x256 + x256 * PROTOCOL_YIELD / UNIT;
-        uint256 secondYearDebt = firstYearDebt + firstYearDebt * PROTOCOL_YIELD / UNIT;
+        uint256 firstYearDebt = x256 + x256 * PROTOCOL_RATE / UNIT;
+        uint256 secondYearDebt = firstYearDebt + firstYearDebt * PROTOCOL_RATE / UNIT;
         if (secondYearDebt >= debt) {
             diff = secondYearDebt - debt;
         } else {
@@ -899,8 +897,8 @@ contract NFTStakingAndBorrowingTest is Test {
         debt = nftStaking.calculateDebt(x256, START_TIME, START_TIME + boundedInterval);
 
         // Linear approximation for comparison
-        // Linear debt = principal + (principal * protocolYield * time / YEAR_IN_SECONDS)
-        uint256 linearDebt = x256 + (x256 / UNIT) * PROTOCOL_YIELD * boundedInterval / YEAR_IN_SECONDS;
+        // Linear debt = principal + (principal * protocolRate * time / YEAR_IN_SECONDS)
+        uint256 linearDebt = x256 + (x256 / UNIT) * PROTOCOL_RATE * boundedInterval / YEAR_IN_SECONDS;
 
         assertGe(debt, linearDebt / 1e18, "Debt should be at least as large as linear approximation");
         assertGt(debt, x256 / 1e18, "Debt should increase over time");
@@ -932,10 +930,10 @@ contract NFTStakingAndBorrowingTest is Test {
     function testFuzzMaxBorrow1Month(uint128 x) public view {
         uint256 x256 = (uint256(x) + uint256(2)) * 1e18;
         uint256 monthInSeconds = YEAR_IN_SECONDS / 12;
-        uint256 monthYield = 9488792934583 * UNIT / (BIPS * 1e11); // (1.12)**(1/12)
+        uint256 monthRate = 9488792934583 * UNIT / (BIPS * 1e11); // (1.12)**(1/12)
         uint256 maxBorrow = nftStaking.calculateMaxBorrow(x256, START_TIME, START_TIME + monthInSeconds);
         uint256 diff = 0;
-        uint256 monthDebt = maxBorrow * monthYield / UNIT;
+        uint256 monthDebt = maxBorrow * monthRate / UNIT;
 
         if ((x256 - monthDebt) >= maxBorrow) {
             diff = (x256 - monthDebt) - maxBorrow;
@@ -949,11 +947,11 @@ contract NFTStakingAndBorrowingTest is Test {
     function testFuzzMaxBorrow2Months(uint128 x) public view {
         uint256 x256 = (uint256(x) + uint256(2)) * 1e18;
         uint256 monthInSeconds = YEAR_IN_SECONDS / 12;
-        uint256 monthYield = 9488792934583 * UNIT / (BIPS * 1e11); // (1.12)**(1/12)
+        uint256 monthRate = 9488792934583 * UNIT / (BIPS * 1e11); // (1.12)**(1/12)
         uint256 maxBorrow = nftStaking.calculateMaxBorrow(x256, START_TIME, START_TIME + 2 * monthInSeconds);
         uint256 diff = 0;
-        uint256 firstMonthDebt = maxBorrow * monthYield / UNIT;
-        uint256 secondMonthDebt = (maxBorrow + firstMonthDebt) * monthYield / UNIT;
+        uint256 firstMonthDebt = maxBorrow * monthRate / UNIT;
+        uint256 secondMonthDebt = (maxBorrow + firstMonthDebt) * monthRate / UNIT;
 
         if ((x256 - firstMonthDebt - secondMonthDebt) >= maxBorrow) {
             diff = (x256 - firstMonthDebt - secondMonthDebt) - maxBorrow;
@@ -967,10 +965,10 @@ contract NFTStakingAndBorrowingTest is Test {
     function testFuzzDebt1Month(uint128 x) public view {
         uint256 x256 = (uint256(x) + uint256(2)) * 1e18;
         uint256 monthInSeconds = YEAR_IN_SECONDS / 12;
-        uint256 monthYield = 9488792934583 * UNIT / (BIPS * 1e11); // (1.12)**(1/12)
+        uint256 monthRate = 9488792934583 * UNIT / (BIPS * 1e11); // (1.12)**(1/12)
         uint256 debt = nftStaking.calculateDebt(x256, START_TIME, START_TIME + monthInSeconds);
         uint256 diff = 0;
-        uint256 firstMonthDebt = x256 + x256 * monthYield / UNIT;
+        uint256 firstMonthDebt = x256 + x256 * monthRate / UNIT;
         if (firstMonthDebt >= debt) {
             diff = firstMonthDebt - debt;
         } else {
@@ -983,11 +981,11 @@ contract NFTStakingAndBorrowingTest is Test {
     function testFuzzDebt2Month(uint128 x) public view {
         uint256 x256 = (uint256(x) + uint256(2)) * 1e18;
         uint256 monthInSeconds = YEAR_IN_SECONDS / 12;
-        uint256 monthYield = 9488792934583 * UNIT / (BIPS * 1e11); // (1.12)**(1/12)
+        uint256 monthRate = 9488792934583 * UNIT / (BIPS * 1e11); // (1.12)**(1/12)
         uint256 debt = nftStaking.calculateDebt(x256, START_TIME, START_TIME + 2 * monthInSeconds);
         uint256 diff = 0;
-        uint256 firstMonthDebt = x256 + x256 * monthYield / UNIT;
-        uint256 secondMonthDebt = firstMonthDebt + firstMonthDebt * monthYield / UNIT;
+        uint256 firstMonthDebt = x256 + x256 * monthRate / UNIT;
+        uint256 secondMonthDebt = firstMonthDebt + firstMonthDebt * monthRate / UNIT;
         if (secondMonthDebt >= debt) {
             diff = secondMonthDebt - debt;
         } else {
@@ -1082,7 +1080,7 @@ contract NFTStakingAndBorrowingTest is Test {
         assertEq(nftStaking.getUserNFTBalance(address(42), address(bondNFT), 1), 0);
     }
 
-    function testGetRewardsWithZeroReward() public {
+    function testTransferRewardsWithZeroReward() public {
         vm.startPrank(owner);
         StableCoinsStaking stableStaking = new StableCoinsStaking();
         stableStaking.initialize(address(stableBondCoins), address(nftStaking), address(owner));
@@ -1096,13 +1094,13 @@ contract NFTStakingAndBorrowingTest is Test {
         vm.stopPrank();
 
         vm.prank(address(stableStaking));
-        uint256 rewardAmount = nftStaking.getRewards();
+        uint256 rewardAmount = nftStaking.transferRewards();
 
         // Should be 0 since debt is 0
         assertEq(rewardAmount, 0);
     }
 
-    function testGetRewardsAfterMultipleCalls() public {
+    function testTransferRewardsAfterMultipleCalls() public {
         vm.startPrank(owner);
         StableCoinsStaking stableStaking = new StableCoinsStaking();
         stableStaking.initialize(address(stableBondCoins), address(nftStaking), address(owner));
@@ -1116,9 +1114,9 @@ contract NFTStakingAndBorrowingTest is Test {
         // Fast forward time to accumulate interest
         vm.warp(30 days);
 
-        // First call to getRewards
+        // First call to transferRewards
         vm.prank(address(stableStaking));
-        uint256 firstReward = nftStaking.getRewards();
+        uint256 firstReward = nftStaking.transferRewards();
         assertGt(firstReward, 0);
 
         // RewardsTransfered should be updated, so getRewardAmount should return 0
@@ -1127,16 +1125,16 @@ contract NFTStakingAndBorrowingTest is Test {
         // Fast forward time to accumulate more interest
         vm.warp(block.timestamp + 30 days);
 
-        // Second call to getRewards should return new rewards only
+        // Second call to transferRewards should return new rewards only
         vm.prank(address(stableStaking));
-        uint256 secondReward = nftStaking.getRewards();
+        uint256 secondReward = nftStaking.transferRewards();
         assertGt(secondReward, 0);
 
         // Ensure first and second rewards are different
         assertNotEq(firstReward, secondReward);
     }
 
-    function testGetRewardsWithRecentUpdate() public {
+    function testTransferRewardsWithRecentUpdate() public {
         StableCoinsStaking stableStaking;
 
         vm.startPrank(owner);
@@ -1151,9 +1149,9 @@ contract NFTStakingAndBorrowingTest is Test {
         nftStaking.borrow(0);
         vm.stopPrank();
 
-        // Test getRewards when debtUpdateTimestamp equals block.timestamp
+        // Test transferRewards when debtUpdateTimestamp equals block.timestamp
         vm.prank(address(stableStaking));
-        uint256 rewardAmount = nftStaking.getRewards();
+        uint256 rewardAmount = nftStaking.transferRewards();
 
         // Should be 0 since debt was just updated
         assertEq(rewardAmount, 0);
@@ -1200,26 +1198,26 @@ contract NFTStakingAndBorrowingTest is Test {
         vm.startPrank(owner);
 
         // Initial values
-        uint256 initialProtocolYield = 1200; // 12% in BPS
+        uint256 initialProtocolRate = 1200; // 12% in BPS
         uint256 initialSafetyFee = 500; // 5% in BPS
         uint256 initialLiquidationTimeWindow = 45 days;
 
         // Check initial values
-        assertEq(nftStaking.getProtocolYield(), initialProtocolYield * 1e18 / 1e4);
+        assertEq(nftStaking.getProtocolRate(), initialProtocolRate * 1e18 / 1e4);
         assertEq(nftStaking.getSafetyFee(), initialSafetyFee * 1e18 / 1e4);
         assertEq(nftStaking.getLiquidationTimeWindow(), initialLiquidationTimeWindow);
 
         // Change values
-        uint256 newProtocolYield = 1000; // 10% in BPS
+        uint256 newProtocolRate = 1000; // 10% in BPS
         uint256 newSafetyFee = 300; // 3% in BPS
         uint256 newLiquidationTimeWindow = 30 days;
 
-        nftStaking.setProtocolYield(newProtocolYield);
+        nftStaking.setProtocolRate(newProtocolRate);
         nftStaking.setSafetyFee(newSafetyFee);
         nftStaking.setLiquidationTimeWindow(newLiquidationTimeWindow);
 
         // Check updated values
-        assertEq(nftStaking.getProtocolYield(), newProtocolYield * 1e18 / 1e4);
+        assertEq(nftStaking.getProtocolRate(), newProtocolRate * 1e18 / 1e4);
         assertEq(nftStaking.getSafetyFee(), newSafetyFee * 1e18 / 1e4);
         assertEq(nftStaking.getLiquidationTimeWindow(), newLiquidationTimeWindow);
 
@@ -1282,15 +1280,15 @@ contract NFTStakingAndBorrowingTest is Test {
 
     function testNameSpace() public pure {
         assertEq(
-            keccak256(abi.encode(uint256(keccak256("nft.staking.and.borrowing.storage")) - 1)) & ~bytes32(uint256(0xff)),
-            0x9a8eb021283f43dd2cabdbb84bb028df4a714b0bdf8b9bbf43c63e73140ef000
+            keccak256(abi.encode(uint256(keccak256("NFTStakingAndBorrowing.storage")) - 1)) & ~bytes32(uint256(0xff)),
+            0x6a441442997d548c1da10218ea0e91c439ff7c57f962abbe6c4b985a11b4e500
         );
     }
 
     function testUUPSUpgrade() public {
         // Deploy initial proxy
-        address proxy = UnsafeUpgrades.deployUUPSProxy(
-            address(new NFTStakingAndBorrowing()),
+        address proxy = Upgrades.deployUUPSProxy(
+            "NFTStakingAndBorrowing.sol:NFTStakingAndBorrowing",
             abi.encodeCall(NFTStakingAndBorrowing.initialize, (address(stableBondCoins)))
         );
         NFTStakingAndBorrowing instance = NFTStakingAndBorrowing(proxy);
@@ -1314,17 +1312,19 @@ contract NFTStakingAndBorrowingTest is Test {
         assertEq(instance.getTotalStats().staked, 9975_000000, "Initial staked amount incorrect");
         assertEq(instance.getUserStats(owner).borrowed, 500_000000, "Initial borrowed amount incorrect");
         assertEq(bondNFT.balanceOf(address(instance), 1), 10, "Initial NFT balance incorrect");
-        address implAddressV1 = UnsafeUpgrades.getImplementationAddress(proxy);
+        address implAddressV1 = Upgrades.getImplementationAddress(proxy);
 
         // Upgrade to V2
-        address newImplementation = address(new NFTStakingAndBorrowingV2());
-        UnsafeUpgrades.upgradeProxy(
-            proxy, newImplementation, abi.encodeCall(NFTStakingAndBorrowingV2.initializeV2, ()), owner
+        Upgrades.upgradeProxy(
+            proxy,
+            "NFTStakingAndBorrowingV2.sol:NFTStakingAndBorrowingV2",
+            abi.encodeCall(NFTStakingAndBorrowingV2.initializeV2, ()),
+            owner
         );
 
         // Verify state after upgrade
         NFTStakingAndBorrowingV2 instance2 = NFTStakingAndBorrowingV2(proxy);
-        address implAddressV2 = UnsafeUpgrades.getImplementationAddress(proxy);
+        address implAddressV2 = Upgrades.getImplementationAddress(proxy);
         assertFalse(implAddressV2 == implAddressV1, "Implementation address should change");
         assertEq(instance2.getTotalStats().staked, 9975_000000, "Staked amount should be preserved");
         assertEq(instance2.getUserStats(owner).borrowed, 500_000000, "Borrowed amount should be preserved");

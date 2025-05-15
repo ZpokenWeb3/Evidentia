@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.22;
+pragma solidity >=0.8.30;
 
 import {Test, console} from "forge-std/Test.sol";
 import {NFTStakingAndBorrowing} from "../src/NFTStakingAndBorrowing.sol";
@@ -7,8 +7,7 @@ import {StableBondCoins} from "../src/StableBondCoins.sol";
 import {StableCoinsStaking} from "../src/StableCoinsStaking.sol";
 import {StableCoinsStakingV2} from "../src/V2/StableCoinsStakingV2.sol";
 import {BondNFT} from "../src/BondNFT.sol";
-import {UnsafeUpgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
-import {EndpointV2Mock} from "@layerzerolabs/test-devtools-evm-foundry/contracts/mocks/EndpointV2Mock.sol";
+import {Upgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
 
 contract StakingStablesTest is Test {
@@ -17,32 +16,29 @@ contract StakingStablesTest is Test {
     StableBondCoins public stableBondCoins;
     StableCoinsStaking public stakingStables;
     address public owner;
-    address public lzEndpoint;
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
     function setUp() public {
         owner = address(1);
-        lzEndpoint = address(100);
         vm.startPrank(owner);
 
         // Deploy the contract as a proxy with the initializer
         bondNFT = BondNFT(
-            UnsafeUpgrades.deployUUPSProxy(
-                address(new BondNFT()), abi.encodeCall(BondNFT.initialize, (owner, "https://example.com/{id}.json"))
+            Upgrades.deployUUPSProxy(
+                "BondNFT.sol:BondNFT", abi.encodeCall(BondNFT.initialize, (owner, "https://example.com/{id}.json"))
             )
         );
 
-        // 1. Deploy a mock endpoint
-        EndpointV2Mock mock = new EndpointV2Mock(1, owner);
-
-        StableBondCoins impl = new StableBondCoins(address(mock));
-        bytes memory initData = abi.encodeCall(StableBondCoins.initialize, (owner, owner, owner));
-        address proxyAddr = UnsafeUpgrades.deployUUPSProxy(address(impl), initData);
-        stableBondCoins = StableBondCoins(proxyAddr);
+        stableBondCoins = StableBondCoins(
+            Upgrades.deployUUPSProxy(
+                "StableBondCoins.sol:StableBondCoins",
+                abi.encodeCall(stableBondCoins.initialize, (owner, owner, "Stable Bond Coins", "SBC", 6))
+            )
+        );
 
         nftStaking = NFTStakingAndBorrowing(
-            UnsafeUpgrades.deployUUPSProxy(
-                address(new NFTStakingAndBorrowing()),
+            Upgrades.deployUUPSProxy(
+                "NFTStakingAndBorrowing.sol:NFTStakingAndBorrowing",
                 abi.encodeCall(NFTStakingAndBorrowing.initialize, (address(stableBondCoins)))
             )
         );
@@ -62,8 +58,8 @@ contract StakingStablesTest is Test {
         nftStaking.whitelistNFT(address(bondNFT), true);
 
         stakingStables = StableCoinsStaking(
-            UnsafeUpgrades.deployUUPSProxy(
-                address(new StableCoinsStaking()),
+            Upgrades.deployUUPSProxy(
+                "StableCoinsStaking.sol:StableCoinsStaking",
                 abi.encodeCall(
                     stakingStables.initialize, (address(stableBondCoins), address(nftStaking), address(owner))
                 )
@@ -537,8 +533,8 @@ contract StakingStablesTest is Test {
         address defaultAdmin = owner;
 
         vm.prank(defaultAdmin);
-        address proxy = UnsafeUpgrades.deployUUPSProxy(
-            address(new StableCoinsStaking()),
+        address proxy = Upgrades.deployUUPSProxy(
+            "StableCoinsStaking.sol:StableCoinsStaking",
             abi.encodeCall(StableCoinsStaking.initialize, (address(stableBondCoins), address(nftStaking), defaultAdmin))
         );
         StableCoinsStaking instance = StableCoinsStaking(proxy);
@@ -560,27 +556,27 @@ contract StakingStablesTest is Test {
 
         uint256 stakedAmount = instance.stakers(client2).stakedAmount;
         assertEq(stakedAmount, amount, "Staked amount should match");
-        address implAddressV1 = UnsafeUpgrades.getImplementationAddress(proxy);
-
-        vm.prank(defaultAdmin);
-        address newImplementation = address(new StableCoinsStakingV2());
+        address implAddressV1 = Upgrades.getImplementationAddress(proxy);
 
         //         address unauthorizedUser = address(3);
         //         vm.prank(unauthorizedUser);
         //         vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, unauthorizedUser, 0));
-        //         UnsafeUpgrades.upgradeProxy(
+        //         Upgrades.upgradeProxy(
         //             proxy,
-        //             newImplementation,
+        //             "StableCoinsStakingV2.sol:StableCoinsStakingV2",
         //             abi.encodeCall(StableCoinsStakingV2.initializeV2, ()),
         //             unauthorizedUser
         //         );
 
-        UnsafeUpgrades.upgradeProxy(
-            proxy, newImplementation, abi.encodeCall(StableCoinsStakingV2.initializeV2, ()), defaultAdmin
+        Upgrades.upgradeProxy(
+            proxy,
+            "StableCoinsStakingV2.sol:StableCoinsStakingV2",
+            abi.encodeCall(StableCoinsStakingV2.initializeV2, ()),
+            defaultAdmin
         );
 
         StableCoinsStakingV2 instance2 = StableCoinsStakingV2(proxy);
-        address implAddressV2 = UnsafeUpgrades.getImplementationAddress(proxy);
+        address implAddressV2 = Upgrades.getImplementationAddress(proxy);
         assertFalse(implAddressV2 == implAddressV1, "Implementation address should change");
         assertEq(instance2.stakers(client2).stakedAmount, stakedAmount, "Staked amount should be preserved");
         assertEq(instance2.getInitializedVersion(), 2, "Version should be updated to 2");

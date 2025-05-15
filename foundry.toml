@@ -6,13 +6,12 @@ evm_version = "cancun"
 ast = true
 extra_output = ["evm.bytecode", "evm.deployedBytecode", "abi", "metadata", "ir", "irOptimized", "storageLayout", "devdoc", "userdoc"]
 extra_output_files = ["metadata", "ir", "irOptimized", "storageLayout", "devdoc", "userdoc"]
-solc_version = "0.8.22"
+solc_version = "0.8.30"
 fs_permissions = [{ access = "read", path = "out" }]
 ffi = true
 build_info = true
 optimizer = true
-optimizer_runs = 1000
-
+optimizer_runs = 200
 
 remappings = [
   # OpenZeppelin
@@ -31,10 +30,10 @@ remappings = [
   # LayerZero Protocol v2
   "@layerzerolabs/lz-evm-protocol-v2/=lib/layerzero-v2/packages/layerzero-v2/evm/protocol",
   "@layerzerolabs/lz-evm-messagelib-v2/=lib/layerzero-v2/packages/layerzero-v2/evm/messagelib",
-  
+
   # LayerZero Protocol v1
   "@layerzerolabs/lz-evm-v1-0.7/=lib/LayerZero",
-  
+
   # Solidity Bytes Utils
   "solidity-bytes-utils/=lib/solidity-bytes-utils",
 
@@ -42,7 +41,6 @@ remappings = [
   "@layerzerolabs/test-devtools-evm-foundry/=lib/devtools/packages/test-devtools-evm-foundry",
 
 ]
-
 
 [rpc_endpoints]
 sepolia = "${SEPOLIA_RPC_URL}"
@@ -52,9 +50,5 @@ fuji = "${FUJI_RPC_URL}"
 sepolia = { key = "${ETHERSCAN_API_KEY}" }
 fuji = { key = "${ETHERSCAN_API_KEY}" }
 
-[profile.fast]
-via_ir = false
+[profile.ci]
 optimizer = false
-ast = false
-extra_output = []
-extra_output_files = []
