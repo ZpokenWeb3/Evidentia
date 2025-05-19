@@ -10,7 +10,7 @@ import {ERC20PermitUpgradeable} from
 /**
  * @title StableBondCoinsOFT
  * @dev An upgradeable OFT (Omnichain Fungible Token) contract with minting and burning capabilities controlled by AccessControl.
- * It includes ERC20Permit functionality and uses the UUPS proxy pattern for upgradeability.
+ * It includes ERC20PermitUpgradeable functionality.
  */
 contract StableBondCoinsOFT is OFTUpgradeable, AccessControlUpgradeable, ERC20PermitUpgradeable {
     /**

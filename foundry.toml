@@ -39,7 +39,6 @@ remappings = [
 
   # Testing helpers
   "@layerzerolabs/test-devtools-evm-foundry/=lib/devtools/packages/test-devtools-evm-foundry",
-
 ]
 
 [rpc_endpoints]
