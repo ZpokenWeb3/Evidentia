@@ -9,7 +9,9 @@ contract StableOFTAdapter is OFTAdapterUpgradeable {
     }
 
     function initialize(address defaultAdmin) public initializer {
-        __OFTAdapter_init(defaultAdmin);
         __Ownable_init(defaultAdmin);
+        __OAppCore_init(defaultAdmin);
+        __OFTCore_init_unchained();
+        __OFTAdapter_init_unchained();
     }
 }

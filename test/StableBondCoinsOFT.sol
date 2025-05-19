@@ -37,10 +37,14 @@ contract StableBondCoinsOFT is OFTUpgradeable, AccessControlUpgradeable, ERC20Pe
         external
         initializer
     {
-        __OFT_init(name, symbol, defaultAdmin);
         __Ownable_init(defaultAdmin);
+        __ERC20_init(name, symbol);
+        __OAppCore_init(defaultAdmin);
+        __OFT_init_unchained();
         __AccessControl_init();
-        __ERC20Permit_init(name);
+        __EIP712_init(name, "1");
+        __ERC20Permit_init_unchained(name);
+
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
         _grantRole(MINTER_ROLE, minter);
     }
