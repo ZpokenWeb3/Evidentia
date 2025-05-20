@@ -104,6 +104,22 @@ Example:
 
 This script configures the send library for the OFT adapter in the LayerZero endpoint, which is necessary for cross-chain token transfers.
 
+## Setup Peer Connection Between Networks
+
+After configuring the LayerZero endpoints, you need to set up peer connections between OFT adapters in different networks to enable cross-chain token transfers.
+
+```bash
+./script/bridge/run_SetupPeers.sh <source_network> <destination_network>
+```
+
+Example:
+
+```bash
+./script/bridge/run_SetupPeers.sh sepolia fuji
+```
+
+This script establishes a connection between the OFT adapter in the source network and the OFT adapter in the destination network. You need to run this script for each direction of token transfer you want to enable.
+
 # Testing in Testnet
 
 This section describes the scripts used for testing the smart contracts in the Sepolia testnet.
