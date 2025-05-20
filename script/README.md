@@ -74,51 +74,67 @@ NODE_ENV=mainnet node script/05c_set_metadata.js -i 29.04.2025 -e 19.08.2026 -v 
 ./script/deploy_all.sh
 ```
 
-## Deploy StableOFTAdapter
+## 1. Deploy StableOFTAdapter
 
 ```bash
-./script/bridge/run_DeployStableOFTAdapter.sh [network]
+./script/bridge/01_run_DeployStableOFTAdapter.sh [network]
 ```
 
 Example:
 
 ```bash
-./script/bridge/run_DeployStableOFTAdapter.sh sepolia
-./script/bridge/run_DeployStableOFTAdapter.sh fuji
+./script/bridge/01_run_DeployStableOFTAdapter.sh sepolia
+./script/bridge/01_run_DeployStableOFTAdapter.sh fuji
 ```
 
-## Configure LayerZero Endpoint for StableOFTAdapter
+## 2. Configure LayerZero Endpoint for StableOFTAdapter
 
 After deploying the StableOFTAdapter, you need to configure the LayerZero endpoint to enable cross-chain functionality.
 
 ```bash
-./script/bridge/run_ConfigureLayerZeroEndpoint.sh [network]
+./script/bridge/02_run_ConfigureLayerZeroEndpoint.sh [network]
 ```
 
 Example:
 
 ```bash
-./script/bridge/run_ConfigureLayerZeroEndpoint.sh sepolia
-./script/bridge/run_ConfigureLayerZeroEndpoint.sh fuji
+./script/bridge/02_run_ConfigureLayerZeroEndpoint.sh sepolia
+./script/bridge/02_run_ConfigureLayerZeroEndpoint.sh fuji
 ```
 
 This script configures the send library for the OFT adapter in the LayerZero endpoint, which is necessary for cross-chain token transfers.
 
-## Setup Peer Connection Between Networks
+## 3. Setup Peer Connection Between Networks
 
 After configuring the LayerZero endpoints, you need to set up peer connections between OFT adapters in different networks to enable cross-chain token transfers.
 
 ```bash
-./script/bridge/run_SetupPeers.sh <source_network> <destination_network>
+./script/bridge/03_run_SetupPeers.sh <source_network> <destination_network>
 ```
 
 Example:
 
 ```bash
-./script/bridge/run_SetupPeers.sh sepolia fuji
+./script/bridge/03_run_SetupPeers.sh sepolia fuji
 ```
 
 This script establishes a connection between the OFT adapter in the source network and the OFT adapter in the destination network. You need to run this script for each direction of token transfer you want to enable.
+
+## 4. Test Cross-Chain Token Transfer
+
+After setting up peer connections, you can test cross-chain token transfers between networks.
+
+```bash
+./script/bridge/04_run_TestOFTCrossChainTransfer.sh <source_network> <destination_network> <amount>
+```
+
+Example:
+
+```bash
+./script/bridge/04_run_TestOFTCrossChainTransfer.sh sepolia fuji 1000000
+```
+
+This script mints tokens in the source network and sends them to the destination network. The amount is specified in base units (e.g., 1000000 for 1 token with 6 decimals).
 
 # Testing in Testnet
 
