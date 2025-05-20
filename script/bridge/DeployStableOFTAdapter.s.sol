@@ -7,17 +7,19 @@ import {Upgrades, Options} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 import {StableOFTAdapter} from "../../src/StableOFTAdapter.sol";
 import {LayerZeroConstants} from "./LayerZeroConstants.s.sol";
 
-contract DeployOFTAdapter is Script {
+contract DeployStableOFTAdapter is Script {
     function run() external returns (StableOFTAdapter) {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address owner = vm.envAddress("STABLE_OFT_AD_OWNER_ADDRESS");
 
         string memory network = vm.envOr("NETWORK", string("sepolia"));
 
+        console.log("network:", network);
+
         LayerZeroConstants.ChainConfig memory cfg = LayerZeroConstants.getChainConfigByName(network);
 
         // Get the token address to adapt
-        address tokenAddress = vm.envAddress("STABLE_BOND_COINS_PROXY_ADDRESS");
+        address tokenAddress = vm.envAddress("STABLES_PROXY_ADDRESS");
 
         vm.startBroadcast(deployerPrivateKey);
 

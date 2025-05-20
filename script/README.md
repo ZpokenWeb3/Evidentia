@@ -74,6 +74,12 @@ NODE_ENV=mainnet node script/05c_set_metadata.js -i 29.04.2025 -e 19.08.2026 -v 
 ./script/deploy_all.sh
 ```
 
+## Deploy StableOFTAdapter
+
+```bash
+./script/bridge/run_DeployStableOFTAdapter.sh
+```
+
 # Testing in Testnet
 
 This section describes the scripts used for testing the smart contracts in the Sepolia testnet.

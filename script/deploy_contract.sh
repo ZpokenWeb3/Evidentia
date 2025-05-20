@@ -69,7 +69,11 @@ DEPLOY_OUTPUT=$(forge script "$SOL_SCRIPT" \
     2>&1 | tee -a "$LOG_FILE")
 
 # Parse addresses from deployment output
+# Try to find ERC1967Proxy first, then TransparentUpgradeableProxy if not found
 PROXY_ADDRESS=$(echo "$DEPLOY_OUTPUT" | grep -oP 'new ERC1967Proxy@0x[a-fA-F0-9]{40}' | head -1 | grep -oP '0x[a-fA-F0-9]{40}')
+if [ -z "$PROXY_ADDRESS" ]; then
+    PROXY_ADDRESS=$(echo "$DEPLOY_OUTPUT" | grep -oP 'new TransparentUpgradeableProxy@0x[a-fA-F0-9]{40}' | head -1 | grep -oP '0x[a-fA-F0-9]{40}')
+fi
 IMPL_ADDRESS=$(echo "$DEPLOY_OUTPUT" | grep -oP "new ${CONTRACT_NAME}@0x[a-fA-F0-9]{40}" | head -1 | grep -oP '0x[a-fA-F0-9]{40}')
 
 # Validate addresses
