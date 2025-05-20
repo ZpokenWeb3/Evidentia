@@ -77,8 +77,32 @@ NODE_ENV=mainnet node script/05c_set_metadata.js -i 29.04.2025 -e 19.08.2026 -v 
 ## Deploy StableOFTAdapter
 
 ```bash
-./script/bridge/run_DeployStableOFTAdapter.sh
+./script/bridge/run_DeployStableOFTAdapter.sh [network]
 ```
+
+Example:
+
+```bash
+./script/bridge/run_DeployStableOFTAdapter.sh sepolia
+./script/bridge/run_DeployStableOFTAdapter.sh fuji
+```
+
+## Configure LayerZero Endpoint for StableOFTAdapter
+
+After deploying the StableOFTAdapter, you need to configure the LayerZero endpoint to enable cross-chain functionality.
+
+```bash
+./script/bridge/run_ConfigureLayerZeroEndpoint.sh [network]
+```
+
+Example:
+
+```bash
+./script/bridge/run_ConfigureLayerZeroEndpoint.sh sepolia
+./script/bridge/run_ConfigureLayerZeroEndpoint.sh fuji
+```
+
+This script configures the send library for the OFT adapter in the LayerZero endpoint, which is necessary for cross-chain token transfers.
 
 # Testing in Testnet
 
