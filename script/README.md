@@ -136,6 +136,26 @@ Example:
 
 This script mints tokens in the source network and sends them to the destination network. The amount is specified in base units (e.g., 1000000 for 1 token with 6 decimals).
 
+## Automated Bridge Deployment
+
+You can also use the automated script to deploy and configure the bridge between two networks in one go:
+
+```bash
+./script/bridge/deploy_bridge_all.sh <source_network> <destination_network> [amount]
+```
+
+Example:
+
+```bash
+./script/bridge/deploy_bridge_all.sh sepolia fuji 1000000
+```
+
+This script will:
+1. Deploy StableOFTAdapter on both networks
+2. Configure LayerZero Endpoint for both networks
+3. Setup peer connections between networks (in both directions)
+4. Test cross-chain token transfer with the specified amount
+
 # Testing in Testnet
 
 This section describes the scripts used for testing the smart contracts in the Sepolia testnet.
