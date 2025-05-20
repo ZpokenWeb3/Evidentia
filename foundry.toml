@@ -14,17 +14,41 @@ optimizer = true
 optimizer_runs = 200
 
 remappings = [
-  '@openzeppelin/contracts=lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts',
-  '@openzeppelin/contracts-upgradeable=lib/openzeppelin-contracts-upgradeable/contracts',
-  'openzeppelin-foundry-upgrades=lib/openzeppelin-foundry-upgrades/src',
-  '@prb/math/src=lib/prb-math/src'
+  # OpenZeppelin
+  "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts",
+  "@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts",
+
+  # PRB Math
+  "@prb/math/src=lib/prb-math/src",
+
+  # OFT / OApp (Upgradeable & Core)
+  "@layerzerolabs/oft-evm/=lib/devtools/packages/oft-evm",
+  "@layerzerolabs/oft-evm-upgradeable/=lib/devtools/packages/oft-evm-upgradeable",
+  "@layerzerolabs/oapp-evm/=lib/devtools/packages/oapp-evm",
+  "@layerzerolabs/oapp-evm-upgradeable/=lib/devtools/packages/oapp-evm-upgradeable",
+
+  # LayerZero Protocol v2
+  "@layerzerolabs/lz-evm-protocol-v2/=lib/layerzero-v2/packages/layerzero-v2/evm/protocol",
+  "@layerzerolabs/lz-evm-messagelib-v2/=lib/layerzero-v2/packages/layerzero-v2/evm/messagelib",
+
+  # LayerZero Protocol v1
+  "@layerzerolabs/lz-evm-v1-0.7/=lib/LayerZero",
+
+  # Solidity Bytes Utils
+  "solidity-bytes-utils/=lib/solidity-bytes-utils",
+
+  # Testing helpers
+  "@layerzerolabs/test-devtools-evm-foundry/=lib/devtools/packages/test-devtools-evm-foundry",
 ]
 
 [rpc_endpoints]
 sepolia = "${SEPOLIA_RPC_URL}"
+fuji = "${FUJI_RPC_URL}"
 
 [etherscan]
 sepolia = { key = "${ETHERSCAN_API_KEY}" }
+fuji = { key = "${ETHERSCAN_API_KEY}" }
 
 [profile.ci]
-optimizer = false
+optimizer = true
+optimizer_runs = 200
