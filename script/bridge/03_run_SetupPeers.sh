@@ -66,7 +66,7 @@ fi
 
 # Run setup peers script
 log "Setting up peer connection from $SOURCE_NETWORK to $DESTINATION_NETWORK..."
-RESULT=$(forge script script/bridge/SetupPeers.s.sol:SetupPeers \
+RESULT=$(forge script script/bridge/03_SetupPeers.s.sol:SetupPeers \
     --sig "run(string,string)" \
     --rpc-url "$RPC_URL" \
     --private-key "$PRIVATE_KEY" \

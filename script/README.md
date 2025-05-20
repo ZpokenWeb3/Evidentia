@@ -87,6 +87,8 @@ Example:
 ./script/bridge/01_run_DeployStableOFTAdapter.sh fuji
 ```
 
+This script uses the `01_DeployStableOFTAdapter.s.sol` Solidity script to deploy the StableOFTAdapter contract.
+
 ## 2. Configure LayerZero Endpoint for StableOFTAdapter
 
 After deploying the StableOFTAdapter, you need to configure the LayerZero endpoint to enable cross-chain functionality.
@@ -102,7 +104,7 @@ Example:
 ./script/bridge/02_run_ConfigureLayerZeroEndpoint.sh fuji
 ```
 
-This script configures the send library for the OFT adapter in the LayerZero endpoint, which is necessary for cross-chain token transfers.
+This script uses the `02_ConfigureLayerZeroEndpoint.s.sol` Solidity script to configure the send library for the OFT adapter in the LayerZero endpoint, which is necessary for cross-chain token transfers.
 
 ## 3. Setup Peer Connection Between Networks
 
@@ -118,7 +120,7 @@ Example:
 ./script/bridge/03_run_SetupPeers.sh sepolia fuji
 ```
 
-This script establishes a connection between the OFT adapter in the source network and the OFT adapter in the destination network. You need to run this script for each direction of token transfer you want to enable.
+This script uses the `03_SetupPeers.s.sol` Solidity script to establish a connection between the OFT adapter in the source network and the OFT adapter in the destination network. You need to run this script for each direction of token transfer you want to enable.
 
 ## 4. Test Cross-Chain Token Transfer
 
@@ -134,7 +136,7 @@ Example:
 ./script/bridge/04_run_TestOFTCrossChainTransfer.sh sepolia fuji 1000000
 ```
 
-This script mints tokens in the source network and sends them to the destination network. The amount is specified in base units (e.g., 1000000 for 1 token with 6 decimals).
+This script uses the `04_TestOFTCrossChainTransfer.s.sol` Solidity script to mint tokens in the source network and send them to the destination network. The amount is specified in base units (e.g., 1000000 for 1 token with 6 decimals).
 
 ## Automated Bridge Deployment
 
@@ -151,10 +153,10 @@ Example:
 ```
 
 This script will:
-1. Deploy StableOFTAdapter on both networks
-2. Configure LayerZero Endpoint for both networks
-3. Setup peer connections between networks (in both directions)
-4. Test cross-chain token transfer with the specified amount
+1. Deploy StableOFTAdapter on both networks (using `01_DeployStableOFTAdapter.s.sol`)
+2. Configure LayerZero Endpoint for both networks (using `02_ConfigureLayerZeroEndpoint.s.sol`)
+3. Setup peer connections between networks in both directions (using `03_SetupPeers.s.sol`)
+4. Test cross-chain token transfer with the specified amount (using `04_TestOFTCrossChainTransfer.s.sol`)
 
 # Testing in Testnet
 

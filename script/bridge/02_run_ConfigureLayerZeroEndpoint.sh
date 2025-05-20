@@ -67,7 +67,7 @@ fi
 
 # Run configuration script
 log "Configuration command executing on $NETWORK..."
-RESULT=$(forge script script/bridge/ConfigureLayerZeroEndpoint.s.sol:ConfigureLayerZeroEndpoint \
+RESULT=$(forge script script/bridge/02_ConfigureLayerZeroEndpoint.s.sol:ConfigureLayerZeroEndpoint \
     --sig "run(string)" \
     --rpc-url "$RPC_URL" \
     --private-key "$PRIVATE_KEY" \

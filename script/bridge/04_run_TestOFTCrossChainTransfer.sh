@@ -68,7 +68,7 @@ fi
 
 # Run test cross-chain transfer script
 log "Testing cross-chain token transfer of $AMOUNT tokens from $SOURCE_NETWORK to $DESTINATION_NETWORK..."
-RESULT=$(forge script script/bridge/TestOFTCrossChainTransfer.s.sol:TestOFTCrossChainTransfer \
+RESULT=$(forge script script/bridge/04_TestOFTCrossChainTransfer.s.sol:TestOFTCrossChainTransfer \
     --sig "run(string,string,uint256)" \
     --rpc-url "$RPC_URL" \
     --private-key "$PRIVATE_KEY" \

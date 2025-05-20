@@ -22,14 +22,14 @@ echo "Test transfer amount: $AMOUNT"
 
 # Step 1: Deploy StableOFTAdapter on both networks
 echo "Step 1: Deploying StableOFTAdapter on $SOURCE_NETWORK..."
-./01_run_DeployStableOFTAdapter.sh $SOURCE_NETWORK
+./script/bridge/01_run_DeployStableOFTAdapter.sh $SOURCE_NETWORK
 if [ $? -ne 0 ]; then
     echo "Failed to deploy StableOFTAdapter on $SOURCE_NETWORK"
     exit 1
 fi
 
 echo "Step 1: Deploying StableOFTAdapter on $DESTINATION_NETWORK..."
-./01_run_DeployStableOFTAdapter.sh $DESTINATION_NETWORK
+./script/bridge/01_run_DeployStableOFTAdapter.sh $DESTINATION_NETWORK
 if [ $? -ne 0 ]; then
     echo "Failed to deploy StableOFTAdapter on $DESTINATION_NETWORK"
     exit 1
@@ -37,14 +37,14 @@ fi
 
 # Step 2: Configure LayerZero Endpoint for both networks
 echo "Step 2: Configuring LayerZero Endpoint on $SOURCE_NETWORK..."
-./02_run_ConfigureLayerZeroEndpoint.sh $SOURCE_NETWORK
+./script/bridge/02_run_ConfigureLayerZeroEndpoint.sh $SOURCE_NETWORK
 if [ $? -ne 0 ]; then
     echo "Failed to configure LayerZero Endpoint on $SOURCE_NETWORK"
     exit 1
 fi
 
 echo "Step 2: Configuring LayerZero Endpoint on $DESTINATION_NETWORK..."
-./02_run_ConfigureLayerZeroEndpoint.sh $DESTINATION_NETWORK
+./script/bridge/02_run_ConfigureLayerZeroEndpoint.sh $DESTINATION_NETWORK
 if [ $? -ne 0 ]; then
     echo "Failed to configure LayerZero Endpoint on $DESTINATION_NETWORK"
     exit 1
@@ -52,14 +52,14 @@ fi
 
 # Step 3: Setup peer connections between networks (both directions)
 echo "Step 3: Setting up peer connection from $SOURCE_NETWORK to $DESTINATION_NETWORK..."
-./03_run_SetupPeers.sh $SOURCE_NETWORK $DESTINATION_NETWORK
+./script/bridge/03_run_SetupPeers.sh $SOURCE_NETWORK $DESTINATION_NETWORK
 if [ $? -ne 0 ]; then
     echo "Failed to setup peer connection from $SOURCE_NETWORK to $DESTINATION_NETWORK"
     exit 1
 fi
 
 echo "Step 3: Setting up peer connection from $DESTINATION_NETWORK to $SOURCE_NETWORK..."
-./03_run_SetupPeers.sh $DESTINATION_NETWORK $SOURCE_NETWORK
+./script/bridge/03_run_SetupPeers.sh $DESTINATION_NETWORK $SOURCE_NETWORK
 if [ $? -ne 0 ]; then
     echo "Failed to setup peer connection from $DESTINATION_NETWORK to $SOURCE_NETWORK"
     exit 1
@@ -67,7 +67,7 @@ fi
 
 # Step 4: Test cross-chain token transfer
 echo "Step 4: Testing cross-chain token transfer from $SOURCE_NETWORK to $DESTINATION_NETWORK with amount $AMOUNT..."
-./04_run_TestOFTCrossChainTransfer.sh $SOURCE_NETWORK $DESTINATION_NETWORK $AMOUNT
+./script/bridge/04_run_TestOFTCrossChainTransfer.sh $SOURCE_NETWORK $DESTINATION_NETWORK $AMOUNT
 if [ $? -ne 0 ]; then
     echo "Failed to test cross-chain token transfer from $SOURCE_NETWORK to $DESTINATION_NETWORK"
     exit 1
