@@ -9,6 +9,7 @@ import {SendParam} from "@layerzerolabs/oft-evm/contracts/interfaces/IOFT.sol";
 import {OptionsBuilder} from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
 import {LayerZeroConstants} from "./LayerZeroConstants.s.sol";
 import {StableOFTAdapter} from "../../src/StableOFTAdapter.sol";
+import {console} from "forge-std/console.sol";
 
 using OptionsBuilder for bytes;
 
@@ -46,6 +47,14 @@ contract TestOFTCrossChainTransfer is Script {
         vm.startBroadcast(pk);
         // mint to sender
         token.mint(sender, amount);
+        
+        // Approve the OFT adapter to spend tokens on behalf of the sender
+        token.approve(address(oftAdapter), amount);
+        
+        // Log the approval for debugging
+        console.log("Approved OFT adapter to spend tokens:", amount);
+        console.log("Sender:", sender);
+        console.log("OFT adapter:", address(oftAdapter));
 
         // quote and send cross-chain
         bytes memory opts = OptionsBuilder.newOptions().addExecutorLzReceiveOption(cDst.gracePeriod, 0)
@@ -62,20 +71,26 @@ contract TestOFTCrossChainTransfer is Script {
         });
 
         MessagingFee memory fee = oftAdapter.quoteSend(param, false);
+        
+        console.log("Sending tokens cross-chain...");
+        console.log("Fee (native):", fee.nativeFee);
 
         oftAdapter.send{value: fee.nativeFee}(param, fee, sender);
+        console.log("Tokens sent successfully!");
         vm.stopBroadcast();
     }
 
     function _getStableOFTProxy(string memory network) internal view returns (address) {
         bytes32 k = keccak256(bytes(network));
         if (k == keccak256("tron-testnet")) return vm.envAddress("TRON_OFT_TOKEN_ADDRESS");
-        revert("Unknown network");
+        if (k == keccak256("sepolia")) return vm.envAddress("STABLES_PROXY_ADDRESS");
+        revert("Unknown network in _getStableOFTProxy");
     }
 
     function _getAdapterProxy(string memory network) internal view returns (address) {
         bytes32 k = keccak256(bytes(network));
         if (k == keccak256("sepolia")) return vm.envAddress("OFT_ADAPTER_PROXY_ADDRESS");
-        revert("Unknown network");
+        if (k == keccak256("tron-testnet")) return vm.envAddress("TRON_OFT_TOKEN_ADDRESS");
+        revert("Unknown network in _getAdapterProxy");
     }
 }

@@ -117,7 +117,7 @@ After configuring the LayerZero endpoints, you need to set up peer connections b
 Example:
 
 ```bash
-./script/bridge/03_run_SetupPeers.sh sepolia fuji
+./script/bridge/03_run_SetupPeers.sh sepolia tron-testnet
 ```
 
 This script uses the `03_SetupPeers.s.sol` Solidity script to establish a connection between the OFT adapter in the source network and the OFT adapter in the destination network. You need to run this script for each direction of token transfer you want to enable.
@@ -133,7 +133,7 @@ After setting up peer connections, you can test cross-chain token transfers betw
 Example:
 
 ```bash
-./script/bridge/04_run_TestOFTCrossChainTransfer.sh sepolia fuji 1000000
+./script/bridge/04_run_TestOFTCrossChainTransfer.sh sepolia tron-testnet 10
 ```
 
 This script uses the `04_TestOFTCrossChainTransfer.s.sol` Solidity script to mint tokens in the source network and send them to the destination network. The amount is specified in base units (e.g., 1000000 for 1 token with 6 decimals).
