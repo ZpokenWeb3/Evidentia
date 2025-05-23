@@ -10,7 +10,7 @@ import {LayerZeroConstants} from "./LayerZeroConstants.s.sol";
  * @dev Sets the send-library for an OFT contract on a given chain by name.
  *
  * USAGE:
- *   forge script script/bridge/ConfigureLayerZeroEndpoint.s.sol:ConfigureLayerZeroEndpoint \
+ *   forge script script/bridge/02_ConfigureLayerZeroEndpoint.s.sol:ConfigureLayerZeroEndpoint \
  *     --sig "run(string)" \
  *     --rpc-url fuji \
  *     --broadcast \
