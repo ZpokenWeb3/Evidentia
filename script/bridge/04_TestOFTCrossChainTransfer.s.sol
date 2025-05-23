@@ -47,10 +47,10 @@ contract TestOFTCrossChainTransfer is Script {
         vm.startBroadcast(pk);
         // mint to sender
         token.mint(sender, amount);
-        
+
         // Approve the OFT adapter to spend tokens on behalf of the sender
         token.approve(address(oftAdapter), amount);
-        
+
         // Log the approval for debugging
         console.log("Approved OFT adapter to spend tokens:", amount);
         console.log("Sender:", sender);
@@ -71,7 +71,7 @@ contract TestOFTCrossChainTransfer is Script {
         });
 
         MessagingFee memory fee = oftAdapter.quoteSend(param, false);
-        
+
         console.log("Sending tokens cross-chain...");
         console.log("Fee (native):", fee.nativeFee);
 
