@@ -68,6 +68,7 @@ contract NFTStakingAndBorrowingTest is Test {
         bondNFT.mint(1, 10, "");
         bondNFT.setApprovalForAll(address(nftStaking), true);
         nftStaking.whitelistNFT(address(bondNFT), true);
+        nftStaking.setProtocolFee(0);
         vm.stopPrank();
     }
 

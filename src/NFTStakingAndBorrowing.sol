@@ -145,6 +145,10 @@ contract NFTStakingAndBorrowing is
         address stablesStakingAddress;
         /// @dev The stablecoin token contract used for borrowing and repayment. Must implement IMintableERC20.
         IMintableERC20 stableToken;
+        /// @dev Protocol fee applied to rewards, expressed with UNIT precision (e.g., 1% is 100 * UNIT / BPS).
+        uint256 protocolFee;
+        /// @dev Address to receive protocol fees.
+        address feeReceiver;
     }
 
     /**
@@ -175,6 +179,8 @@ contract NFTStakingAndBorrowing is
         $.protocolRate = 1200 * UNIT / BPS;
         $.safetyFee = 500 * UNIT / BPS;
         $.liquidationTimeWindow = 45 days;
+        $.protocolFee = 1000 * UNIT / BPS;
+        $.feeReceiver = msg.sender;
     }
 
     /**
@@ -249,6 +255,27 @@ contract NFTStakingAndBorrowing is
         address oldAddress = $.stablesStakingAddress;
         $.stablesStakingAddress = _address;
         emit StablesStakingAddressUpdated(oldAddress, $.stablesStakingAddress);
+    }
+
+    /**
+     * @notice Sets the protocol fee.
+     * @dev Only callable by the contract owner. Input is in Basis Points (BPS).
+     * @param _protocolFeeInBPS The new protocol fee in BPS (e.g., 1000 for 10%).
+     */
+    function setProtocolFee(uint256 _protocolFeeInBPS) external onlyOwner {
+        NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
+        $.protocolFee = _protocolFeeInBPS * UNIT / BPS;
+    }
+
+    /**
+     * @notice Sets the fee receiver address.
+     * @dev Only callable by the contract owner. Cannot be set to the zero address.
+     * @param _address The new fee receiver address.
+     */
+    function setFeeReceiver(address _address) external onlyOwner {
+        if (_address == address(0)) revert ZeroAddress();
+        NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
+        $.feeReceiver = _address;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -535,6 +562,9 @@ contract NFTStakingAndBorrowing is
         uint256 currentDebt = calculateDebt($.totalStats.debt, $.totalStats.debtUpdateTimestamp, block.timestamp);
         // Rewards = Total Current Debt - Total Principal Borrowed - Rewards Already Claimed
         uint256 rewardAmount = currentDebt - $.totalStats.borrowed - $.rewardsTransfered;
+        // Deduct protocol fee
+        // Rewards are rounded down, protocol fee is rounded up
+        rewardAmount = rewardAmount * (UNIT - $.protocolFee) / UNIT;
         return rewardAmount;
     }
 
@@ -1027,6 +1057,7 @@ contract NFTStakingAndBorrowing is
     function transferRewards() external onlyStablesStaking returns (uint256) {
         NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
         uint256 currentDebt;
+        uint256 protocolFee;
         // Get current total debt (avoid redundant calculation if already updated this block)
         if ($.totalStats.debtUpdateTimestamp == block.timestamp) {
             currentDebt = $.totalStats.debt;
@@ -1042,9 +1073,24 @@ contract NFTStakingAndBorrowing is
         // Update rewards transferred *before* transfer (effects before interactions)
         $.rewardsTransfered += rewardAmount;
 
+        // Calculate protocol fee
+        if (rewardAmount > 0 && $.protocolFee > 0) {
+            // Calculate the product first to avoid potential intermediate truncation
+            uint256 product = rewardAmount * $.protocolFee;
+            // Perform ceiling division to round up
+            protocolFee = (product + UNIT - 1) / UNIT;
+        }
+
+        // Deduct protocol fee
+        rewardAmount = rewardAmount - protocolFee;
+
         // Transfer rewards if any
         if (rewardAmount > 0) {
             $.stableToken.transfer(msg.sender, rewardAmount);
+        }
+
+        if (protocolFee > 0) {
+            $.stableToken.transfer($.feeReceiver, protocolFee);
         }
 
         return rewardAmount;
