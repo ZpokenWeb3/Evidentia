@@ -48,6 +48,12 @@ contract SetupPeers is Script {
         if (k == keccak256("tron-testnet")) {
             return vm.envAddress("TRON_OFT_TOKEN_ADDRESS");
         }
+        if (k == keccak256("mainnet")) {
+            return vm.envAddress("OFT_ADAPTER_PROXY_ADDRESS");
+        }
+        if (k == keccak256("tron-mainnet")) {
+            return vm.envAddress("TRON_OFT_TOKEN_ADDRESS");
+        }
         revert("SetupPeersByName: unknown network");
     }
 }

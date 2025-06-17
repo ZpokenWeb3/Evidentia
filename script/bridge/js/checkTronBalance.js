@@ -1,7 +1,9 @@
-// Usage: node script/bridge/js/checkTronBalance.js
+// Usage: node script/bridge/js/checkTronBalance.js [--address TRON_ADDRESS] [--token TOKEN_ADDRESS] [--network mainnet|testnet|nile|shasta] [--rpc CUSTOM_RPC_URL]
 
 require('dotenv').config();
 const { TronWeb } = require('tronweb');
+const yargs = require('yargs/yargs');
+const { hideBin } = require('yargs/helpers');
 
 // ABI for StableBondCoinsOFT contract
 const tokenABI = [
@@ -43,24 +45,83 @@ const tokenABI = [
 ];
 
 async function main() {
+  // Parse command line arguments
+  const argv = yargs(hideBin(process.argv))
+    .option('address', {
+      description: 'TRON address to check balance for',
+      type: 'string'
+    })
+    .option('token', {
+      description: 'Token contract address (overrides TRON_OFT_TOKEN_BASE58_ADDRESS from .env)',
+      type: 'string'
+    })
+    .option('network', {
+      description: 'TRON network to connect to',
+      type: 'string',
+      choices: ['mainnet', 'testnet', 'nile', 'shasta'],
+      default: 'testnet'
+    })
+    .option('rpc', {
+      description: 'Custom RPC URL (overrides network option)',
+      type: 'string'
+    })
+    .help()
+    .alias('help', 'h')
+    .argv;
+
+  // Determine RPC URL based on network or custom RPC
+  let rpcUrl;
+  if (argv.rpc) {
+    rpcUrl = argv.rpc;
+  } else {
+    switch (argv.network) {
+      case 'mainnet':
+        rpcUrl = 'https://api.trongrid.io';
+        break;
+      case 'testnet':
+      case 'shasta':
+        rpcUrl = 'https://api.shasta.trongrid.io';
+        break;
+      case 'nile':
+        rpcUrl = 'https://nile.trongrid.io';
+        break;
+      default:
+        rpcUrl = 'https://api.shasta.trongrid.io';
+    }
+  }
+
+  console.log(`Connecting to TRON network: ${argv.rpc ? 'Custom RPC' : argv.network}`);
+  console.log(`RPC URL: ${rpcUrl}`);
+
   // Setup TronWeb instance
   const tronWeb = new TronWeb({
-    fullHost: 'https://api.shasta.trongrid.io', // Shasta testnet
+    fullHost: rpcUrl,
     privateKey: process.env.TRON_PRIVATE_KEY
   });
 
-  // Get address from private key
-  const address = tronWeb.address.fromPrivateKey(process.env.TRON_PRIVATE_KEY);
-  console.log(`Checking balance for address: ${address}`);
+  // Get address - either from command line or from private key
+  let address;
+  if (argv.address) {
+    address = argv.address;
+    console.log(`Checking balance for provided address: ${address}`);
+  } else {
+    address = tronWeb.address.fromPrivateKey(process.env.TRON_PRIVATE_KEY);
+    console.log(`Checking balance for wallet address: ${address}`);
+  }
 
-  // Get OFT token contract instance
-  const tokenAddress = process.env.TRON_OFT_TOKEN_BASE58_ADDRESS;
-  if (!tokenAddress) {
-    throw new Error('TRON_OFT_TOKEN_BASE58_ADDRESS not found in .env file');
+  // Get OFT token contract instance - either from command line or from .env
+  let tokenAddress;
+  if (argv.token) {
+    tokenAddress = argv.token;
+  } else {
+    tokenAddress = process.env.TRON_OFT_TOKEN_BASE58_ADDRESS;
+    if (!tokenAddress) {
+      throw new Error('Token address not provided. Use --token option or set TRON_OFT_TOKEN_BASE58_ADDRESS in .env file');
+    }
   }
 
   console.log(`Token contract address: ${tokenAddress}`);
-  
+
   try {
     // Check TRX balance
     const trxBalance = await tronWeb.trx.getBalance(address);
@@ -68,11 +129,11 @@ async function main() {
 
     // Get contract instance with custom ABI
     const contract = await tronWeb.contract(tokenABI, tokenAddress);
-    
+
     // Get available methods
     const availableMethods = Object.keys(contract).filter(key => typeof contract[key] === 'function');
     console.log('Available contract methods:', availableMethods);
-    
+
     // Try to check token balance
     try {
       const balanceResult = await contract.balanceOf(address).call();
@@ -88,7 +149,7 @@ async function main() {
     } catch (error) {
       console.log('Error calling name:', error.message);
     }
-    
+
     // Try to get token symbol
     try {
       const symbolResult = await contract.symbol().call();
@@ -96,7 +157,7 @@ async function main() {
     } catch (error) {
       console.log('Error calling symbol:', error.message);
     }
-    
+
     // Try to get token decimals
     try {
       const decimalsResult = await contract.decimals().call();
@@ -104,7 +165,7 @@ async function main() {
     } catch (error) {
       console.log('Error calling decimals:', error.message);
     }
-    
+
     // Try to get total supply
     try {
       const totalSupplyResult = await contract.totalSupply().call();

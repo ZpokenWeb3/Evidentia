@@ -85,6 +85,7 @@ Example:
 ```bash
 ./script/bridge/01_run_DeployStableOFTAdapter.sh sepolia
 ./script/bridge/01_run_DeployStableOFTAdapter.sh fuji
+./script/bridge/01_run_DeployStableOFTAdapter.sh mainnet
 ```
 
 This script uses the `01_DeployStableOFTAdapter.s.sol` Solidity script to deploy the StableOFTAdapter contract.
@@ -102,6 +103,7 @@ Example:
 ```bash
 ./script/bridge/02_run_ConfigureLayerZeroEndpoint.sh sepolia
 ./script/bridge/02_run_ConfigureLayerZeroEndpoint.sh fuji
+./script/bridge/02_run_ConfigureLayerZeroEndpoint.sh mainnet
 ```
 
 This script uses the `02_ConfigureLayerZeroEndpoint.s.sol` Solidity script to configure the send library for the OFT adapter in the LayerZero endpoint, which is necessary for cross-chain token transfers.
@@ -118,6 +120,7 @@ Example:
 
 ```bash
 ./script/bridge/03_run_SetupPeers.sh sepolia tron-testnet
+./script/bridge/03_run_SetupPeers.sh mainnet tron-mainnet
 ```
 
 This script uses the `03_SetupPeers.s.sol` Solidity script to establish a connection between the OFT adapter in the source network and the OFT adapter in the destination network. You need to run this script for each direction of token transfer you want to enable.
@@ -134,6 +137,7 @@ Example:
 
 ```bash
 ./script/bridge/04_run_TestOFTCrossChainTransfer.sh sepolia tron-testnet 10
+./script/bridge/04_run_TestOFTCrossChainTransfer.sh mainnet tron-mainnet 10
 ```
 
 This script uses the `04_TestOFTCrossChainTransfer.s.sol` Solidity script to mint tokens in the source network and send them to the destination network. The amount is specified in base units (e.g., 1000000 for 1 token with 6 decimals).
