@@ -1,6 +1,6 @@
 // scripts/SetupPeersByName.s.sol
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.22;
+pragma solidity 0.8.30;
 
 import {Script} from "forge-std/Script.sol";
 import {StableBondCoins} from "../../src/StableBondCoins.sol";
@@ -23,7 +23,7 @@ import {StableOFTAdapter} from "../../src/StableOFTAdapter.sol";
 contract SetupPeers is Script {
     /// @param src  human-readable key for the source chain, e.g. "fuji", "sepolia", "tron-testnet"
     /// @param dst  human-readable key for the destination chain
-    function run(string calldata src, string calldata dst) external {
+    function run(string memory src, string memory dst) external {
         LayerZeroConstants.ChainConfig memory cDst = LayerZeroConstants.getChainConfigByName(dst);
 
         // pick up the two proxy addresses from env

@@ -279,7 +279,7 @@ async function main() {
       console.log(`Approved OFT adapter to spend tokens: ${amount}`);
       console.log(`Transaction hash: ${approveTx.hash}`);
     }
-    
+
     console.log(`Sender: ${sender}`);
     console.log(`OFT adapter: ${srcAdapterProxyAddress}`);
 
@@ -287,7 +287,6 @@ async function main() {
     // Create options for cross-chain transfer
     const options = Options.newOptions()
       .addExecutorLzReceiveOption(_gas, 0)
-//      .addExecutorComposeOption(0, dstChainConfig.gracePeriod, 0)
       .toHex();
 
     // Determine destination address
@@ -357,6 +356,7 @@ async function main() {
     }
 
     console.log("sendParam:", sendParam);
+
     // Quote fee for cross-chain transfer
     console.log('Quoting fee for cross-chain transfer...');
     let fee;

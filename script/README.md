@@ -137,7 +137,7 @@ Example:
 
 ```bash
 ./script/bridge/04_run_TestOFTCrossChainTransfer.sh sepolia tron-testnet 10
-./script/bridge/04_run_TestOFTCrossChainTransfer.sh mainnet tron-mainnet 10
+./script/bridge/04_run_TestOFTCrossChainTransfer.sh mainnet tron-mainnet 1
 ```
 
 This script uses the `04_TestOFTCrossChainTransfer.s.sol` Solidity script to mint tokens in the source network and send them to the destination network. The amount is specified in base units (e.g., 1000000 for 1 token with 6 decimals).

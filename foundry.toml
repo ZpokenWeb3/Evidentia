@@ -30,6 +30,7 @@ remappings = [
   # LayerZero Protocol v2
   "@layerzerolabs/lz-evm-protocol-v2/=lib/layerzero-v2/packages/layerzero-v2/evm/protocol",
   "@layerzerolabs/lz-evm-messagelib-v2/=lib/layerzero-v2/packages/layerzero-v2/evm/messagelib",
+  "LayerZero-v2/=lib/layerzero-v2/packages/layerzero-v2/evm/protocol",
 
   # LayerZero Protocol v1
   "@layerzerolabs/lz-evm-v1-0.7/=lib/LayerZero",

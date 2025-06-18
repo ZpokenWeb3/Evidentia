@@ -57,8 +57,9 @@ contract TestOFTCrossChainTransfer is Script {
         console.log("OFT adapter:", address(oftAdapter));
 
         // quote and send cross-chain
-        bytes memory opts = OptionsBuilder.newOptions().addExecutorLzReceiveOption(cDst.gracePeriod, 0)
-            .addExecutorLzComposeOption(0, cDst.gracePeriod, 0);
+        uint128 _gas = 71000;
+        bytes memory opts = OptionsBuilder.newOptions()
+          .addExecutorLzReceiveOption(_gas, 0);
 
         SendParam memory param = SendParam({
             dstEid: cDst.eid,
@@ -82,15 +83,15 @@ contract TestOFTCrossChainTransfer is Script {
 
     function _getStableOFTProxy(string memory network) internal view returns (address) {
         bytes32 k = keccak256(bytes(network));
-        if (k == keccak256("tron-testnet")) return vm.envAddress("TRON_OFT_TOKEN_ADDRESS");
-        if (k == keccak256("sepolia")) return vm.envAddress("STABLES_PROXY_ADDRESS");
+        if (k == keccak256("tron-testnet") || k == keccak256("tron-mainnet")) return vm.envAddress("TRON_OFT_TOKEN_ADDRESS");
+        if (k == keccak256("sepolia") || k == keccak256("mainnet")) return vm.envAddress("STABLES_PROXY_ADDRESS");
         revert("Unknown network in _getStableOFTProxy");
     }
 
     function _getAdapterProxy(string memory network) internal view returns (address) {
         bytes32 k = keccak256(bytes(network));
-        if (k == keccak256("sepolia")) return vm.envAddress("OFT_ADAPTER_PROXY_ADDRESS");
-        if (k == keccak256("tron-testnet")) return vm.envAddress("TRON_OFT_TOKEN_ADDRESS");
+        if (k == keccak256("sepolia") || k == keccak256("mainnet")) return vm.envAddress("OFT_ADAPTER_PROXY_ADDRESS");
+        if (k == keccak256("tron-testnet") || k == keccak256("tron-mainnet")) return vm.envAddress("TRON_OFT_TOKEN_ADDRESS");
         revert("Unknown network in _getAdapterProxy");
     }
 }
