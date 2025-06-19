@@ -6,27 +6,27 @@ import {ILayerZeroEndpointV2} from "LayerZero-v2/contracts/interfaces/ILayerZero
 import {LayerZeroConstants} from "./LayerZeroConstants.s.sol";
 import {console} from "forge-std/console.sol";
 import {SetConfigParam} from "LayerZero-v2/contracts/interfaces/IMessageLibManager.sol";
+import { UlnConfig } from "@layerzerolabs/lz-evm-messagelib-v2/contracts/uln/UlnBase.sol";
 
 /**
  * @title ConfigureSecurityStack
- * @dev Sets up the security stack (DVNs and Executor) for an OFT contract on a given chain.
+ * @dev Sets up the security stack (DVNs) for an OFT contract
  *
  * USAGE:
  *   forge script script/bridge/05_ConfigureSecurityStack.s.sol:ConfigureSecurityStack \
- *     --sig "run(string)" \
+ *     --sig "run(string,string)" \
  *     --rpc-url mainnet \
  *     --broadcast \
  *     --private-key $PRIVATE_KEY \
- *     "mainnet"
+ *     "mainnet" "send"
  */
 contract ConfigureSecurityStack is Script {
     // Config types for ULN (Ultra Light Node)
-    uint32 constant CONFIG_TYPE_ULN = 1;
-    // Config types for Executor
-    uint32 constant CONFIG_TYPE_EXECUTOR = 2;
+    uint32 constant CONFIG_TYPE_ULN = 2;
 
     /// @param network human‐readable key: "mainnet", "tron-mainnet", etc.
-    function run(string memory network) external {
+    /// @param libType "send" to use cfg.ulnSendLib, "recv" to use cfg.ulnRecvLib
+    function run(string memory network, string memory libType) external {
         // 1) look up the whole config
         LayerZeroConstants.ChainConfig memory cfg = LayerZeroConstants.getChainConfigByName(network);
 
@@ -40,6 +40,7 @@ contract ConfigureSecurityStack is Script {
 
         // Configure ULN (DVN) settings
         bytes memory ulnConfig = _getUlnConfig();
+
         SetConfigParam[] memory ulnParams = new SetConfigParam[](1);
         ulnParams[0] = SetConfigParam({
             eid: destinationEid,
@@ -47,22 +48,18 @@ contract ConfigureSecurityStack is Script {
             config: ulnConfig
         });
 
-        // Configure Executor settings
-        bytes memory executorConfig = _getExecutorConfig();
-        SetConfigParam[] memory executorParams = new SetConfigParam[](1);
-        executorParams[0] = SetConfigParam({
-            eid: destinationEid,
-            configType: CONFIG_TYPE_EXECUTOR,
-            config: executorConfig
-        });
-
         // Set ULN config
         console.log("Setting ULN config for OApp:", oapp);
-        ILayerZeroEndpointV2(cfg.endpoint).setConfig(oapp, cfg.ulnSendLib, ulnParams);
-
-        // Set Executor config
-        console.log("Setting Executor config for OApp:", oapp);
-        ILayerZeroEndpointV2(cfg.endpoint).setConfig(oapp, cfg.ulnSendLib, executorParams);
+        address lib;
+        if (keccak256(abi.encodePacked(libType)) == keccak256(abi.encodePacked("send"))) {
+            lib = cfg.ulnSendLib;
+        } else if (keccak256(abi.encodePacked(libType)) == keccak256(abi.encodePacked("recv"))) {
+            lib = cfg.ulnRecvLib;
+        } else {
+            revert(string(abi.encodePacked("Invalid libType: ", libType, ". Must be 'send' or 'recv'")));
+        }
+        console.log("Using lib:", lib, "- libType:", libType);
+        ILayerZeroEndpointV2(cfg.endpoint).setConfig(oapp, lib, ulnParams);
 
         vm.stopBroadcast();
     }
@@ -70,25 +67,23 @@ contract ConfigureSecurityStack is Script {
     // Returns the ULN (DVN) configuration
     function _getUlnConfig() internal pure returns (bytes memory) {
         // https://docs.layerzero.network/v2/deployments/dvn-addresses
-        address[] memory dvns = new address[](1);
-        dvns[0] = 0x8bC1D368036EE5E726D230beB685294BE191A24e; // LayerZero Labs
 
-        uint16[] memory dvnConfirmations = new uint16[](1);
-        dvnConfirmations[0] = 2;
+        // struct UlnConfig {
+        //     uint64 confirmations;
+        //     uint8 requiredDVNCount; // 0 indicate DEFAULT, NIL_DVN_COUNT indicate NONE (to override the value of default)
+        //     uint8 optionalDVNCount; // 0 indicate DEFAULT, NIL_DVN_COUNT indicate NONE (to override the value of default)
+        //     uint8 optionalDVNThreshold; // (0, optionalDVNCount]
+        //     address[] requiredDVNs; // no duplicates. sorted an an ascending order. allowed overlap with optionalDVNs
+        //     address[] optionalDVNs; // no duplicates. sorted an an ascending order. allowed overlap with requiredDVNs
+        // }
+
+        UlnConfig memory ulnConfig;
+        ulnConfig = UlnConfig(15, 2, 0, 0, new address[](2), new address[](0));
+        // Addresses must be sorted in ascending order
+        ulnConfig.requiredDVNs[0] = address(0x3b0531eB02Ab4aD72e7a531180beeF9493a00dD2); // USDT0
+        ulnConfig.requiredDVNs[1] = address(0x589dEDbD617e0CBcB916A9223F4d1300c294236b); // LayerZero Labs
 
         // Encode the ULN config
-        return abi.encode(dvns, dvnConfirmations);
-    }
-
-    // Returns the Executor configuration
-    function _getExecutorConfig() internal pure returns (bytes memory) {
-        // https://docs.layerzero.network/v2/deployments/deployed-contracts
-        address executor = 0x173272739Bd7Aa6e4e214714048a9fE699453059; // LayerZero Default Executor
-
-        // Max gas limit for execution
-        uint256 maxGasLimit = 2000000;
-
-        // Encode the Executor config
-        return abi.encode(executor, maxGasLimit);
+        return abi.encode(ulnConfig);
     }
 }

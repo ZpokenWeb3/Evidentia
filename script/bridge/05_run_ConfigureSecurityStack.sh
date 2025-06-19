@@ -1,20 +1,28 @@
 #!/bin/bash
 
-# Check if network parameter is provided
-if [ $# -ne 1 ]; then
-    echo "Usage: $0 <network>"
-    echo "Example: $0 mainnet"
+# Check if network and libType parameters are provided
+if [ $# -ne 2 ]; then
+    echo "Usage: $0 <network> <libType>"
+    echo "Example: $0 mainnet send"
+    echo "libType must be 'send' or 'recv'"
     exit 1
 fi
 
 NETWORK="$1"
+LIB_TYPE="$2"
+
+# Validate libType
+if [ "$LIB_TYPE" != "send" ] && [ "$LIB_TYPE" != "recv" ]; then
+    echo "ERROR: libType must be 'send' or 'recv'"
+    exit 1
+fi
 
 # Create logs directory if it doesn't exist
 mkdir -p ./log
 
 # Generate timestamp and log file name
 TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
-LOG_FILE="./log/configure_security_stack_${NETWORK}_${TIMESTAMP}.log"
+LOG_FILE="./log/configure_security_stack_${NETWORK}_${LIB_TYPE}_${TIMESTAMP}.log"
 
 # Log function with timestamp
 log() {
@@ -46,7 +54,7 @@ if [ -z "$OFT_ADAPTER_PROXY_ADDRESS" ]; then
     exit 1
 fi
 
-log "Starting security stack configuration for $NETWORK..."
+log "Starting security stack configuration for $NETWORK with libType $LIB_TYPE..."
 
 # Set RPC URL based on network
 if [ "$NETWORK" = "mainnet" ]; then
@@ -64,23 +72,23 @@ else
 fi
 
 # Run configure security stack script
-log "Configuring security stack for $NETWORK..."
+log "Configuring security stack for $NETWORK with libType $LIB_TYPE..."
 set -o pipefail
 forge script script/bridge/05_ConfigureSecurityStack.s.sol:ConfigureSecurityStack \
-    --sig "run(string)" \
+    --sig "run(string,string)" \
     --rpc-url "$RPC_URL" \
     --private-key "$PRIVATE_KEY" \
     --broadcast \
-    "$NETWORK" \
+    "$NETWORK" "$LIB_TYPE" \
     -vvvv \
     2>&1 | tee -a "$LOG_FILE"
 
 RESULT=$?
 # Check if the command was successful
 if [ $RESULT -eq 0 ]; then
-    log "Security stack configuration completed successfully for $NETWORK"
+    log "Security stack configuration completed successfully for $NETWORK with libType $LIB_TYPE"
 else
-    log "ERROR: Failed to configure security stack for $NETWORK"
+    log "ERROR: Failed to configure security stack for $NETWORK with libType $LIB_TYPE"
     exit 1
 fi
 

@@ -225,12 +225,8 @@ async function main() {
   try {
     // Check current balance
     let initialBalance;
-    
-    if (src === 'tron-testnet' || src === 'tron-mainnet') {
-      initialBalance = await token.balanceOf(sender).call();
-    } else {
-      initialBalance = await token.balanceOf(sender);
-    }
+
+    initialBalance = await token.balanceOf(sender);
     console.log(`Initial token balance: ${initialBalance.toString()}`);
 
     // Mint tokens to sender if --mint flag is provided
