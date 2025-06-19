@@ -147,8 +147,8 @@ contract StakingStablesTest is Test {
         console.log("Client2 rewards: ", stakingStables.pendingRewards(client2));
         console.log("Client3 rewards: ", stakingStables.pendingRewards(client3));
 
-        assertEq(stakingStables.pendingRewards(client2), 1715707503);
-        assertEq(stakingStables.pendingRewards(client3), 2790515371);
+        assertEq(stakingStables.pendingRewards(client2), 1715707504);
+        assertEq(stakingStables.pendingRewards(client3), 2790515372);
     }
 
     function testRewards() public {
@@ -396,7 +396,7 @@ contract StakingStablesTest is Test {
         console.log("Client2 rewards: ", stakingStables.pendingRewards(client2));
         console.log("Client3 rewards: ", stakingStables.pendingRewards(client3));
 
-        assertEq(staked, 10125390760);
+        assertEq(staked, 10125390762);
     }
 
     function testStakeNFTAndStables() public {
@@ -459,8 +459,8 @@ contract StakingStablesTest is Test {
         console.log("Client2 rewards: ", stakingStables.pendingRewards(client2));
         console.log("Client3 rewards: ", stakingStables.pendingRewards(client3));
 
-        assertEq(stakingStables.pendingRewards(client2), 1715707503);
-        assertEq(stakingStables.pendingRewards(client3), 2790515371);
+        assertEq(stakingStables.pendingRewards(client2), 1715707504);
+        assertEq(stakingStables.pendingRewards(client3), 2790515372);
     }
 
     function testStakeStablesFromNFTStaking() public {
@@ -526,8 +526,8 @@ contract StakingStablesTest is Test {
         console.log("Client2 rewards: ", stakingStables.pendingRewards(client2));
         console.log("Client3 rewards: ", stakingStables.pendingRewards(client3));
 
-        assertEq(stakingStables.pendingRewards(client2), 1715707503);
-        assertEq(stakingStables.pendingRewards(client3), 2790515371);
+        assertEq(stakingStables.pendingRewards(client2), 1715707504);
+        assertEq(stakingStables.pendingRewards(client3), 2790515372);
     }
 
     function testUUPSUpgrade() public {
@@ -664,7 +664,8 @@ contract StakingStablesTest is Test {
 
         assertEq(
             stableBondCoins.balanceOf(feeReceiver),
-            ((client2Rewards + client2Rewards2 + client3Rewards) * 100000000 + 5) / 899999994
+            ((client2Rewards + client2Rewards2 + client3Rewards) * 100000000 + 5) / 899999994 + 1,
+            "Fee should be distributed"
         );
     }
 }

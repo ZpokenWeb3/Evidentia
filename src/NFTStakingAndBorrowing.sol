@@ -10,6 +10,8 @@ import {UD60x18, ud} from "@prb/math/src/UD60x18.sol";
 import {IStableCoinsStaking} from "./Interfaces/IStableCoinsStaking.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {Checkpoints} from "./libs/Checkpoints.sol";
+import {SafeCast} from "./libs/SafeCast.sol";
 
 /**
  * @dev Interface for a mintable and burnable ERC20 token.
@@ -45,6 +47,8 @@ contract NFTStakingAndBorrowing is
     ReentrancyGuardUpgradeable,
     UUPSUpgradeable
 {
+    using Checkpoints for Checkpoints.Trace208;
+
     // keccak256(abi.encode(uint256(keccak256("NFTStakingAndBorrowing.storage")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant STORAGE_LOCATION = 0x6a441442997d548c1da10218ea0e91c439ff7c57f962abbe6c4b985a11b4e500;
     /// @dev Number of seconds in a year, used for interest calculations.
@@ -89,6 +93,8 @@ contract NFTStakingAndBorrowing is
     );
     /// @dev Emitted when the stablecoin staking contract address is updated.
     event StablesStakingAddressUpdated(address indexed oldAddress, address indexed newAddress);
+    /// @dev Emitted when the protocol rate is updated.
+    event ProtocolRateUpdated(uint256 newProtocolRate);
 
     /**
      * @dev Stores global statistics for the protocol.
@@ -149,6 +155,8 @@ contract NFTStakingAndBorrowing is
         uint256 protocolFee;
         /// @dev Address to receive protocol fees.
         address feeReceiver;
+        /// @dev Array of protocol rate checkpoints.
+        Checkpoints.Trace208 _rateCheckpoints;
     }
 
     /**
@@ -176,7 +184,7 @@ contract NFTStakingAndBorrowing is
         // Initialize storage
         NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
         $.stableToken = IMintableERC20(_stableToken);
-        $.protocolRate = 1200 * UNIT / BPS;
+        setProtocolRate(1200);
         $.safetyFee = 500 * UNIT / BPS;
         $.liquidationTimeWindow = 45 days;
         $.protocolFee = 1000 * UNIT / BPS;
@@ -219,9 +227,12 @@ contract NFTStakingAndBorrowing is
      * Only callable by the contract owner. Input is in Basis Points (BPS).
      * @param _protocolRateInBPS The new protocol rate in BPS (e.g., 1200 for 12%).
      */
-    function setProtocolRate(uint256 _protocolRateInBPS) external onlyOwner {
+    function setProtocolRate(uint256 _protocolRateInBPS) public onlyOwner {
         NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
-        $.protocolRate = _protocolRateInBPS * UNIT / BPS;
+        uint256 newProtocolRate = _protocolRateInBPS * UNIT / BPS;
+        $.protocolRate = newProtocolRate;
+        $._rateCheckpoints.push(SafeCast.toUint48(block.timestamp), SafeCast.toUint208(newProtocolRate));
+        emit ProtocolRateUpdated(newProtocolRate);
     }
 
     /**
@@ -369,17 +380,39 @@ contract NFTStakingAndBorrowing is
      */
     function calculateDebt(uint256 borrowedAmount, uint256 fromTime, uint256 toTime) public view returns (uint256) {
         // Scale amount to UNIT precision for PRBMath
+        NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
         borrowedAmount = borrowedAmount * UNIT;
         if (fromTime >= toTime) {
             return borrowedAmount / UNIT; // Return original amount if no time passed
         }
+
+        uint256[] memory spans;
+        uint256[] memory protocolRates;
+        UD60x18 debtLog2;
+
+        (spans, protocolRates) = getProtocolRateTimeSpans(SafeCast.toUint48(fromTime), SafeCast.toUint48(toTime));
+        if (spans.length == 1) {
+            debtLog2 = _calculateDebtLog2(ud(borrowedAmount).log2(), fromTime, toTime, protocolRates[0]);
+        } else if (spans.length == 0) {
+            debtLog2 = _calculateDebtLog2(ud(borrowedAmount).log2(), fromTime, toTime, $.protocolRate);
+        } else {
+            debtLog2 = ud(borrowedAmount).log2();
+            for (uint256 i = 0; i < spans.length; i++) {
+                debtLog2 = _calculateDebtLog2(debtLog2, 0, spans[i], protocolRates[i]);
+            }
+        }
+
+        return debtLog2.exp2().intoUint256() / UNIT + 1;
+    }
+
+    function _calculateDebtLog2(UD60x18 borrowedLog2, uint256 fromTime, uint256 toTime, uint256 _protocolRate)
+        internal
+        pure
+        returns (UD60x18)
+    {
         UD60x18 timeDelta = ud(toTime - fromTime);
-
-        NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
-        UD60x18 debtLog2 =
-            (timeDelta / ud(YEAR_IN_SECONDS)) * (ud(UNIT + $.protocolRate)).log2() + ud(borrowedAmount).log2();
-
-        return debtLog2.exp2().intoUint256() / UNIT;
+        UD60x18 debtLog2 = (timeDelta / ud(YEAR_IN_SECONDS)) * (ud(UNIT + _protocolRate)).log2() + borrowedLog2;
+        return debtLog2;
     }
 
     /**
@@ -1094,5 +1127,105 @@ contract NFTStakingAndBorrowing is
         }
 
         return rewardAmount;
+    }
+
+    /**
+     * @notice Retrieves arrays of time spans and corresponding protocolRates
+     * within the specified timestamp range [_fromTimestamp, _toTimestamp],
+     * using OpenZeppelin Checkpoints.
+     * @dev A rate is considered active from its checkpoint's timestamp until
+     * the next checkpoint's timestamp or _toTimestamp.
+     * Values in protocolRates are rate * UNIT.
+     * @param _fromTimestamp The start of the time span (inclusive).
+     * @param _toTimestamp The end of the time span (inclusive).
+     * @return spans An array of uint256, where each element is a duration in seconds.
+     * @return protocolRates An array of uint256, where each element is the protocolRate (rate * UNIT)
+     * active during the corresponding span.
+     */
+    function getProtocolRateTimeSpans(uint48 _fromTimestamp, uint48 _toTimestamp)
+        public
+        view
+        returns (uint256[] memory spans, uint256[] memory protocolRates)
+    {
+        NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
+
+        if (_fromTimestamp >= _toTimestamp) {
+            spans = new uint256[](1); // spans[0] will be 0 by default
+            protocolRates = new uint256[](1);
+            protocolRates[0] = $.protocolRate;
+            return (spans, protocolRates);
+        }
+
+        uint256 numStoredCheckpoints = $._rateCheckpoints.length();
+
+        // Temporary arrays. Max segments could be numStoredCheckpoints + 1.
+        uint256 maxPossibleSegments = numStoredCheckpoints + 1;
+        uint256[] memory tempSpans = new uint256[](maxPossibleSegments);
+        uint256[] memory tempRates = new uint256[](maxPossibleSegments);
+        uint256 count = 0;
+
+        uint48 currentTime = SafeCast.toUint48(_fromTimestamp);
+
+        if (numStoredCheckpoints == 0) {
+            tempSpans[0] = _toTimestamp - _fromTimestamp;
+            tempRates[0] = $.protocolRate;
+            return (tempSpans, tempRates);
+        }
+
+        while (currentTime < _toTimestamp) {
+            // Get the rate active at the beginning of this segment.
+            uint256 rateForSegment = uint256($._rateCheckpoints.upperLookup(currentTime));
+
+            // If there is no rate for this segment, use the latest rate.
+            if (rateForSegment == 0) {
+                rateForSegment = uint256($._rateCheckpoints.at(0)._value);
+            }
+
+            // Find the timestamp of the next rate change strictly after currentTime.
+            uint48 segmentEndTime;
+            uint256 nextChangeIndex = $._rateCheckpoints.upperLookupIndex(currentTime) + 1;
+            if (nextChangeIndex < numStoredCheckpoints) {
+                segmentEndTime = $._rateCheckpoints.at(uint32(nextChangeIndex))._key;
+            } else {
+                segmentEndTime = _toTimestamp;
+            }
+
+            uint256 duration = segmentEndTime - currentTime;
+
+            if (duration > 0) {
+                tempSpans[count] = duration;
+                tempRates[count] = rateForSegment;
+                count++;
+            }
+            currentTime = segmentEndTime;
+        }
+
+        // Copy results from temporary arrays to correctly sized final arrays.
+        spans = new uint256[](count);
+        protocolRates = new uint256[](count);
+
+        for (uint256 i = 0; i < count; i++) {
+            spans[i] = tempSpans[i];
+            protocolRates[i] = tempRates[i];
+        }
+
+        return (spans, protocolRates);
+    }
+
+    /// @notice Helper function to get a specific checkpoint by index.
+    /// @param index The index of the checkpoint to retrieve.
+    /// @return timestamp The timestamp of the checkpoint.
+    /// @return protocolRate The protocol rate at this timestamp.
+    function getCheckpoint(uint256 index) external view returns (uint48 timestamp, uint208 protocolRate) {
+        NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
+        Checkpoints.Checkpoint208 memory result = $._rateCheckpoints.at(uint32(index));
+        return (result._key, result._value);
+    }
+
+    /// @notice Helper function to get the total number of checkpoints.
+    /// @return The total count of stored checkpoints.
+    function getCheckpointsCount() external view returns (uint256) {
+        NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
+        return $._rateCheckpoints.length();
     }
 }

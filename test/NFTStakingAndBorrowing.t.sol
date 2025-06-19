@@ -117,8 +117,8 @@ contract NFTStakingAndBorrowingTest is Test {
         totalStats = nftStaking.getTotalStats();
         assertEq(nftStaking.userAvailableToBorrow(owner), 8484_917395);
         assertEq(userStats.debtUpdateTimestamp, 2592001);
-        assertEq(totalStats.debt, 504_679101);
-        assertEq(userStats.debt, 504_679101);
+        assertEq(totalStats.debt, 504_679102);
+        assertEq(userStats.debt, 504_679102);
     }
 
     function testRepay() public {
@@ -164,7 +164,7 @@ contract NFTStakingAndBorrowingTest is Test {
         nftStaking.repay(0);
 
         NFTStakingAndBorrowing.UserStats memory userStats = nftStaking.getUserStats(client1);
-        assertEq(userStats.nominalAvailable, 8989_596464);
+        assertEq(userStats.nominalAvailable, 8989_596465);
         assertEq(userStats.borrowed, 0);
         assertEq(userStats.debt, 0);
         assertEq(8989_596464 + 3 - nftStaking.userAvailableToBorrow(client1) < 5, true);
@@ -198,8 +198,8 @@ contract NFTStakingAndBorrowingTest is Test {
         totalStats = nftStaking.getTotalStats();
         assertEq(nftStaking.userAvailableToBorrow(owner), 8989_596486);
         assertEq(userStats.debtUpdateTimestamp, 2592001);
-        assertEq(totalStats.debt, 10);
-        assertEq(userStats.debt, 10);
+        assertEq(totalStats.debt, 11);
+        assertEq(userStats.debt, 11);
     }
 
     function testStakingOverTime() public {
@@ -256,7 +256,7 @@ contract NFTStakingAndBorrowingTest is Test {
         nftStaking.stakeNFT(address(bondNFT), 3, 1);
 
         userStats = nftStaking.getUserStats(client1);
-        assertEq(userStats.debt, 915863667);
+        assertEq(userStats.debt, 915863668);
         assertEq(userStats.debtUpdateTimestamp, 90 days);
 
         userStats = nftStaking.getUserStats(client2);
@@ -264,7 +264,7 @@ contract NFTStakingAndBorrowingTest is Test {
 
         assertEq(userStats.staked, 997_500000);
         assertEq(totalStats.staked, 2 * 997_500000);
-        assertEq(totalStats.debt, 915863667);
+        assertEq(totalStats.debt, 915863668);
         assertEq(userStats.debtUpdateTimestamp, 90 days);
         assertEq(totalStats.debtUpdateTimestamp, 90 days);
         assertEq(userStats.nominalAvailable, 903_156174);
@@ -282,9 +282,9 @@ contract NFTStakingAndBorrowingTest is Test {
         NFTStakingAndBorrowing.UserStats memory userStats2 = nftStaking.getUserStats(client2);
         totalStats = nftStaking.getTotalStats();
 
-        assertEq(userStats1.debt, 924434505);
-        assertEq(userStats2.debt, 911608092);
-        assertEq(totalStats.debt, 1836042598);
+        assertEq(userStats1.debt, 924434506);
+        assertEq(userStats2.debt, 911608093);
+        assertEq(totalStats.debt, 1836042600);
         assertEq(totalStats.borrowed, 903_156174 + 898_959646);
         assertEq(userStats1.debtUpdateTimestamp, 120 days);
         assertEq(userStats2.debtUpdateTimestamp, 120 days);
@@ -436,7 +436,7 @@ contract NFTStakingAndBorrowingTest is Test {
         vm.roll(2);
         NFTStakingAndBorrowing.UserStats memory userStats = nftStaking.getUserStats(client1);
         assertEq(userStats.borrowed, borrowAmount);
-        assertEq(userStats.debt, 4925_940380);
+        assertEq(userStats.debt, 4925_940381);
 
         console.log("Client1 debt:    ", userStats.debt);
         console.log("Client1 Stables: ", stableBondCoins.balanceOf(client1));
@@ -457,8 +457,8 @@ contract NFTStakingAndBorrowingTest is Test {
         console.log("Client1 Stables: ", stableBondCoins.balanceOf(client1));
         console.log("Client2 Stables: ", stableBondCoins.balanceOf(client2));
 
-        assertEq(bondNFT.balanceOf(client1, 2), 5);
-        assertEq(bondNFT.balanceOf(client2, 2), 5);
+        assertEq(bondNFT.balanceOf(client1, 2), 4);
+        assertEq(bondNFT.balanceOf(client2, 2), 6);
         assertEq(bondNFT.balanceOf(address(nftStaking), 2), 0);
 
         // Check internal mapping state - userNFTs should be 0 as all NFTs are removed from staking
@@ -468,8 +468,8 @@ contract NFTStakingAndBorrowingTest is Test {
             "userNFTs balance should be 0 after liquidation as all NFTs are removed from staking"
         );
 
-        assertEq(stableBondCoins.balanceOf(client1), 4453_125000);
-        assertEq(stableBondCoins.balanceOf(client2), 4789_246778);
+        assertEq(stableBondCoins.balanceOf(client1), 5438_313076);
+        assertEq(stableBondCoins.balanceOf(client2), 3804_058701);
     }
 
     function testLiquidateCase02() public {
@@ -515,7 +515,7 @@ contract NFTStakingAndBorrowingTest is Test {
         vm.roll(2);
         NFTStakingAndBorrowing.UserStats memory userStats = nftStaking.getUserStats(client1);
         assertEq(userStats.borrowed, borrowAmount);
-        assertEq(userStats.debt, 14777_821142);
+        assertEq(userStats.debt, 14777_821143);
 
         console.log("Client1 debt:    ", userStats.debt);
         console.log("Client1 Stables: ", stableBondCoins.balanceOf(client1));
@@ -765,7 +765,9 @@ contract NFTStakingAndBorrowingTest is Test {
 
         vm.warp(30 days);
 
-        stableBondCoins.approve(address(nftStaking), 1000_000000);
+        // Repay all debt
+        stableBondCoins.mint(owner, 1_000000);
+        stableBondCoins.approve(address(nftStaking), 1_000000);
         nftStaking.repay(0); // full debt
 
         NFTStakingAndBorrowing.UserStats memory userStats = nftStaking.getUserStats(owner);
@@ -1027,7 +1029,7 @@ contract NFTStakingAndBorrowingTest is Test {
         totalStats = nftStaking.getTotalStats();
         assertEq(totalStats.staked, numberOfUsers * 9_975_000000);
         assertEq(totalStats.borrowed, numberOfUsers * 8_906_250000);
-        assertEq(totalStats.debt, numberOfUsers * 9_975_000000 - 1);
+        assertEq(totalStats.debt, numberOfUsers * 9_975_000000);
 
         // Sum of the Debt per each user
         NFTStakingAndBorrowing.UserStats memory userStats;
@@ -1037,7 +1039,7 @@ contract NFTStakingAndBorrowingTest is Test {
             userStats = nftStaking.getUserStats(client);
             totalUserDebt += userStats.debt;
         }
-        assertEq(totalStats.debt - numberOfUsers, totalUserDebt - 1);
+        assertEq(totalStats.debt, totalUserDebt, "Debt should be equal to the sum of the Debt per each user");
     }
 
     function testCalculateMaxBorrowShouldReturnZero() public view {
@@ -1332,5 +1334,165 @@ contract NFTStakingAndBorrowingTest is Test {
         assertEq(bondNFT.balanceOf(address(instance2), 1), 10, "NFT balance should be preserved");
         assertEq(instance2.getInitializedVersion(), 2, "Version should be updated to 2");
         assertEq(instance2.newFeature(), "V2 Feature", "Should use V2 implementation");
+    }
+
+    function testProtocolRateCheckpointsDoNotChangeResults() public {
+        owner = address(1);
+
+        assertEq(nftStaking.getProtocolRate(), 1200 * 1e18 / 1e4);
+        assertEq(nftStaking.getCheckpointsCount(), 1);
+
+        vm.startPrank(owner);
+
+        nftStaking.stakeNFT(address(bondNFT), 1, 10);
+        NFTStakingAndBorrowing.UserStats memory userStats = nftStaking.getUserStats(owner);
+
+        assertEq(userStats.staked, 9975_000000);
+        assertApproxEqRel(nftStaking.userAvailableToBorrow(owner), 8906_250000, 0.001e18);
+
+        nftStaking.borrow(500_000000);
+        vm.stopPrank();
+
+        userStats = nftStaking.getUserStats(owner);
+
+        assertEq(userStats.borrowed, 500_000000);
+        assertEq(nftStaking.userAvailableToBorrow(owner), 8406_250000);
+
+        NFTStakingAndBorrowing.TotalStats memory totalStats = nftStaking.getTotalStats();
+        assertEq(totalStats.borrowed, 500_000000);
+
+        vm.roll(2);
+        vm.warp(1 + 30 days);
+
+        vm.prank(owner);
+        nftStaking.setProtocolRate(1200);
+
+        assertEq(nftStaking.getProtocolRate(), 1200 * 1e18 / 1e4);
+        assertEq(nftStaking.getCheckpointsCount(), 2);
+
+        userStats = nftStaking.getUserStats(owner);
+        totalStats = nftStaking.getTotalStats();
+        assertEq(nftStaking.userAvailableToBorrow(owner), 8484_917395);
+        assertEq(userStats.debtUpdateTimestamp, 2592001);
+        assertEq(totalStats.debt, 504_679102);
+        assertEq(userStats.debt, 504_679102);
+    }
+
+    function testProtocolRateCheckpointsYearlyMath() public {
+        owner = address(1);
+        uint256[] memory spans;
+        uint256[] memory protocolRates;
+
+        vm.startPrank(owner);
+
+        // 10%
+        nftStaking.setProtocolRate(1000);
+        (uint48 timestamp, uint208 protocolRate) = nftStaking.getCheckpoint(0);
+        console.log("Checkpoint 0:", timestamp, protocolRate);
+
+        nftStaking.stakeNFT(address(bondNFT), 1, 10);
+        NFTStakingAndBorrowing.UserStats memory userStats = nftStaking.getUserStats(owner);
+
+        nftStaking.borrow(1000_000000);
+
+        // After 1 year
+        vm.warp(1 + YEAR_IN_SECONDS);
+
+        userStats = nftStaking.getUserStats(owner);
+        console.log("1 year : ", nftStaking.calculateDebt(1000_000000, 1, 1 + YEAR_IN_SECONDS));
+        assertEq(userStats.debt, 1100_000000, "1 year diff wrong");
+
+        // 20%
+        nftStaking.setProtocolRate(2000);
+        assertEq(nftStaking.getProtocolRate(), 2000 * 1e18 / 1e4);
+        assertEq(nftStaking.getCheckpointsCount(), 2);
+        (timestamp, protocolRate) = nftStaking.getCheckpoint(1);
+        console.log("Checkpoint 1:", timestamp, protocolRate);
+
+        // After 2 years
+        vm.warp(1 + 2 * YEAR_IN_SECONDS);
+
+        userStats = nftStaking.getUserStats(owner);
+        console.log("2 years: ", nftStaking.calculateDebt(1000_000000, 1, 1 + 2 * YEAR_IN_SECONDS));
+        console.log("Spans and rates:");
+        (spans, protocolRates) = nftStaking.getProtocolRateTimeSpans(10, uint48(10 + 2 * YEAR_IN_SECONDS));
+        for (uint256 i = 0; i < spans.length; i++) {
+            console.log(spans[i], protocolRates[i]);
+        }
+        assertEq(userStats.debt, 1320_000000, "2 years diff wrong");
+
+        // 30%
+        nftStaking.setProtocolRate(3000);
+        assertEq(nftStaking.getProtocolRate(), 3000 * 1e18 / 1e4);
+        assertEq(nftStaking.getCheckpointsCount(), 3);
+        (timestamp, protocolRate) = nftStaking.getCheckpoint(2);
+        console.log("Checkpoint 2:", timestamp, protocolRate);
+
+        // After 3 years
+        vm.warp(1 + 3 * YEAR_IN_SECONDS);
+
+        userStats = nftStaking.getUserStats(owner);
+        console.log("3 years: ", nftStaking.calculateDebt(1000_000000, 1, 1 + 3 * YEAR_IN_SECONDS));
+        assertEq(userStats.debt, 1716_000000, "3 years diff wrong");
+
+        console.log("Spans and rates:");
+        (spans, protocolRates) = nftStaking.getProtocolRateTimeSpans(1, uint48(1 + 3 * YEAR_IN_SECONDS));
+        for (uint256 i = 0; i < spans.length; i++) {
+            console.log(spans[i], protocolRates[i]);
+        }
+
+        vm.stopPrank();
+    }
+
+    function testProtocolRateCheckpointsBeforeFirstChekpoint() public {
+        vm.warp(1000);
+
+        vm.startPrank(owner);
+        nftStaking = NFTStakingAndBorrowing(
+            Upgrades.deployUUPSProxy(
+                "NFTStakingAndBorrowing.sol:NFTStakingAndBorrowing",
+                abi.encodeCall(NFTStakingAndBorrowing.initialize, (address(stableBondCoins)))
+            )
+        );
+        nftStaking.setProtocolRate(1000);
+
+        bondNFT.setApprovalForAll(address(nftStaking), true);
+        nftStaking.whitelistNFT(address(bondNFT), true);
+        nftStaking.setProtocolFee(0);
+
+        (uint48 timestamp, uint208 protocolRate) = nftStaking.getCheckpoint(0);
+        console.log("Checkpoint 0:", timestamp, protocolRate);
+
+        // After 1 year
+        vm.warp(1 + YEAR_IN_SECONDS);
+        nftStaking.setProtocolRate(2000);
+        (timestamp, protocolRate) = nftStaking.getCheckpoint(1);
+        console.log("Checkpoint 1:", timestamp, protocolRate);
+
+        uint256[] memory spans;
+        uint256[] memory protocolRates;
+        console.log("Spans and rates:");
+        (spans, protocolRates) = nftStaking.getProtocolRateTimeSpans(1, uint48(1 + 2 * YEAR_IN_SECONDS));
+        for (uint256 i = 0; i < spans.length; i++) {
+            console.log(spans[i], protocolRates[i]);
+        }
+
+        uint256 debt = nftStaking.calculateDebt(1000_000000, 1, 1 + 2 * YEAR_IN_SECONDS);
+        console.log("2 years: ", debt);
+        assertEq(debt, 1320_000000, "2 years debt wrong");
+
+        debt = nftStaking.calculateDebt(1000_000000, YEAR_IN_SECONDS + 200, 2 * YEAR_IN_SECONDS + 200);
+        console.log("Only 2nd year: ", debt);
+        assertEq(debt, 1200_000000, "Second year debt wrong");
+
+        // Testing only 2nd year
+        console.log("Spans and rates:");
+        (spans, protocolRates) =
+            nftStaking.getProtocolRateTimeSpans(uint48(YEAR_IN_SECONDS + 200), uint48(2 * YEAR_IN_SECONDS + 200));
+        for (uint256 i = 0; i < spans.length; i++) {
+            console.log(spans[i], protocolRates[i]);
+        }
+
+        vm.stopPrank();
     }
 }
