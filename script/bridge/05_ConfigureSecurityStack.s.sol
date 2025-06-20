@@ -39,7 +39,7 @@ contract ConfigureSecurityStack is Script {
         console.log("Configuring security stack from EID:", cfg.eid, "to destination EID:", destinationEid);
 
         // Configure ULN (DVN) settings
-        bytes memory ulnConfig = _getUlnConfig();
+        bytes memory ulnConfig = _getUlnConfig(libType);
 
         SetConfigParam[] memory ulnParams = new SetConfigParam[](1);
         ulnParams[0] = SetConfigParam({
@@ -65,7 +65,7 @@ contract ConfigureSecurityStack is Script {
     }
 
     // Returns the ULN (DVN) configuration
-    function _getUlnConfig() internal pure returns (bytes memory) {
+    function _getUlnConfig(string memory libType) internal pure returns (bytes memory) {
         // https://docs.layerzero.network/v2/deployments/dvn-addresses
 
         // struct UlnConfig {
@@ -78,7 +78,13 @@ contract ConfigureSecurityStack is Script {
         // }
 
         UlnConfig memory ulnConfig;
-        ulnConfig = UlnConfig(15, 2, 0, 0, new address[](2), new address[](0));
+        uint64 confirmations = 15; // Default for send
+        
+        if (keccak256(abi.encodePacked(libType)) == keccak256(abi.encodePacked("recv"))) {
+            confirmations = 5;
+        }
+        
+        ulnConfig = UlnConfig(confirmations, 2, 0, 0, new address[](2), new address[](0));
         // Addresses must be sorted in ascending order
         ulnConfig.requiredDVNs[0] = address(0x3b0531eB02Ab4aD72e7a531180beeF9493a00dD2); // USDT0
         ulnConfig.requiredDVNs[1] = address(0x589dEDbD617e0CBcB916A9223F4d1300c294236b); // LayerZero Labs
