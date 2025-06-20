@@ -57,7 +57,7 @@ contract TestOFTCrossChainTransfer is Script {
         console.log("OFT adapter:", address(oftAdapter));
 
         // quote and send cross-chain
-        uint128 _gas = 71000;
+        uint128 _gas = 15000;
         bytes memory opts = OptionsBuilder.newOptions()
           .addExecutorLzReceiveOption(_gas, 0);
 
