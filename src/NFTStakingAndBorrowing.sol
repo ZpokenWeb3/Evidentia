@@ -351,6 +351,16 @@ contract NFTStakingAndBorrowing is
      * @dev Reverts with AmountOverflow if totalAmount is larger than PRBMath limit.
      */
     function calculateMaxBorrow(uint256 totalAmount, uint256 fromTime, uint256 toTime) public view returns (uint256) {
+        NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
+
+        return _calculateMaxBorrow(totalAmount, fromTime, toTime, $.protocolRate);
+    }
+
+    function _calculateMaxBorrow(uint256 totalAmount, uint256 fromTime, uint256 toTime, uint256 protocolRate)
+        public
+        pure
+        returns (uint256)
+    {
         if (fromTime >= toTime) {
             return 0;
         }
@@ -362,9 +372,8 @@ contract NFTStakingAndBorrowing is
         totalAmount = totalAmount * UNIT;
         UD60x18 timeDelta = ud(toTime - fromTime);
 
-        NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
         UD60x18 maxBorrowLog2 =
-            ud(totalAmount).log2() - (timeDelta / ud(YEAR_IN_SECONDS)) * (ud(UNIT + $.protocolRate)).log2();
+            ud(totalAmount).log2() - (timeDelta / ud(YEAR_IN_SECONDS)) * (ud(UNIT + protocolRate)).log2();
 
         return maxBorrowLog2.exp2().intoUint256() / UNIT;
     }
@@ -954,7 +963,7 @@ contract NFTStakingAndBorrowing is
      *    - Returns NFT to the position owner and emits `NFTUnstaked` event
      *
      * 2. Debt >= Max Borrow at Liquidation:
-     *    - Liquidator pays `maxPositionBorrow` amount of stablecoins
+     *    - Liquidator pays `maxPositionDebt` amount of stablecoins
      *    - Updates state variables (userNFTs, staked, debt)
      *    - Burns tokens to reflect the removal of collateral value
      *    - Transfers all NFTs to the liquidator and emits `Liquidated` event
@@ -980,15 +989,32 @@ contract NFTStakingAndBorrowing is
         if (!$.whitelistedNFTs[nftAddress]) revert NFTNotWhitelisted();
         if ($.userNFTs[positionOwner][nftAddress][tokenId] == 0) revert InsufficientNFTBalance();
         IBondNFT.Metadata memory metadata = IBondNFT(nftAddress).getMetaData(tokenId);
-        if (block.timestamp < metadata.expirationTimestamp - $.liquidationTimeWindow) revert TooEarlyToLiquidate();
+
+        updateUserDebtAndAvailable(positionOwner);
+        updateTotalDebt();
+
+        // Liquidation threshold check
+        // If threshold is not passed
+        // check if the current time is within the `liquidationTimeWindow` before the NFT's expiration
+        if (
+            $.userStats[positionOwner].debt
+                < $.userStats[positionOwner].staked * (UNIT - 2 * $.safetyFee * $.protocolRate / UNIT) / UNIT
+        ) {
+            if (block.timestamp < metadata.expirationTimestamp - $.liquidationTimeWindow) revert TooEarlyToLiquidate();
+        }
 
         uint256 amount = $.userNFTs[positionOwner][nftAddress][tokenId];
 
         uint256 positionValue = (metadata.value + metadata.couponValue) * amount * (UNIT - $.safetyFee) / UNIT;
-        uint256 maxPositionBorrow = calculateMaxBorrow(positionValue, block.timestamp, metadata.expirationTimestamp);
-
-        updateUserDebtAndAvailable(positionOwner);
-        updateTotalDebt();
+        // Calculate max position borrow at the time of bond issue
+        uint256 maxPositionBorrow = _calculateMaxBorrow(
+            positionValue,
+            metadata.issueTimestamp,
+            metadata.expirationTimestamp,
+            uint256($._rateCheckpoints.upperLookup(uint48(metadata.issueTimestamp)))
+        );
+        // Calculate max position debt at the time of liquidation
+        uint256 maxPositionDebt = calculateDebt(maxPositionBorrow, metadata.issueTimestamp, block.timestamp);
 
         // Case 1: Position has no debt - all NFTs return to the position owner
         //         Liquidator does not pay any debt only for transaction fee
@@ -1009,17 +1035,17 @@ contract NFTStakingAndBorrowing is
 
         // Case 2: Position has debt greater than max borrow at this point - all NFTs go to the liquidator
         //         Liquidator pays part of the debt equivalent to max borrow at this point
-        if ($.userStats[positionOwner].debt >= maxPositionBorrow) {
+        if ($.userStats[positionOwner].debt >= maxPositionDebt) {
             // Intentional deviation from checks-effects-interactions pattern:
             // Transfer called before state changes for atomicity reasons
-            $.stableToken.transferFrom(msg.sender, address(this), maxPositionBorrow);
+            $.stableToken.transferFrom(msg.sender, address(this), maxPositionDebt);
 
             // Update state variables
             $.userNFTs[positionOwner][nftAddress][tokenId] = 0;
             $.userStats[positionOwner].staked -= positionValue;
             $.totalStats.staked -= positionValue;
-            $.userStats[positionOwner].debt -= maxPositionBorrow;
-            $.totalStats.debt -= maxPositionBorrow;
+            $.userStats[positionOwner].debt -= maxPositionDebt;
+            $.totalStats.debt -= maxPositionDebt;
 
             // Burn tokens (before any external transfers)
             $.stableToken.burn(address(this), positionValue);
@@ -1035,13 +1061,15 @@ contract NFTStakingAndBorrowing is
             //         - Liquidator pays the full debt to the contract
             //         - Position owner receives (liquidationPayment - debt) as compensation
             //         - All NFTs are removed from staking regardless of where they go
-            uint256 amountToLiquidate = amount * $.userStats[positionOwner].debt / maxPositionBorrow
-                + (amount * $.userStats[positionOwner].debt % maxPositionBorrow == 0 ? 0 : 1);
-            uint256 liquidationPayment = calculateMaxBorrow(
+            uint256 amountToLiquidate = amount * $.userStats[positionOwner].debt / maxPositionDebt
+                + (amount * $.userStats[positionOwner].debt % maxPositionDebt == 0 ? 0 : 1);
+            uint256 liquidationBorrow = _calculateMaxBorrow(
                 (metadata.value + metadata.couponValue) * amountToLiquidate * (UNIT - $.safetyFee) / UNIT,
-                block.timestamp,
-                metadata.expirationTimestamp
+                metadata.issueTimestamp,
+                metadata.expirationTimestamp,
+                uint256($._rateCheckpoints.upperLookup(uint48(metadata.issueTimestamp)))
             );
+            uint256 liquidationPayment = calculateDebt(liquidationBorrow, metadata.issueTimestamp, block.timestamp);
             // Intentional deviation from checks-effects-interactions pattern:
             // Transfer called before state changes for atomicity reasons
             $.stableToken.transferFrom(msg.sender, address(this), liquidationPayment);
@@ -1061,9 +1089,10 @@ contract NFTStakingAndBorrowing is
             // Burn tokens (before any external transfers)
             $.stableToken.burn(address(this), positionValue);
 
-            // Transfer excess payment to position owner
-            $.stableToken.transfer(positionOwner, liquidationPayment - currentDebt);
-
+            // Transfer excess payment to position owner if it is greater than 10 wei
+            if (liquidationPayment > currentDebt + 10) {
+                $.stableToken.transfer(positionOwner, liquidationPayment - currentDebt);
+            }
             // Transfer NFTs to liquidator and emit event
             IBondNFT(nftAddress).safeTransferFrom(address(this), msg.sender, tokenId, amountToLiquidate, "");
             emit Liquidated(positionOwner, msg.sender, nftAddress, tokenId, amountToLiquidate);

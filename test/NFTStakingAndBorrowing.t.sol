@@ -1495,4 +1495,364 @@ contract NFTStakingAndBorrowingTest is Test {
 
         vm.stopPrank();
     }
+
+    function testLiquidateByDebt() public {
+        owner = address(1);
+        address client1 = address(2);
+        address client2 = address(3);
+
+        // 10%
+        vm.prank(owner);
+        nftStaking.setProtocolRate(1000);
+
+        vm.startPrank(owner);
+        bondNFT.setAllowedMints(client1, 2, 10);
+        bondNFT.setAllowedMints(client2, 2, 20);
+        vm.stopPrank();
+
+        vm.prank(client1);
+        bondNFT.mint(2, 10, "");
+        vm.prank(client2);
+        bondNFT.mint(2, 20, "");
+
+        vm.prank(client1);
+        bondNFT.setApprovalForAll(address(nftStaking), true);
+
+        vm.prank(client2);
+        bondNFT.setApprovalForAll(address(nftStaking), true);
+
+        // Client1 borrows MAX
+        vm.startPrank(client1);
+        nftStaking.stakeNFT(address(bondNFT), 2, 10);
+        nftStaking.borrow(0);
+        vm.stopPrank();
+
+        // 20% - rate change
+        vm.warp(30 days);
+        vm.prank(owner);
+        nftStaking.setProtocolRate(2000);
+
+        // Client2 borrows MAX
+        vm.startPrank(client2);
+        nftStaking.stakeNFT(address(bondNFT), 2, 20);
+        nftStaking.borrow(0);
+        vm.stopPrank();
+
+        // we go to the future when debt of client1 is more than 90% of nominal available
+        uint256 daysToFuture = 170 days;
+        vm.warp(daysToFuture);
+        NFTStakingAndBorrowing.UserStats memory userStats = nftStaking.getUserStats(client1);
+
+        uint256 protocolRate = nftStaking.getProtocolRate();
+        uint256 safetyFee = nftStaking.getSafetyFee();
+
+        console.log("Client1 debt:     ", userStats.debt);
+        console.log("Client1 borrowed: ", userStats.borrowed);
+        console.log("Client1 staked:   ", userStats.staked);
+        console.log("Client1 threshold:", userStats.staked * (UNIT - (2 * safetyFee * protocolRate) / UNIT) / UNIT);
+        console.log("Client1 Stables:  ", stableBondCoins.balanceOf(client1));
+        assertEq(block.timestamp, daysToFuture, "Time should be daysToFuture days");
+
+        uint256 client2BalanceBefore = stableBondCoins.balanceOf(client2);
+
+        // vm.warp(355 days);
+        // Client2 liquidates client1
+        vm.startPrank(client2);
+        stableBondCoins.approve(address(nftStaking), UINT256_MAX);
+        nftStaking.liquidate(address(bondNFT), 2, client1);
+        vm.stopPrank();
+
+        // Verify balances after liquidation
+        assertEq(bondNFT.balanceOf(client1, 2), 0, "Original owner should receive remaining NFTs");
+        assertEq(bondNFT.balanceOf(client2, 2), 10, "Liquidator should receive proportional NFTs");
+        assertEq(bondNFT.balanceOf(address(nftStaking), 2), 20, "Contract should have only client2 NFTs left");
+
+        // Check internal mapping state - userNFTs should be 0 as all NFTs are removed from staking
+        assertEq(
+            nftStaking.getUserNFTBalance(client1, address(bondNFT), 2),
+            0,
+            "userNFTs balance should be 0 after liquidation as all NFTs are removed from staking"
+        );
+
+        // Verify client2 paid for the liquidation
+        assertLt(stableBondCoins.balanceOf(client2), client2BalanceBefore, "Liquidator should pay for liquidation");
+        console.log("Client2 Pays:     ", client2BalanceBefore - stableBondCoins.balanceOf(client2));
+
+        // Verify client1's debt is cleared
+        userStats = nftStaking.getUserStats(client1);
+        assertEq(userStats.debt, 0, "Debt should be cleared after liquidation");
+    }
+
+    function testLiquidateByDebtPartial() public {
+        owner = address(1);
+        address client1 = address(2);
+        address client2 = address(3);
+
+        // 10%
+        vm.prank(owner);
+        nftStaking.setProtocolRate(1000);
+
+        vm.startPrank(owner);
+        bondNFT.setAllowedMints(client1, 1, 10);
+        bondNFT.setAllowedMints(client1, 2, 10);
+        bondNFT.setAllowedMints(client2, 2, 20);
+        vm.stopPrank();
+
+        vm.startPrank(client1);
+        bondNFT.mint(1, 10, "");
+        bondNFT.mint(2, 10, "");
+        vm.stopPrank();
+        vm.prank(client2);
+        bondNFT.mint(2, 20, "");
+
+        vm.prank(client1);
+        bondNFT.setApprovalForAll(address(nftStaking), true);
+
+        vm.prank(client2);
+        bondNFT.setApprovalForAll(address(nftStaking), true);
+
+        // Client1 borrows MAX
+        vm.startPrank(client1);
+        nftStaking.stakeNFT(address(bondNFT), 1, 10);
+        nftStaking.stakeNFT(address(bondNFT), 2, 10);
+        nftStaking.borrow(0);
+        vm.stopPrank();
+
+        // 20% - rate change
+        vm.warp(30 days);
+        vm.prank(owner);
+        nftStaking.setProtocolRate(2000);
+
+        // Client2 borrows MAX
+        vm.startPrank(client2);
+        nftStaking.stakeNFT(address(bondNFT), 2, 20);
+        nftStaking.borrow(0);
+        vm.stopPrank();
+
+        // we go to the future when debt of client1 is more than 90% of nominal available
+        uint256 daysToFuture = 170 days;
+        vm.warp(daysToFuture);
+        NFTStakingAndBorrowing.UserStats memory userStats = nftStaking.getUserStats(client1);
+
+        uint256 protocolRate = nftStaking.getProtocolRate();
+        uint256 safetyFee = nftStaking.getSafetyFee();
+
+        console.log("Client1 debt:     ", userStats.debt);
+        console.log("Client1 borrowed: ", userStats.borrowed);
+        console.log("Client1 staked:   ", userStats.staked);
+        console.log("Client1 threshold:", userStats.staked * (UNIT - (2 * safetyFee * protocolRate) / UNIT) / UNIT);
+        console.log("Client1 Stables:  ", stableBondCoins.balanceOf(client1));
+        assertEq(block.timestamp, daysToFuture, "Time should be daysToFuture days");
+
+        uint256 client1DebtBeforeLiquidation = userStats.debt;
+        uint256 client2BalanceBefore = stableBondCoins.balanceOf(client2);
+
+        // vm.warp(355 days);
+        // Client2 liquidates client1
+        vm.startPrank(client2);
+        stableBondCoins.approve(address(nftStaking), UINT256_MAX);
+        nftStaking.liquidate(address(bondNFT), 2, client1);
+        vm.stopPrank();
+
+        // Verify balances after liquidation
+        assertEq(bondNFT.balanceOf(client1, 2), 0, "Original owner should receive remaining NFTs");
+        assertEq(bondNFT.balanceOf(client2, 2), 10, "Liquidator should receive proportional NFTs");
+        assertEq(bondNFT.balanceOf(address(nftStaking), 2), 20, "Contract should have only client2 NFTs left");
+
+        // Check internal mapping state - userNFTs should be 0 as all NFTs are removed from staking
+        assertEq(
+            nftStaking.getUserNFTBalance(client1, address(bondNFT), 2),
+            0,
+            "userNFTs balance should be 0 after liquidation as all NFTs are removed from staking"
+        );
+
+        // Verify client2 paid for the liquidation
+        assertLt(stableBondCoins.balanceOf(client2), client2BalanceBefore, "Liquidator should pay for liquidation");
+        console.log("Client2 Pays:     ", client2BalanceBefore - stableBondCoins.balanceOf(client2));
+
+        // Verify client1's debt is cleared
+        userStats = nftStaking.getUserStats(client1);
+        assertEq(
+            userStats.debt,
+            client1DebtBeforeLiquidation - client2BalanceBefore + stableBondCoins.balanceOf(client2),
+            "Debt should be cleared after liquidation"
+        );
+    }
+
+    function testLiquidateByDebtWhenBorrowedLater() public {
+        owner = address(1);
+        address client1 = address(2);
+        address client2 = address(3);
+
+        // 10%
+        vm.prank(owner);
+        nftStaking.setProtocolRate(1000);
+
+        vm.warp(30 days);
+        // user mints 30 days after bond is issued
+
+        vm.startPrank(owner);
+        bondNFT.setAllowedMints(client1, 2, 10);
+        bondNFT.setAllowedMints(client2, 2, 20);
+        vm.stopPrank();
+
+        vm.prank(client1);
+        bondNFT.mint(2, 10, "");
+        vm.prank(client2);
+        bondNFT.mint(2, 20, "");
+
+        vm.prank(client1);
+        bondNFT.setApprovalForAll(address(nftStaking), true);
+
+        vm.prank(client2);
+        bondNFT.setApprovalForAll(address(nftStaking), true);
+
+        // Client1 borrows MAX
+        vm.startPrank(client1);
+        nftStaking.stakeNFT(address(bondNFT), 2, 10);
+        nftStaking.borrow(0);
+        vm.stopPrank();
+
+        // 20% - rate change
+        vm.warp(60 days);
+        vm.prank(owner);
+        nftStaking.setProtocolRate(2000);
+
+        // Client2 borrows MAX
+        vm.startPrank(client2);
+        nftStaking.stakeNFT(address(bondNFT), 2, 20);
+        nftStaking.borrow(0);
+        vm.stopPrank();
+
+        // we go to the future when debt of client1 is more than 90% of nominal available
+        uint256 daysToFuture = 200 days;
+        vm.warp(daysToFuture);
+        NFTStakingAndBorrowing.UserStats memory userStats = nftStaking.getUserStats(client1);
+
+        uint256 protocolRate = nftStaking.getProtocolRate();
+        uint256 safetyFee = nftStaking.getSafetyFee();
+
+        console.log("Client1 debt:     ", userStats.debt);
+        console.log("Client1 borrowed: ", userStats.borrowed);
+        console.log("Client1 staked:   ", userStats.staked);
+        console.log("Client1 threshold:", userStats.staked * (UNIT - (2 * safetyFee * protocolRate) / UNIT) / UNIT);
+        console.log("Client1 Stables:  ", stableBondCoins.balanceOf(client1));
+        assertEq(block.timestamp, daysToFuture, "Time should be daysToFuture days");
+
+        uint256 client2BalanceBefore = stableBondCoins.balanceOf(client2);
+
+        // vm.warp(355 days);
+        // Client2 liquidates client1
+        vm.startPrank(client2);
+        stableBondCoins.approve(address(nftStaking), UINT256_MAX);
+        nftStaking.liquidate(address(bondNFT), 2, client1);
+        vm.stopPrank();
+
+        // Verify balances after liquidation
+        assertEq(bondNFT.balanceOf(client1, 2), 0, "Original owner should receive remaining NFTs");
+        assertEq(bondNFT.balanceOf(client2, 2), 10, "Liquidator should receive proportional NFTs");
+        assertEq(bondNFT.balanceOf(address(nftStaking), 2), 20, "Contract should have only client2 NFTs left");
+
+        // Check internal mapping state - userNFTs should be 0 as all NFTs are removed from staking
+        assertEq(
+            nftStaking.getUserNFTBalance(client1, address(bondNFT), 2),
+            0,
+            "userNFTs balance should be 0 after liquidation as all NFTs are removed from staking"
+        );
+
+        // Verify client2 paid for the liquidation
+        assertLt(stableBondCoins.balanceOf(client2), client2BalanceBefore, "Liquidator should pay for liquidation");
+        console.log("Client2 Pays:     ", client2BalanceBefore - stableBondCoins.balanceOf(client2));
+
+        // Verify client1's debt is cleared
+        userStats = nftStaking.getUserStats(client1);
+        assertEq(userStats.debt, 0, "Debt should be cleared after liquidation");
+    }
+
+    function testLiquidateWithRateChange() public {
+        owner = address(1);
+        address client1 = address(2);
+        address client2 = address(3);
+
+        // 10%
+        vm.prank(owner);
+        nftStaking.setProtocolRate(1000);
+
+        vm.startPrank(owner);
+        bondNFT.setAllowedMints(client1, 2, 10);
+        bondNFT.setAllowedMints(client2, 2, 20);
+        vm.stopPrank();
+
+        vm.prank(client1);
+        bondNFT.mint(2, 10, "");
+        vm.prank(client2);
+        bondNFT.mint(2, 20, "");
+
+        vm.prank(client1);
+        bondNFT.setApprovalForAll(address(nftStaking), true);
+
+        vm.prank(client2);
+        bondNFT.setApprovalForAll(address(nftStaking), true);
+
+        // Client1 borrows 1000
+        vm.startPrank(client1);
+        nftStaking.stakeNFT(address(bondNFT), 2, 10);
+        nftStaking.borrow(1000_000000);
+        vm.stopPrank();
+
+        // 11% - rate change
+        vm.warp(150 days);
+        vm.prank(owner);
+        nftStaking.setProtocolRate(1100);
+
+        // Client2 borrows MAX
+        vm.startPrank(client2);
+        nftStaking.stakeNFT(address(bondNFT), 2, 20);
+        nftStaking.borrow(0);
+        vm.stopPrank();
+
+        // normal liquidation window
+        uint256 daysToFuture = 321 days;
+        vm.warp(daysToFuture);
+        NFTStakingAndBorrowing.UserStats memory userStats = nftStaking.getUserStats(client1);
+
+        uint256 protocolRate = nftStaking.getProtocolRate();
+        uint256 safetyFee = nftStaking.getSafetyFee();
+
+        console.log("Client1 debt:     ", userStats.debt);
+        console.log("Client1 borrowed: ", userStats.borrowed);
+        console.log("Client1 staked:   ", userStats.staked);
+        console.log("Client1 threshold:", userStats.staked * (UNIT - (2 * safetyFee * protocolRate) / UNIT) / UNIT);
+        console.log("Client1 Stables:  ", stableBondCoins.balanceOf(client1));
+        assertEq(block.timestamp, daysToFuture, "Time should be daysToFuture days");
+
+        uint256 client2BalanceBefore = stableBondCoins.balanceOf(client2);
+
+        // Client2 liquidates client1
+        vm.startPrank(client2);
+        stableBondCoins.approve(address(nftStaking), UINT256_MAX);
+        nftStaking.liquidate(address(bondNFT), 2, client1);
+        vm.stopPrank();
+
+        // Verify balances after liquidation
+        assertEq(bondNFT.balanceOf(client1, 2), 8, "Original owner should receive remaining NFTs");
+        assertEq(bondNFT.balanceOf(client2, 2), 2, "Liquidator should receive proportional NFTs");
+
+        // Check internal mapping state - userNFTs should be 0 as all NFTs are removed from staking
+        assertEq(
+            nftStaking.getUserNFTBalance(client1, address(bondNFT), 2),
+            0,
+            "userNFTs balance should be 0 after liquidation as all NFTs are removed from staking"
+        );
+
+        // Verify client2 paid for the liquidation
+        assertLt(stableBondCoins.balanceOf(client2), client2BalanceBefore, "Liquidator should pay for liquidation");
+        console.log("Client2 Pays:     ", client2BalanceBefore - stableBondCoins.balanceOf(client2));
+        // Client1 should get the diff between liguidated NFTs and his debt
+        console.log("Client1 Stables:  ", stableBondCoins.balanceOf(client1));
+
+        // Verify client1's debt is cleared
+        userStats = nftStaking.getUserStats(client1);
+        assertEq(userStats.debt, 0, "Debt should be cleared after liquidation");
+    }
 }
