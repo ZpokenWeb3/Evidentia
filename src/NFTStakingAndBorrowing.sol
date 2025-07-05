@@ -447,19 +447,22 @@ contract NFTStakingAndBorrowing is
      * @return The amount of stablecoins the user can borrow at the current time.
      */
     function userAvailableToBorrow(address userAddress) public view returns (uint256) {
-        if (getUserStats(userAddress).nominalAvailable == 0) return 0; // No collateral staked
+        // Get user stats updated to current time
+        UserStats memory updatedUserStats = getUserStats(userAddress);
+        
+        if (updatedUserStats.nominalAvailable == 0) return 0; // No collateral staked
 
         // Calculate current nominal available borrowing power
         uint256 nominalAvailable = calculateDebt(
-            getUserStats(userAddress).nominalAvailable, getUserStats(userAddress).debtUpdateTimestamp, block.timestamp
+            updatedUserStats.nominalAvailable, updatedUserStats.debtUpdateTimestamp, block.timestamp
         );
 
         // Calculate current debt
-        if (getUserStats(userAddress).debt == 0) {
+        if (updatedUserStats.debt == 0) {
             return nominalAvailable; // No debt, can borrow full nominal amount
         } else {
             uint256 debt = calculateDebt(
-                getUserStats(userAddress).debt, getUserStats(userAddress).debtUpdateTimestamp, block.timestamp
+                updatedUserStats.debt, updatedUserStats.debtUpdateTimestamp, block.timestamp
             );
             // Return difference if positive, otherwise 0
             return nominalAvailable > debt ? nominalAvailable - debt : 0;
