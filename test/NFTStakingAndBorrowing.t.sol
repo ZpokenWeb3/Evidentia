@@ -2249,7 +2249,11 @@ contract NFTStakingAndBorrowingTest is Test {
         // Verify client2 paid for the liquidation
         assertLt(stableBondCoins.balanceOf(client2), client2BalanceBefore, "Liquidator should pay for liquidation");
         console.log("Client2 Pays:     ", client2BalanceBefore - stableBondCoins.balanceOf(client2));
-        assertEq(liquidationPayment, client2BalanceBefore - stableBondCoins.balanceOf(client2), "Liquidator should pay for liquidation");
+        assertEq(
+            liquidationPayment,
+            client2BalanceBefore - stableBondCoins.balanceOf(client2),
+            "Liquidator should pay for liquidation"
+        );
         // Client1 should get the diff between liguidated NFTs and his debt
         console.log("Client1 Stables:  ", stableBondCoins.balanceOf(client1));
         console.log("Client1 Gets:     ", stableBondCoins.balanceOf(client1) - client1BalanceBefore);
@@ -2271,7 +2275,11 @@ contract NFTStakingAndBorrowingTest is Test {
         vm.stopPrank();
 
         console.log("Client2 Pays 2:    ", client2BalanceBefore - stableBondCoins.balanceOf(client2));
-        assertEq(liquidationPayment, client2BalanceBefore - stableBondCoins.balanceOf(client2), "Liquidator should pay for liquidation");
+        assertEq(
+            liquidationPayment,
+            client2BalanceBefore - stableBondCoins.balanceOf(client2),
+            "Liquidator should pay for liquidation"
+        );
         userStats = nftStaking.getUserStats(client1);
         console.log("Client1 debt left: ", userStats.debt);
     }

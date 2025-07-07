@@ -304,6 +304,16 @@ contract NFTStakingAndBorrowing is
         $.feeReceiver = _address;
     }
 
+    /**
+     * @dev Sets the ratio of user's debt to their staked NFT value
+     *      at which liquidation is triggered ahead of liquidation window.
+     * @param _criticalDebtRatio The new critical debt ratio as part of the UNIT.
+     */
+    function setCriticalDebtRatio(uint256 _criticalDebtRatio) external onlyOwner {
+        NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
+        $.criticalDebtRatio = _criticalDebtRatio;
+    }
+
     /*//////////////////////////////////////////////////////////////
                             VIEW FUNCTIONS
     //////////////////////////////////////////////////////////////*/
@@ -466,7 +476,7 @@ contract NFTStakingAndBorrowing is
         }
     }
 
-     /**
+    /**
      * @dev Checks if a liquidation is allowed for a specific NFT position and owner
      * @param nftAddress The address of the NFT contract.
      * @param tokenId The ID of the NFT token.
@@ -698,6 +708,15 @@ contract NFTStakingAndBorrowing is
         // Rewards are rounded down, protocol fee is rounded up
         rewardAmount = rewardAmount * (UNIT - $.protocolFee) / UNIT;
         return rewardAmount;
+    }
+
+    /**
+     * @dev Returns the current critical debt ratio.
+     * @return uint256 The critical debt ratio expressed with UNIT precision.
+     */
+    function getCriticalDebtRatio() external view returns (uint256) {
+        NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
+        return $.criticalDebtRatio;
     }
 
     /*//////////////////////////////////////////////////////////////
