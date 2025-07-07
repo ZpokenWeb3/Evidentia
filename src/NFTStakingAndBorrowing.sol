@@ -449,23 +449,95 @@ contract NFTStakingAndBorrowing is
     function userAvailableToBorrow(address userAddress) public view returns (uint256) {
         // Get user stats updated to current time
         UserStats memory updatedUserStats = getUserStats(userAddress);
-        
+
         if (updatedUserStats.nominalAvailable == 0) return 0; // No collateral staked
 
         // Calculate current nominal available borrowing power
-        uint256 nominalAvailable = calculateDebt(
-            updatedUserStats.nominalAvailable, updatedUserStats.debtUpdateTimestamp, block.timestamp
-        );
+        uint256 nominalAvailable =
+            calculateDebt(updatedUserStats.nominalAvailable, updatedUserStats.debtUpdateTimestamp, block.timestamp);
 
         // Calculate current debt
         if (updatedUserStats.debt == 0) {
             return nominalAvailable; // No debt, can borrow full nominal amount
         } else {
-            uint256 debt = calculateDebt(
-                updatedUserStats.debt, updatedUserStats.debtUpdateTimestamp, block.timestamp
-            );
+            uint256 debt = calculateDebt(updatedUserStats.debt, updatedUserStats.debtUpdateTimestamp, block.timestamp);
             // Return difference if positive, otherwise 0
             return nominalAvailable > debt ? nominalAvailable - debt : 0;
+        }
+    }
+
+     /**
+     * @dev Checks if a liquidation is allowed for a specific NFT position and owner
+     * @param nftAddress The address of the NFT contract.
+     * @param tokenId The ID of the NFT token.
+     * @param positionOwner The address of the position owner.
+     * @return bool True if liquidation is allowed, false otherwise
+     */
+    function isPositionLiquidationAllowed(address nftAddress, uint256 tokenId, address positionOwner)
+        public
+        view
+        returns (bool)
+    {
+        NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
+        IBondNFT.Metadata memory metadata = IBondNFT(nftAddress).getMetaData(tokenId);
+        // Get user stats updated to current time
+        UserStats memory updatedUserStats = getUserStats(positionOwner);
+
+        if (updatedUserStats.debt < updatedUserStats.staked * $.criticalDebtRatio / UNIT) {
+            // Debt is lower than liquidation threshold
+            if (block.timestamp < metadata.expirationTimestamp - $.liquidationTimeWindow) return false;
+            return true;
+        } else {
+            return true;
+        }
+    }
+
+    /**
+     * @dev Returns the liquidation results for a specific NFT position and owner
+     * @param nftAddress The address of the NFT contract.
+     * @param tokenId The ID of the NFT token.
+     * @param positionOwner The address of the position owner.
+     * @return liquidationPayment The amount of stablecoins paid by the liquidator.
+     * @return nftReceived The amount of NFTs received by the liquidator.
+     */
+    function liquidationResults(address nftAddress, uint256 tokenId, address positionOwner)
+        public
+        view
+        returns (uint256 liquidationPayment, uint256 nftReceived)
+    {
+        NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
+        IBondNFT.Metadata memory metadata = IBondNFT(nftAddress).getMetaData(tokenId);
+        // Get user stats updated to current time
+        UserStats memory updatedUserStats = getUserStats(positionOwner);
+
+        // Case 0: Liquidation is not allowed
+        if (!isPositionLiquidationAllowed(nftAddress, tokenId, positionOwner)) {
+            return (0, 0);
+        }
+
+        // Case 1: Position has no debt
+        if (updatedUserStats.debt == 0) {
+            return (0, 0);
+        }
+
+        uint256 currentPositionValue = 0;
+        uint256 amount = $.userNFTs[positionOwner][nftAddress][tokenId];
+        uint256 positionValue = (metadata.value + metadata.couponValue) * amount * (UNIT - $.safetyFee) / UNIT;
+        if (updatedUserStats.debt < updatedUserStats.staked * $.criticalDebtRatio / UNIT) {
+            currentPositionValue = calculateMaxBorrow(positionValue, block.timestamp, metadata.expirationTimestamp);
+        } else {
+            // Debt is higher than liquidation threshold
+            currentPositionValue = positionValue * updatedUserStats.debt / updatedUserStats.staked;
+        }
+
+        if (updatedUserStats.debt >= currentPositionValue) {
+            // Case 2: Position has debt greater than max borrow at this point
+            return (currentPositionValue, amount);
+        } else {
+            // Case 3: Position has debt less than max borrow at this point
+            uint256 amountToLiquidate = amount * updatedUserStats.debt / currentPositionValue
+                + (amount * updatedUserStats.debt % currentPositionValue == 0 ? 0 : 1);
+            return (currentPositionValue * amountToLiquidate / amount, amountToLiquidate);
         }
     }
 
@@ -1033,17 +1105,15 @@ contract NFTStakingAndBorrowing is
         // Liquidation threshold check
         // If threshold is not passed
         // check if the current time is within the `liquidationTimeWindow` before the NFT's expiration
-        if (
-            $.userStats[positionOwner].debt
-                < $.userStats[positionOwner].staked * $.criticalDebtRatio / UNIT
-        ) {
+        if ($.userStats[positionOwner].debt < $.userStats[positionOwner].staked * $.criticalDebtRatio / UNIT) {
             // Debt is lower than liquidation threshold
             if (block.timestamp < metadata.expirationTimestamp - $.liquidationTimeWindow) revert TooEarlyToLiquidate();
             ctx.currentPositionValue =
                 calculateMaxBorrow(ctx.positionValue, block.timestamp, metadata.expirationTimestamp);
         } else {
             // Debt is higher than liquidation threshold
-            ctx.currentPositionValue = ctx.positionValue * $.userStats[positionOwner].debt / $.userStats[positionOwner].staked;
+            ctx.currentPositionValue =
+                ctx.positionValue * $.userStats[positionOwner].debt / $.userStats[positionOwner].staked;
         }
 
         if ($.userStats[positionOwner].debt >= ctx.currentPositionValue) {

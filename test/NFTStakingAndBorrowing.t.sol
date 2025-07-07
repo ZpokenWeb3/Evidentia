@@ -1742,10 +1742,16 @@ contract NFTStakingAndBorrowingTest is Test {
 
         uint256 client2BalanceBefore = stableBondCoins.balanceOf(client2);
 
-        // vm.warp(355 days);
         // Client2 liquidates client1
         vm.startPrank(client2);
         stableBondCoins.approve(address(nftStaking), UINT256_MAX);
+        assertEq(
+            nftStaking.isPositionLiquidationAllowed(address(bondNFT), 2, client1),
+            true,
+            "Position should be liquidatable"
+        );
+        (uint256 liquidationPayment, uint256 nftRecieved) = nftStaking.liquidationResults(address(bondNFT), 2, client1);
+        assertEq(nftRecieved, 10, "Liquidator should receive 10 NFT");
         nftStaking.liquidate(address(bondNFT), 2, client1);
         vm.stopPrank();
 
@@ -1833,6 +1839,13 @@ contract NFTStakingAndBorrowingTest is Test {
         // Client2 liquidates client1
         vm.startPrank(client2);
         stableBondCoins.approve(address(nftStaking), UINT256_MAX);
+        assertEq(
+            nftStaking.isPositionLiquidationAllowed(address(bondNFT), 2, client1),
+            true,
+            "Position should be liquidatable"
+        );
+        (uint256 liquidationPayment, uint256 nftRecieved) = nftStaking.liquidationResults(address(bondNFT), 2, client1);
+        assertEq(nftRecieved, 1, "Liquidator should receive 1 NFT");
         nftStaking.liquidate(address(bondNFT), 2, client1);
         vm.stopPrank();
 
@@ -2182,6 +2195,17 @@ contract NFTStakingAndBorrowingTest is Test {
         nftStaking.borrow(0);
         vm.stopPrank();
 
+        assertEq(
+            nftStaking.isPositionLiquidationAllowed(address(bondNFT), 1, client1),
+            false,
+            "Position should not be liquidatable"
+        );
+        assertEq(
+            nftStaking.isPositionLiquidationAllowed(address(bondNFT), 2, client1),
+            false,
+            "Position should not be liquidatable"
+        );
+
         // normal liquidation window
         uint256 daysToFuture = 321 days;
         vm.warp(daysToFuture);
@@ -2202,6 +2226,12 @@ contract NFTStakingAndBorrowingTest is Test {
         // Client2 liquidates client1
         vm.startPrank(client2);
         stableBondCoins.approve(address(nftStaking), UINT256_MAX);
+        assertEq(
+            nftStaking.isPositionLiquidationAllowed(address(bondNFT), 2, client1),
+            true,
+            "Position should be liquidatable"
+        );
+        (uint256 liquidationPayment, uint256 nftRecieved) = nftStaking.liquidationResults(address(bondNFT), 2, client1);
         nftStaking.liquidate(address(bondNFT), 2, client1);
         vm.stopPrank();
 
@@ -2219,6 +2249,7 @@ contract NFTStakingAndBorrowingTest is Test {
         // Verify client2 paid for the liquidation
         assertLt(stableBondCoins.balanceOf(client2), client2BalanceBefore, "Liquidator should pay for liquidation");
         console.log("Client2 Pays:     ", client2BalanceBefore - stableBondCoins.balanceOf(client2));
+        assertEq(liquidationPayment, client2BalanceBefore - stableBondCoins.balanceOf(client2), "Liquidator should pay for liquidation");
         // Client1 should get the diff between liguidated NFTs and his debt
         console.log("Client1 Stables:  ", stableBondCoins.balanceOf(client1));
         console.log("Client1 Gets:     ", stableBondCoins.balanceOf(client1) - client1BalanceBefore);
@@ -2230,10 +2261,17 @@ contract NFTStakingAndBorrowingTest is Test {
         client2BalanceBefore = stableBondCoins.balanceOf(client2);
         // Client2 liquidates second position of the client1
         vm.startPrank(client2);
+        assertEq(
+            nftStaking.isPositionLiquidationAllowed(address(bondNFT), 1, client1),
+            true,
+            "Position should be liquidatable"
+        );
+        (liquidationPayment, nftRecieved) = nftStaking.liquidationResults(address(bondNFT), 1, client1);
         nftStaking.liquidate(address(bondNFT), 1, client1);
         vm.stopPrank();
 
         console.log("Client2 Pays 2:    ", client2BalanceBefore - stableBondCoins.balanceOf(client2));
+        assertEq(liquidationPayment, client2BalanceBefore - stableBondCoins.balanceOf(client2), "Liquidator should pay for liquidation");
         userStats = nftStaking.getUserStats(client1);
         console.log("Client1 debt left: ", userStats.debt);
     }
