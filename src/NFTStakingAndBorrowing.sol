@@ -719,6 +719,24 @@ contract NFTStakingAndBorrowing is
         return $.criticalDebtRatio;
     }
 
+    /**
+     * @dev Returns the current protocol fee.
+     * @return uint256 The protocol fee expressed with UNIT precision.
+     */
+    function getProtocolFee() external view returns (uint256) {
+        NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
+        return $.protocolFee;
+    }
+
+    /**
+     * @dev Returns the address of the fee receiver.
+     * @return address The address of the fee receiver.
+     */
+    function getFeeReceiver() external view returns (address) {
+        NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
+        return $.feeReceiver;
+    }
+
     /*//////////////////////////////////////////////////////////////
                             MAIN FUNCTIONS
     //////////////////////////////////////////////////////////////*/
@@ -1104,14 +1122,25 @@ contract NFTStakingAndBorrowing is
         updateTotalDebt();
 
         // Use a memory struct to hold all context, saving stack slots.
-        LiquidationContext memory ctx;
+        //     struct LiquidationContext {
+        //     address positionOwner;
+        //     address liquidator;
+        //     address nftAddress;
+        //     uint256 tokenId;
+        //     uint256 amount;
+        //     uint256 positionValue;
+        //     uint256 bondValue;
+        //     uint256 expirationTimestamp;
+        //     uint256 currentPositionValue;
+        // }
+        LiquidationContext memory ctx = LiquidationContext(address(0), address(0), address(0), 0, 0, 0, 0, 0, 0);
         ctx.positionOwner = positionOwner;
         ctx.liquidator = msg.sender;
         ctx.nftAddress = nftAddress;
         ctx.tokenId = tokenId;
+        ctx.amount = $.userNFTs[positionOwner][nftAddress][tokenId];
         ctx.bondValue = metadata.value + metadata.couponValue;
         ctx.expirationTimestamp = metadata.expirationTimestamp;
-        ctx.amount = $.userNFTs[positionOwner][nftAddress][tokenId];
         ctx.positionValue = ctx.bondValue * ctx.amount * (UNIT - $.safetyFee) / UNIT;
 
         // Case 1: Position has no debt - all NFTs return to the position owner
@@ -1240,7 +1269,7 @@ contract NFTStakingAndBorrowing is
     function transferRewards() external onlyStablesStaking returns (uint256) {
         NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
         uint256 currentDebt;
-        uint256 protocolFee;
+        uint256 protocolFeeAmount = 0;
         // Get current total debt (avoid redundant calculation if already updated this block)
         if ($.totalStats.debtUpdateTimestamp == block.timestamp) {
             currentDebt = $.totalStats.debt;
@@ -1261,19 +1290,19 @@ contract NFTStakingAndBorrowing is
             // Calculate the product first to avoid potential intermediate truncation
             uint256 product = rewardAmount * $.protocolFee;
             // Perform ceiling division to round up
-            protocolFee = (product + UNIT - 1) / UNIT;
+            protocolFeeAmount = (product + UNIT - 1) / UNIT;
         }
 
         // Deduct protocol fee
-        rewardAmount = rewardAmount - protocolFee;
+        rewardAmount = rewardAmount - protocolFeeAmount;
 
         // Transfer rewards if any
         if (rewardAmount > 0) {
             $.stableToken.transfer(msg.sender, rewardAmount);
         }
 
-        if (protocolFee > 0) {
-            $.stableToken.transfer($.feeReceiver, protocolFee);
+        if (protocolFeeAmount > 0) {
+            $.stableToken.transfer($.feeReceiver, protocolFeeAmount);
         }
 
         return rewardAmount;
