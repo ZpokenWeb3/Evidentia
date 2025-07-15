@@ -1261,7 +1261,7 @@ contract NFTStakingAndBorrowing is
         $.stableToken.burn(address(this), ctx.positionValue);
 
         // Interactions
-        if (liquidationPayment > currentDebt + 10) {
+        if (liquidationPayment > currentDebt) {
             $.stableToken.transfer(ctx.positionOwner, liquidationPayment - currentDebt);
         }
 
