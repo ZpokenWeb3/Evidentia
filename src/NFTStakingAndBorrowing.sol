@@ -433,7 +433,6 @@ contract NFTStakingAndBorrowing is
      */
     function calculateDebt(uint256 borrowedAmount, uint256 fromTime, uint256 toTime) public view returns (uint256) {
         // Scale amount to UNIT precision for PRBMath
-        NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
         borrowedAmount = borrowedAmount * UNIT;
         if (fromTime >= toTime) {
             return borrowedAmount / UNIT; // Return original amount if no time passed
@@ -443,27 +442,27 @@ contract NFTStakingAndBorrowing is
         uint256[] memory protocolRates;
         UD60x18 debtLog2;
 
+        NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
         (spans, protocolRates) = getProtocolRateTimeSpans(SafeCast.toUint48(fromTime), SafeCast.toUint48(toTime));
-        if (spans.length == 1) {
-            debtLog2 = _calculateDebtLog2(ud(borrowedAmount).log2(), fromTime, toTime, protocolRates[0]);
-        } else if (spans.length == 0) {
-            debtLog2 = _calculateDebtLog2(ud(borrowedAmount).log2(), fromTime, toTime, $.protocolRate);
+        debtLog2 = ud(borrowedAmount).log2();
+        if (spans.length == 0) {
+            debtLog2 = _calculateDebtLog2(debtLog2, ud(toTime - fromTime), $.protocolRate);
+        } else if (spans.length == 1) {
+            debtLog2 = _calculateDebtLog2(debtLog2, ud(toTime - fromTime), protocolRates[0]);
         } else {
-            debtLog2 = ud(borrowedAmount).log2();
             for (uint256 i = 0; i < spans.length; i++) {
-                debtLog2 = _calculateDebtLog2(debtLog2, 0, spans[i], protocolRates[i]);
+                debtLog2 = _calculateDebtLog2(debtLog2, ud(spans[i]), protocolRates[i]);
             }
         }
 
         return debtLog2.exp2().intoUint256() / UNIT + 1;
     }
 
-    function _calculateDebtLog2(UD60x18 borrowedLog2, uint256 fromTime, uint256 toTime, uint256 _protocolRate)
+    function _calculateDebtLog2(UD60x18 borrowedLog2, UD60x18 timeDelta, uint256 _protocolRate)
         internal
         pure
         returns (UD60x18)
     {
-        UD60x18 timeDelta = ud(toTime - fromTime);
         UD60x18 debtLog2 = (timeDelta / ud(YEAR_IN_SECONDS)) * (ud(UNIT + _protocolRate)).log2() + borrowedLog2;
         return debtLog2;
     }
