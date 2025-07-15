@@ -107,6 +107,18 @@ contract NFTStakingAndBorrowing is
     event StablesStakingAddressUpdated(address indexed oldAddress, address indexed newAddress);
     /// @dev Emitted when the protocol rate is updated.
     event ProtocolRateUpdated(uint256 newProtocolRate);
+    /// @dev Emitted when the protocol fee is updated.
+    event ProtocolFeeUpdated(uint256 newProtocolFee);
+    /// @dev Emitted when the fee receiver is updated.
+    event FeeReceiverUpdated(address indexed oldAddress, address indexed newAddress);
+    /// @dev Emitted when the critical debt ratio is updated.
+    event CriticalDebtRatioUpdated(uint256 newCriticalDebtRatio);
+    /// @dev Emitted when the safety fee is updated.
+    event SafetyFeeUpdated(uint256 newSafetyFee);
+    /// @dev Emitted when the liquidation time window is updated.
+    event LiquidationTimeWindowUpdated(uint256 newLiquidationTimeWindow);
+    /// @dev Emitted when an NFT whitelist status is updated.
+    event NftWhitelistStatusUpdated(address nftAddress, bool isWhitelisted);
 
     /**
      * @dev Stores global statistics for the protocol.
@@ -235,6 +247,7 @@ contract NFTStakingAndBorrowing is
     function whitelistNFT(address nftAddress, bool status) external onlyOwner {
         NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
         $.whitelistedNFTs[nftAddress] = status;
+        emit NftWhitelistStatusUpdated(nftAddress, status);
     }
 
     /**
@@ -258,6 +271,7 @@ contract NFTStakingAndBorrowing is
     function setSafetyFee(uint256 _safetyFeeInBPS) external onlyOwner {
         NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
         $.safetyFee = _safetyFeeInBPS * UNIT / BPS;
+        emit SafetyFeeUpdated($.safetyFee);
     }
 
     /**
@@ -268,6 +282,7 @@ contract NFTStakingAndBorrowing is
     function setLiquidationTimeWindow(uint256 _timeWindowInSeconds) external onlyOwner {
         NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
         $.liquidationTimeWindow = _timeWindowInSeconds;
+        emit LiquidationTimeWindowUpdated(_timeWindowInSeconds);
     }
 
     /**
@@ -291,6 +306,7 @@ contract NFTStakingAndBorrowing is
     function setProtocolFee(uint256 _protocolFeeInBPS) external onlyOwner {
         NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
         $.protocolFee = _protocolFeeInBPS * UNIT / BPS;
+        emit ProtocolFeeUpdated($.protocolFee);
     }
 
     /**
@@ -301,7 +317,9 @@ contract NFTStakingAndBorrowing is
     function setFeeReceiver(address _address) external onlyOwner {
         if (_address == address(0)) revert ZeroAddress();
         NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
+        address oldAddress = $.feeReceiver;
         $.feeReceiver = _address;
+        emit FeeReceiverUpdated(oldAddress, $.feeReceiver);
     }
 
     /**
@@ -312,6 +330,7 @@ contract NFTStakingAndBorrowing is
     function setCriticalDebtRatio(uint256 _criticalDebtRatio) external onlyOwner {
         NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
         $.criticalDebtRatio = _criticalDebtRatio;
+        emit CriticalDebtRatioUpdated($.criticalDebtRatio);
     }
 
     /*//////////////////////////////////////////////////////////////
