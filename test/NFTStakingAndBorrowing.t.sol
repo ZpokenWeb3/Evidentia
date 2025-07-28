@@ -44,7 +44,10 @@ contract NFTStakingAndBorrowingTest is Test {
         nftStaking = NFTStakingAndBorrowing(
             Upgrades.deployUUPSProxy(
                 "NFTStakingAndBorrowing.sol:NFTStakingAndBorrowing",
-                abi.encodeCall(NFTStakingAndBorrowing.initialize, (address(stableBondCoins)))
+                abi.encodeCall(
+                    NFTStakingAndBorrowing.initialize,
+                    (address(stableBondCoins), owner, owner, 1200, 500, 45 days, 1000, 9850)
+                )
             )
         );
 
@@ -1296,7 +1299,10 @@ contract NFTStakingAndBorrowingTest is Test {
         // Deploy initial proxy
         address proxy = Upgrades.deployUUPSProxy(
             "NFTStakingAndBorrowing.sol:NFTStakingAndBorrowing",
-            abi.encodeCall(NFTStakingAndBorrowing.initialize, (address(stableBondCoins)))
+            abi.encodeCall(
+                NFTStakingAndBorrowing.initialize,
+                (address(stableBondCoins), owner, owner, 1200, 500, 45 days, 1000, 9850)
+            )
         );
         NFTStakingAndBorrowing instance = NFTStakingAndBorrowing(proxy);
 
@@ -1455,7 +1461,10 @@ contract NFTStakingAndBorrowingTest is Test {
         nftStaking = NFTStakingAndBorrowing(
             Upgrades.deployUUPSProxy(
                 "NFTStakingAndBorrowing.sol:NFTStakingAndBorrowing",
-                abi.encodeCall(NFTStakingAndBorrowing.initialize, (address(stableBondCoins)))
+                abi.encodeCall(
+                    NFTStakingAndBorrowing.initialize,
+                    (address(stableBondCoins), owner, owner, 1200, 500, 45 days, 1000, 9850)
+                )
             )
         );
         nftStaking.setProtocolRate(1000);

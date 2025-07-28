@@ -195,27 +195,46 @@ contract NFTStakingAndBorrowing is
     }
 
     /**
-     * @dev Initializes the contract (replaces constructor).
+     * @dev Initializes the contract.
      * @param _stableToken The address of the stablecoin (IMintableERC20) contract.
+     * @param _initialOwner The address to be set as the initial owner.
+     * @param _feeReceiver The address that will receive protocol fees.
+     * @param _protocolRateBps The initial protocol rate in basis points (e.g., 1200 for 12%).
+     * @param _safetyFeeBps The safety fee in basis points (e.g., 500 for 5%).
+     * @param _liquidationTimeWindow The time window for liquidations in seconds (e.g., 45 days).
+     * @param _protocolFeeBps The protocol fee in basis points (e.g., 1000 for 10%).
+     * @param _criticalDebtRatioBps The critical debt ratio in basis points (e.g., 9850 for 98.5%).
      */
-    function initialize(address _stableToken) external initializer {
+    function initialize(
+        address _stableToken,
+        address _initialOwner,
+        address _feeReceiver,
+        uint256 _protocolRateBps,
+        uint256 _safetyFeeBps,
+        uint256 _liquidationTimeWindow,
+        uint256 _protocolFeeBps,
+        uint256 _criticalDebtRatioBps
+    ) external initializer {
+        // Input validation
         if (_stableToken == address(0)) revert ZeroAddress();
+        if (_initialOwner == address(0)) revert ZeroAddress();
+        if (_feeReceiver == address(0)) revert ZeroAddress();
 
         // Initialize parent contracts
         __ERC1155Holder_init();
-        __Ownable_init(msg.sender);
+        __Ownable_init(_initialOwner);
         __ReentrancyGuard_init();
         __UUPSUpgradeable_init();
 
         // Initialize storage
         NFTStakingAndBorrowingStorage storage $ = _getNFTStakingAndBorrowingStorage();
         $.stableToken = IMintableERC20(_stableToken);
-        setProtocolRate(1200);
-        $.safetyFee = 500 * UNIT / BPS;
-        $.liquidationTimeWindow = 45 days;
-        $.protocolFee = 1000 * UNIT / BPS;
-        $.feeReceiver = msg.sender;
-        $.criticalDebtRatio = 9850 * UNIT / BPS;
+        setProtocolRate(_protocolRateBps); // setProtocolRate handles the BPS value
+        $.safetyFee = _safetyFeeBps * UNIT / BPS;
+        $.liquidationTimeWindow = _liquidationTimeWindow;
+        $.protocolFee = _protocolFeeBps * UNIT / BPS;
+        $.feeReceiver = _feeReceiver;
+        $.criticalDebtRatio = _criticalDebtRatioBps * UNIT / BPS;
     }
 
     /**
