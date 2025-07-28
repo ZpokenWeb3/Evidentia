@@ -1556,8 +1556,6 @@ contract NFTStakingAndBorrowingTest is Test {
         vm.warp(daysToFuture);
         NFTStakingAndBorrowing.UserStats memory userStats = nftStaking.getUserStats(client1);
 
-        uint256 protocolRate = nftStaking.getProtocolRate();
-
         console.log("Client1 debt:     ", userStats.debt);
         console.log("Client1 borrowed: ", userStats.borrowed);
         console.log("Client1 staked:   ", userStats.staked);
@@ -1645,8 +1643,6 @@ contract NFTStakingAndBorrowingTest is Test {
         uint256 daysToFuture = 190 days;
         vm.warp(daysToFuture);
         NFTStakingAndBorrowing.UserStats memory userStats = nftStaking.getUserStats(client1);
-
-        uint256 protocolRate = nftStaking.getProtocolRate();
 
         console.log("Client1 debt:     ", userStats.debt);
         console.log("Client1 borrowed: ", userStats.borrowed);
@@ -1739,7 +1735,6 @@ contract NFTStakingAndBorrowingTest is Test {
         uint256 daysToFuture = 190 days;
         vm.warp(daysToFuture);
         NFTStakingAndBorrowing.UserStats memory userStats = nftStaking.getUserStats(client1);
-
         uint256 protocolRate = nftStaking.getProtocolRate();
 
         console.log("Client1 debt:     ", userStats.debt);
@@ -1759,7 +1754,7 @@ contract NFTStakingAndBorrowingTest is Test {
             true,
             "Position should be liquidatable"
         );
-        (uint256 liquidationPayment, uint256 nftRecieved) = nftStaking.liquidationResults(address(bondNFT), 2, client1);
+        (, uint256 nftRecieved) = nftStaking.liquidationResults(address(bondNFT), 2, client1);
         assertEq(nftRecieved, 10, "Liquidator should receive 10 NFT");
         nftStaking.liquidate(address(bondNFT), 2, client1);
         vm.stopPrank();
@@ -1833,8 +1828,6 @@ contract NFTStakingAndBorrowingTest is Test {
         vm.warp(daysToFuture);
         NFTStakingAndBorrowing.UserStats memory userStats = nftStaking.getUserStats(client1);
 
-        uint256 protocolRate = nftStaking.getProtocolRate();
-
         console.log("Client1 debt:     ", userStats.debt);
         console.log("Client1 borrowed: ", userStats.borrowed);
         console.log("Client1 staked:   ", userStats.staked);
@@ -1853,7 +1846,7 @@ contract NFTStakingAndBorrowingTest is Test {
             true,
             "Position should be liquidatable"
         );
-        (uint256 liquidationPayment, uint256 nftRecieved) = nftStaking.liquidationResults(address(bondNFT), 2, client1);
+        (, uint256 nftRecieved) = nftStaking.liquidationResults(address(bondNFT), 2, client1);
         assertEq(nftRecieved, 1, "Liquidator should receive 1 NFT");
         nftStaking.liquidate(address(bondNFT), 2, client1);
         vm.stopPrank();
@@ -1931,8 +1924,6 @@ contract NFTStakingAndBorrowingTest is Test {
         uint256 daysToFuture = 321 days;
         vm.warp(daysToFuture);
         NFTStakingAndBorrowing.UserStats memory userStats = nftStaking.getUserStats(client1);
-
-        uint256 protocolRate = nftStaking.getProtocolRate();
 
         console.log("Client1 debt:     ", userStats.debt);
         console.log("Client1 borrowed: ", userStats.borrowed);
@@ -2024,8 +2015,6 @@ contract NFTStakingAndBorrowingTest is Test {
         vm.warp(daysToFuture);
         NFTStakingAndBorrowing.UserStats memory userStats = nftStaking.getUserStats(client1);
 
-        uint256 protocolRate = nftStaking.getProtocolRate();
-
         console.log("Client1 debt:     ", userStats.debt);
         console.log("Client1 borrowed: ", userStats.borrowed);
         console.log("Client1 staked:   ", userStats.staked);
@@ -2115,8 +2104,6 @@ contract NFTStakingAndBorrowingTest is Test {
         uint256 daysToFuture = 321 days;
         vm.warp(daysToFuture);
         NFTStakingAndBorrowing.UserStats memory userStats = nftStaking.getUserStats(client1);
-
-        uint256 protocolRate = nftStaking.getProtocolRate();
 
         console.log("Client1 debt:     ", userStats.debt);
         console.log("Client1 borrowed: ", userStats.borrowed);
@@ -2219,8 +2206,6 @@ contract NFTStakingAndBorrowingTest is Test {
         uint256 daysToFuture = 321 days;
         vm.warp(daysToFuture);
         NFTStakingAndBorrowing.UserStats memory userStats = nftStaking.getUserStats(client1);
-
-        uint256 protocolRate = nftStaking.getProtocolRate();
 
         console.log("Client1 debt:     ", userStats.debt);
         console.log("Client1 borrowed: ", userStats.borrowed);
