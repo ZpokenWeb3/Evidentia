@@ -1295,8 +1295,9 @@ contract NFTStakingAndBorrowingTest is Test {
         );
     }
 
-    function testUUPSUpgrade() public {
+    function testNftStakingUUPSUpgrade() public {
         // Deploy initial proxy
+        vm.startPrank(owner);
         address proxy = Upgrades.deployUUPSProxy(
             "NFTStakingAndBorrowing.sol:NFTStakingAndBorrowing",
             abi.encodeCall(
@@ -1309,7 +1310,6 @@ contract NFTStakingAndBorrowingTest is Test {
         instance.transferOwnership(owner);
 
         // Setup initial state using setUp data
-        vm.startPrank(owner);
         stableBondCoins.grantRole(MINTER_ROLE, address(instance));
         instance.whitelistNFT(address(bondNFT), true);
 
