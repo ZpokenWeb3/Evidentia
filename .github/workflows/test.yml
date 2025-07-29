@@ -64,5 +64,5 @@ jobs:
 
       - name: Run Forge tests with warnings as errors
         run: |
-          forge test -vvv --deny-warnings
+          forge clean && forge test -vvv --deny-warnings
         id: test
