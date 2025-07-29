@@ -6,7 +6,7 @@ import {ILayerZeroEndpointV2} from "LayerZero-v2/contracts/interfaces/ILayerZero
 import {LayerZeroConstants} from "./LayerZeroConstants.s.sol";
 import {console} from "forge-std/console.sol";
 import {SetConfigParam} from "LayerZero-v2/contracts/interfaces/IMessageLibManager.sol";
-import { UlnConfig } from "@layerzerolabs/lz-evm-messagelib-v2/contracts/uln/UlnBase.sol";
+import {UlnConfig} from "@layerzerolabs/lz-evm-messagelib-v2/contracts/uln/UlnBase.sol";
 
 /**
  * @title ConfigureSecurityStack
@@ -42,11 +42,7 @@ contract ConfigureSecurityStack is Script {
         bytes memory ulnConfig = _getUlnConfig(libType);
 
         SetConfigParam[] memory ulnParams = new SetConfigParam[](1);
-        ulnParams[0] = SetConfigParam({
-            eid: destinationEid,
-            configType: CONFIG_TYPE_ULN,
-            config: ulnConfig
-        });
+        ulnParams[0] = SetConfigParam({eid: destinationEid, configType: CONFIG_TYPE_ULN, config: ulnConfig});
 
         // Set ULN config
         console.log("Setting ULN config for OApp:", oapp);
@@ -79,11 +75,11 @@ contract ConfigureSecurityStack is Script {
 
         UlnConfig memory ulnConfig;
         uint64 confirmations = 15; // Default for send
-        
+
         if (keccak256(abi.encodePacked(libType)) == keccak256(abi.encodePacked("recv"))) {
             confirmations = 5;
         }
-        
+
         ulnConfig = UlnConfig(confirmations, 2, 0, 0, new address[](2), new address[](0));
         // Addresses must be sorted in ascending order
         ulnConfig.requiredDVNs[0] = address(0x3b0531eB02Ab4aD72e7a531180beeF9493a00dD2); // USDT0
