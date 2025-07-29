@@ -18,6 +18,13 @@ contract StableBondCoinsV2 is StableBondCoins {
         __UUPSUpgradeable_init();
     }
 
+    function initialize() external initializer {
+        __ERC20_init(name(), symbol());
+        __ERC20Permit_init(name());
+        __AccessControl_init();
+        __UUPSUpgradeable_init();
+    }
+
     function newFeature() external pure returns (string memory) {
         return "V2 Feature";
     }

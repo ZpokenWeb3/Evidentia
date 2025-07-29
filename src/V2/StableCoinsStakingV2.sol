@@ -17,6 +17,12 @@ contract StableCoinsStakingV2 is StableCoinsStaking {
         __AccessControl_init();
     }
 
+    function initialize() external initializer {
+        __ReentrancyGuard_init();
+        __UUPSUpgradeable_init();
+        __AccessControl_init();
+    }
+
     function newFeature() external pure returns (string memory) {
         return "V2 Feature";
     }

@@ -18,6 +18,13 @@ contract NFTStakingAndBorrowingV2 is NFTStakingAndBorrowing {
         __UUPSUpgradeable_init();
     }
 
+    function initialize() external initializer {
+        __ERC1155Holder_init();
+        __Ownable_init(owner());
+        __ReentrancyGuard_init();
+        __UUPSUpgradeable_init();
+    }
+
     function newFeature() external pure returns (string memory) {
         return "V2 Feature";
     }

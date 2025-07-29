@@ -59,10 +59,10 @@ jobs:
 
       - name: Run Forge build with warnings as errors
         run: |
-          forge build --sizes --optimize --optimizer-runs 1000 --deny-warnings
+          forge build --sizes --optimize --optimizer-runs 200 --deny-warnings
         id: build
 
       - name: Run Forge tests with warnings as errors
         run: |
-          forge test -vvv --deny-warnings
+          forge clean && forge test -vvv --deny-warnings
         id: test

@@ -10,12 +10,17 @@ contract DeployNftStaking is Script {
     function run() external returns (NFTStakingAndBorrowing) {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address stableCoinsAddress = vm.envAddress("STABLES_PROXY_ADDRESS");
+        address owner = vm.addr(deployerPrivateKey);
+        address feeReceiver = owner;
 
         // Deploy the contract as a UUPS proxy with the initializer
         vm.startBroadcast(deployerPrivateKey);
         address proxy = Upgrades.deployUUPSProxy(
             "NFTStakingAndBorrowing.sol:NFTStakingAndBorrowing",
-            abi.encodeCall(NFTStakingAndBorrowing.initialize, (stableCoinsAddress))
+            abi.encodeCall(
+                NFTStakingAndBorrowing.initialize,
+                (stableCoinsAddress, owner, feeReceiver, 1200, 500, 45 days, 1000, 9850)
+            )
         );
         NFTStakingAndBorrowing nftStaking = NFTStakingAndBorrowing(proxy);
         vm.stopBroadcast();

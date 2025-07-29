@@ -19,6 +19,14 @@ contract BondNFTV2 is BondNFT {
         __UUPSUpgradeable_init();
     }
 
+    function initialize() external initializer {
+        __ERC1155_init(uri(0));
+        __Ownable_init(owner());
+        __ERC1155Supply_init();
+        __ReentrancyGuard_init();
+        __UUPSUpgradeable_init();
+    }
+
     function newFeature() external pure returns (string memory) {
         return "V2 Feature";
     }
